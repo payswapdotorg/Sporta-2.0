@@ -17,11 +17,11 @@ clock. Real provider integrations are Wave 2.
 
 ### Job state machine (domain, pure)
 
-~~~text
+```text
 queued -> running -> succeeded | failed | refused | cancelled
 queued -> cancelled | refused
 terminal: succeeded, failed, refused, cancelled (no outgoing edges)
-~~~
+```
 
 - `transitionJob(from, to)` refuses every illegal transition with a typed
   `IllegalJobTransitionError` (e.g. `succeeded -> running`,
@@ -88,14 +88,14 @@ execution state; the broker is the only writer of job status.
 
 ## Failure semantics
 
-| Failure | Typed error / state |
-| --- | --- |
-| Illegal state transition (domain) | `IllegalJobTransitionError` |
-| Poll of unknown job | `UnknownComputeJobError` |
-| Policy denies the job kind | terminal `refused` + `policy-denied` refusal |
-| All providers refuse | terminal `refused` + provider refusal |
-| Provider returns failure | terminal `failed` + detail |
-| Provider crashes | terminal `failed` + detail |
+| Failure                           | Typed error / state                          |
+| --------------------------------- | -------------------------------------------- |
+| Illegal state transition (domain) | `IllegalJobTransitionError`                  |
+| Poll of unknown job               | `UnknownComputeJobError`                     |
+| Policy denies the job kind        | terminal `refused` + `policy-denied` refusal |
+| All providers refuse              | terminal `refused` + provider refusal        |
+| Provider returns failure          | terminal `failed` + detail                   |
+| Provider crashes                  | terminal `failed` + detail                   |
 
 ## Event order (submit)
 
