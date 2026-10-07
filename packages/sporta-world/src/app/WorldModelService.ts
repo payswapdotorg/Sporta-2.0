@@ -1,8 +1,4 @@
-import type {
-  PolicySet,
-  SportsWorldModelRecord,
-  SportaId,
-} from "@sporta/contracts/contract";
+import type { PolicySet, SportsWorldModelRecord, SportaId } from "@sporta/contracts/contract";
 import {
   InvalidObservationError,
   MixedDomainError,
