@@ -3,7 +3,8 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
-    "lib": ["es2025"]
+    "lib": ["es2025"],
+    "types": ["node"]
   },
   "include": ["src"],
   "references": [{ "path": "../sporta-contracts" }, { "path": "../sporta-artifacts" }]
