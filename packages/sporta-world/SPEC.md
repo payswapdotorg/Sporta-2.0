@@ -87,13 +87,13 @@ write path.
 
 ## Failure semantics
 
-| Failure | Typed error |
-| --- | --- |
-| Non-ingestible provenance source kind | `ProvenanceRefusalError` |
-| Mixed domains in one batch | `MixedDomainError` |
-| Confidence outside [0, 1] | `InvalidObservationError` |
+| Failure                                          | Typed error                |
+| ------------------------------------------------ | -------------------------- |
+| Non-ingestible provenance source kind            | `ProvenanceRefusalError`   |
+| Mixed domains in one batch                       | `MixedDomainError`         |
+| Confidence outside [0, 1]                        | `InvalidObservationError`  |
 | Policy conflict with established snapshot policy | `WorldPolicyConflictError` |
-| Empty observation batch | `WorldModelError` |
+| Empty observation batch                          | `WorldModelError`          |
 
 All errors extend `WorldModelError` with a machine-readable `detail`.
 
