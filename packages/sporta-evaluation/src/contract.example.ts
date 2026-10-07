@@ -30,3 +30,10 @@ export const exampleEvaluate: EvaluateCandidatesInput = {
   evidence: [],
   interventionCost: { manualInterventions: 2, userSeconds: 140 },
 };
+
+/** Explicit honest basis: fixture input must never claim "measured". */
+export const exampleMeasuredIntervention = {
+  manualInterventions: 1,
+  userSeconds: 42,
+  basis: "fixture",
+} as const;

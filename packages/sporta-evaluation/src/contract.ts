@@ -3,30 +3,21 @@
  *
  * User intervention cost is a first-class signal (invariant 18). No
  * single benchmark metric is sufficient for promotion.
+ *
+ * Single public entrypoint. Declarations live in module-internal files
+ * (src/domain/*, src/app/*) and are re-exported here — the Wave 0
+ * layout. The v1 surface below is unchanged; the Wave 1 addition is the
+ * optional honest `basis` label on InterventionCostInput plus the
+ * service constructor re-export.
  */
-import type {
-  EvaluationMetric,
-  EvaluationReportRecord,
-  SportaId,
-} from "@sporta/contracts/contract";
-import type { OrganizationCandidate } from "@sporta/organizations/contract";
-
 export type { EvaluationMetric, EvaluationReportRecord } from "@sporta/contracts/contract";
 
-/** Measured manual intervention cost for a candidate run. */
-export interface InterventionCostInput {
-  manualInterventions: number;
-  userSeconds: number;
-}
+export type {
+  InterventionCostInput,
+  EvaluateCandidatesInput,
+  EvaluationPort,
+} from "./domain/ports.js";
 
-/** Input for comparing candidates. */
-export interface EvaluateCandidatesInput {
-  candidates: readonly OrganizationCandidate[];
-  evidence: readonly SportaId[];
-  interventionCost?: InterventionCostInput;
-}
+export { EvaluationCandidatesError } from "./domain/errors.js";
 
-/** The evaluation port. Reports are immutable evidence records. */
-export interface EvaluationPort {
-  evaluateCandidates(input: EvaluateCandidatesInput): Promise<EvaluationReportRecord>;
-}
+export { EvaluationService } from "./app/evaluationService.js";

@@ -47,3 +47,16 @@ export const exampleRegister: RegisterOrganizationInput = {
     policy: intent.policy,
   },
 };
+
+/** Promotion input (minimal A6 immutable path). */
+export const examplePromote = {
+  organizationId: "org:example",
+  version: 1,
+  evidence: ["ev:example"],
+} as const;
+
+/** Per-user preference (personalization boundary — scoped to userRef). */
+export const examplePreference = {
+  userRef: "user:example",
+  preferredOrganizationId: "org:example",
+} as const;
