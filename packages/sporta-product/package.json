@@ -1,0 +1,26 @@
+{
+  "name": "@sporta/product",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./contract": "./src/contract.ts"
+  },
+  "scripts": {
+    "lint": "oxlint"
+  },
+  "dependencies": {
+    "@sporta/arena": "workspace:*",
+    "@sporta/artifacts": "workspace:*",
+    "@sporta/contracts": "workspace:*",
+    "@sporta/editors": "workspace:*",
+    "@sporta/evaluation": "workspace:*",
+    "@sporta/lab": "workspace:*",
+    "@sporta/organizations": "workspace:*",
+    "@sporta/policy": "workspace:*",
+    "@sporta/work": "workspace:*",
+    "@sporta/world": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.2"
+  }
+}

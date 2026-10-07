@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "lib": ["es2025"]
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../sporta-policy" },
+    { "path": "../sporta-contracts" },
+    { "path": "../sporta-work" },
+    { "path": "../sporta-organizations" },
+    { "path": "../sporta-artifacts" },
+    { "path": "../sporta-editors" },
+    { "path": "../sporta-world" },
+    { "path": "../sporta-arena" },
+    { "path": "../sporta-evaluation" },
+    { "path": "../sporta-lab" }
+  ]
+}
