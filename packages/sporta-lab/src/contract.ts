@@ -4,49 +4,25 @@
  * The Lab optimizes "best organization for this user, this intent, this
  * source, this environment and these constraints" — never only benchmark
  * score. Simulation results never become production truth.
+ *
+ * Single public entrypoint. Declarations live in module-internal files
+ * (src/domain/*, src/app/*) and are re-exported here — the Wave 0
+ * layout. The v1 surface below is unchanged; Wave 1 additions are
+ * additive (LabService, errors, population kinds).
  */
-import type { IntentSpec, SportaId } from "@sporta/contracts/contract";
-import type { OrganizationCandidate } from "@sporta/organizations/contract";
+export type {
+  LabPopulationKind,
+  LabSearchInput,
+  LabReplayInput,
+  LabReplayReport,
+  LabPort,
+} from "./domain/ports.js";
 
-/** Population kinds the Lab may search. */
-export type LabPopulationKind =
-  | "baseline-generalist"
-  | "specialist"
-  | "historical-winner"
-  | "personalized"
-  | "hand-authored"
-  | "arena-improved"
-  | "experimentally-evolved";
+export { POPULATION_KINDS } from "./domain/population.js";
 
-/** Input for a Lab population search. */
-export interface LabSearchInput {
-  intent: IntentSpec;
-  userRef?: SportaId;
-  sourceRef?: SportaId;
-  environmentProfile: string;
-  constraints: readonly string[];
-  populations: readonly LabPopulationKind[];
-}
+export { LabPopulationKindError, LabWorkGraphNotFoundError } from "./domain/errors.js";
 
-/** Input for replaying a historical WorkGraph under a candidate organization. */
-export interface LabReplayInput {
-  workGraphId: SportaId;
-  organization: OrganizationCandidate["organization"];
-}
+export { LabService } from "./app/labService.js";
+export type { LabServiceDeps } from "./app/labService.js";
 
-/** Fixture- or replay-grade report; never production truth. */
-export interface LabReplayReport {
-  workGraphId: SportaId;
-  organizationId: SportaId;
-  replayedAt: string;
-  outcome: "success" | "partial" | "failure";
-  /** Manual interventions counted during replay (first-class evaluation signal). */
-  interventionCost: number;
-  evidence: readonly SportaId[];
-}
-
-/** The Lab port. */
-export interface LabPort {
-  searchPopulation(input: LabSearchInput): Promise<readonly OrganizationCandidate[]>;
-  replay(input: LabReplayInput): Promise<LabReplayReport>;
-}
+export { systemClockNow } from "./adapters/clock.js";

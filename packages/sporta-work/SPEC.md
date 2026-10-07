@@ -1,0 +1,146 @@
+# sporta-work — SPEC (Wave 1)
+
+Spec-before-code record for **A1: WorkGraph + Intent**. The repository is the
+source of truth; this file states behavior, the single state owner,
+invariants, failure semantics and event order before the implementation.
+
+## Scope
+
+Intent admission (`openIntent`), WorkGraph construction, idempotent node
+append, status lifecycle, the append ledger (manual-takeover provenance) and
+the declared (not implemented) AgentRuntime execution seam.
+
+Everything is in-memory fixture-grade. No IO, no network, no timers in
+`src/domain`. Clocks are injected.
+
+## Single state owner
+
+`WorkGraphService` (app layer) is the only writer of WorkGraph state,
+persisted through the module-internal `WorkGraphStorePort`
+(`adapters/inMemoryWorkGraphStore.ts` implements it, fixture-grade). One
+canonical `StoredWorkGraph` per `workGraphId`:
+
+- `graph`: the frozen `WorkGraphRecord` shape (from `@sporta/contracts`);
+- `appends`: the append ledger (`WorkAppendRecord[]`) — node appends with
+  actor provenance, because the frozen `WorkGraphNode` record carries no
+  actor field. The ledger is what makes manual takeover first-class
+  evidence.
+
+There is no second write path. Runs execute only through the ZCode
+AgentRuntime seam (declared in `domain/ports.ts`, simulated by a fixture
+adapter); this module never implements a runtime.
+
+## IDs
+
+- Opaque strings.
+  - `workGraphId` (auto) = `wg:<fnv1a(stableStringify(intent))>` — content-derived:
+    the same intent retried maps to the same graph (idempotency without an
+    explicit id).
+  - `nodeId` (auto) = `node:<workGraphId>:<seq>` — deterministic per graph
+    state (reproducible fixtures), but NOT a retry guarantee: once a node is
+    stored, a duplicate auto-id append computes the next seq and therefore a
+    new node. **Append idempotency requires an explicit `nodeId`** (the
+    canonical idempotency rule is per (workGraphId, nodeId)).
+- Explicit `workGraphId` / `nodeId` always win and carry the idempotency
+  semantics below.
+
+## Idempotency
+
+- `openIntent(workGraphId, intent)`:
+  - existing graph + deep-equal intent → same record, no duplicate;
+  - existing graph + different intent → `WorkGraphIntentConflictError`;
+  - unknown id → create (status `open`, no nodes).
+- `appendNode(workGraphId, nodeId, kind, parent, actor)`:
+  - existing nodeId + same (kind, parent) → same node, same ledger entry,
+    no duplicate, `seq` unchanged;
+  - existing nodeId + different (kind, parent) → `WorkGraphNodeConflictError`;
+  - unknown graph → `WorkGraphNotFoundError`;
+  - unknown `parent` → `WorkGraphNodeParentError`.
+- `transitionStatus(workGraphId, next)`:
+  - `next` equals current status → no-op (retry-safe, record unchanged);
+  - `next` is a legal successor → updated `updatedAt`;
+  - otherwise → `WorkGraphStatusError`.
+
+## `seq`
+
+Monotonic per graph: next seq = `max(existing seqs) + 1`, starting at 1.
+Idempotent retries never bump `seq` and never add ledger entries.
+
+## Status machine
+
+Explicit successor table (the only legal transitions):
+
+| from          | successors                       |
+| ------------- | -------------------------------- |
+| open          | executing, awaiting-user         |
+| executing     | awaiting-user, escalated, closed |
+| awaiting-user | executing, escalated, closed     |
+| escalated     | executing, closed                |
+| closed        | (terminal)                       |
+
+`open -> escalated`, `open -> closed` and any transition out of `closed` are
+illegal (no skips, terminal is final).
+
+### Append-driven triggers
+
+Appends may drive status. The (kind, actorKind) table:
+
+| kind            | actorKind            | trigger                                |
+| --------------- | -------------------- | -------------------------------------- |
+| task/run/action | agent-run            | agent-activity                         |
+| task/run/action | user, editor-session | user-activity                          |
+| task/run/action | arena-session        | observation (no change)                |
+| artifact        | agent-run            | agent-activity                         |
+| artifact        | user, editor-session | user-activity (manual edit = takeover) |
+| artifact        | arena-session        | observation                            |
+| evidence        | any                  | observation                            |
+| outcome         | any                  | work-completed                         |
+
+Trigger effects:
+
+- agent-activity: open→executing, awaiting-user→executing, executing stays;
+  escalated/closed → `WorkGraphStatusError`.
+- user-activity: open→awaiting-user, executing→awaiting-user,
+  awaiting-user stays; escalated/closed → `WorkGraphStatusError`.
+- work-completed: executing/awaiting-user/escalated→closed; open →
+  `WorkGraphStatusError` (nothing completed yet — a skip).
+- observation: no status change; allowed on closed ONLY for `evidence`
+  (post-closure evidence attachment). Every other closed-graph append →
+  `WorkGraphStatusError`.
+
+MANUAL TAKEOVER: `ActorDescriptor.actorKind === "user"` appends are the same
+lineage semantics as agent appends — same parent/seq rules, same ledger
+shape, plus they drive the user-activity trigger.
+
+## AgentRuntime execution seam
+
+`AgentRuntimeExecutionPort` (`startRun(workGraphId, organization, task) →
+handle`, `observeRun(runRef) → events`) is a **seam declaration only**.
+ZCode's AgentRuntime adapter implements it in a later wave. Until then
+`adapters/fixtureAgentRuntimeAdapter.ts` simulates deterministic run events
+(`started` / `progress` / `completed` with "fixture simulation" details).
+`startRun` is idempotent per deterministic `runId`
+(`run:<workGraphId>:<orgId>:<version>`); `observeRun` of an unknown run
+returns `[]` (no events yet — the seam never fabricates history).
+
+## Failure semantics
+
+Typed errors in `src/domain/errors.ts`, thrown by domain transitions and
+rethrown by the app: `WorkGraphStatusError`, `WorkGraphIntentConflictError`,
+`WorkGraphNodeConflictError`, `WorkGraphNodeParentError`,
+`WorkGraphNotFoundError`. No error is swallowed; nothing returns a synthetic
+"success" for an illegal operation.
+
+## Event order
+
+1. `openIntent` creates the graph (open, empty).
+2. appends append-only; each append is validated (graph exists → parent
+   exists → idempotency → status trigger) before any write.
+3. `transitionStatus` writes only after the successor check.
+4. one store `write` per created append / transition (retries write nothing).
+
+## Honest-evidence note
+
+All stores and the runtime adapter are in-memory fixtures. They prove
+semantics (idempotency, ordering, status law), never production durability
+or real agent execution.

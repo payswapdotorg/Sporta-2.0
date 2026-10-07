@@ -4,17 +4,13 @@
  * Organization versions are immutable after promotion. Selection is
  * explainable (invariant 17): context = intent + user + source +
  * environment + constraints. A model/provider is not an organization.
+ *
+ * Single public entrypoint. Declarations live in module-internal files
+ * (src/domain/*, src/app/*, src/adapters/*) and are re-exported here —
+ * the Wave 0 layout. The v1 surface below is unchanged; Wave 1
+ * additions are additive (catalog, promotion, user preferences, service
+ * and fixture adapters).
  */
-import type {
-  AgentBodyRecord,
-  CapabilityRecord,
-  IntentSpec,
-  OrganizationVersionRecord,
-  SportaId,
-  ToolSessionRecord,
-  WorkGraphRecord,
-} from "@sporta/contracts/contract";
-
 export type {
   AgentBodyRecord,
   CapabilityRecord,
@@ -22,48 +18,49 @@ export type {
   ToolSessionRecord,
 } from "@sporta/contracts/contract";
 
-/** Context in which an organization is selected. */
-export interface OrganizationSelectionContext {
-  intent: IntentSpec;
-  workGraph: WorkGraphRecord;
-  userRef?: SportaId;
-  environmentProfile: string;
-  constraints: readonly string[];
-}
+export type {
+  OrganizationSelectionContext,
+  OrganizationCandidate,
+  SelectionFactor,
+  OrganizationSelection,
+  RegisterOrganizationInput,
+  OrganizationResolverPort,
+  OrganizationRegistryPort,
+  OrganizationCatalogEntry,
+  OrganizationCatalogPort,
+  PromoteOrganizationInput,
+  OrganizationPromotionPort,
+  OrganizationUserPreference,
+  SetUserPreferenceInput,
+  UserPreferencePort,
+} from "./domain/ports.js";
 
-/** One candidate with evidence-backed rationale (never a single metric). */
-export interface OrganizationCandidate {
-  organization: OrganizationVersionRecord;
-  rationale: string;
-  evidence: readonly SportaId[];
-}
+export {
+  OrganizationImmutableError,
+  OrganizationDraftConflictError,
+  OrganizationVersionMonotonicError,
+  OrganizationVersionNotFoundError,
+  OrganizationPromotionError,
+  OrganizationResolutionError,
+} from "./domain/errors.js";
 
-/** One explainability factor. */
-export interface SelectionFactor {
-  factor: string;
-  weight: number;
-  detail: string;
-}
+export { FACTOR_WEIGHTS } from "./domain/scoring.js";
 
-/** Explainable selection result. */
-export interface OrganizationSelection {
-  selected: OrganizationCandidate;
-  candidates: readonly OrganizationCandidate[];
-  explanation: readonly SelectionFactor[];
-}
+export { OrganizationRegistryService } from "./app/organizationRegistryService.js";
+export type {
+  OrganizationStorePort,
+  OrganizationRegistryServiceDeps,
+} from "./app/organizationRegistryService.js";
 
-/** Input for registering a draft (pre-promotion) organization version. */
-export interface RegisterOrganizationInput {
-  record: OrganizationVersionRecord;
-}
+export { OrganizationResolverService } from "./app/organizationResolverService.js";
+export type { OrganizationResolverServiceDeps } from "./app/organizationResolverService.js";
 
-/** Resolves the organization to perform work. Deterministic for equal inputs. */
-export interface OrganizationResolverPort {
-  resolve(context: OrganizationSelectionContext): Promise<OrganizationSelection>;
-}
+export { UserPreferenceService } from "./app/userPreferenceService.js";
+export type {
+  UserPreferenceStorePort,
+  UserPreferenceServiceDeps,
+} from "./app/userPreferenceService.js";
 
-/** Append-only organization registry. Promoted versions are immutable. */
-export interface OrganizationRegistryPort {
-  registerDraft(input: RegisterOrganizationInput): Promise<OrganizationVersionRecord>;
-  readVersion(organizationId: SportaId, version: number): Promise<OrganizationVersionRecord | null>;
-}
+export { InMemoryOrganizationStore } from "./adapters/inMemoryOrganizationStore.js";
+export { InMemoryUserPreferenceStore } from "./adapters/inMemoryUserPreferenceStore.js";
+export { systemClockNow } from "./adapters/clock.js";

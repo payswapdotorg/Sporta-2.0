@@ -3,9 +3,16 @@
  *
  * State owner (canonical contracts): Sporta Work. Runs execute through
  * the ZCode AgentRuntime — never a second runtime — via the execution
- * seam owned by this module's adapters layer.
+ * seam declared in the domain layer (simulated by a fixture adapter
+ * until the ZCode adapter lands in a later wave).
+ *
+ * Single public entrypoint. Declarations live in module-internal files
+ * (src/domain/*, src/app/*, src/adapters/*) and are re-exported here —
+ * the Wave 0 layout used by sporta-contracts. The v1 surface below is
+ * unchanged; Wave 1 additions are additive (lifecycle, ledger, execution
+ * seam, service and fixture adapters).
  */
-import type {
+export type {
   IntentSpec,
   SportaId,
   WorkGraphNode,
@@ -14,39 +21,32 @@ import type {
 } from "@sporta/contracts/contract";
 
 export type {
-  IntentSpec,
-  WorkGraphNode,
-  WorkGraphNodeKind,
-  WorkGraphRecord,
-} from "@sporta/contracts/contract";
+  ActorDescriptor,
+  OpenIntentInput,
+  AppendWorkNodeInput,
+  WorkAppendRecord,
+  WorkGraphStatus,
+  WorkGraphPort,
+  WorkGraphLifecyclePort,
+  WorkGraphLedgerPort,
+  StartAgentRunInput,
+  AgentRunHandle,
+  AgentRunEvent,
+  AgentRuntimeExecutionPort,
+} from "./domain/ports.js";
 
-/** Who is appending to the graph (agent run, user, editor session, Arena observer). */
-export interface ActorDescriptor {
-  actorKind: "agent-run" | "user" | "editor-session" | "arena-session";
-  actorRef: SportaId;
-}
+export {
+  WorkGraphStatusError,
+  WorkGraphIntentConflictError,
+  WorkGraphNodeConflictError,
+  WorkGraphNodeParentError,
+  WorkGraphNotFoundError,
+} from "./domain/errors.js";
 
-/** Input for admitting an intent. `workGraphId` provides idempotency. */
-export interface OpenIntentInput {
-  workGraphId?: SportaId;
-  intent: IntentSpec;
-}
+export { WorkGraphService } from "./app/workGraphService.js";
+export type { WorkGraphServiceDeps, WorkGraphStorePort } from "./app/workGraphService.js";
 
-/** Input for appending one node to a WorkGraph. `nodeId` provides idempotency. */
-export interface AppendWorkNodeInput {
-  workGraphId: SportaId;
-  nodeId?: SportaId;
-  kind: WorkGraphNodeKind;
-  parent?: SportaId;
-  actor: ActorDescriptor;
-}
-
-/**
- * The WorkGraph port. One canonical owner per graph. Appends are
- * idempotent per (workGraphId, nodeId); retries never duplicate nodes.
- */
-export interface WorkGraphPort {
-  openIntent(input: OpenIntentInput): Promise<WorkGraphRecord>;
-  readWorkGraph(workGraphId: SportaId): Promise<WorkGraphRecord | null>;
-  appendNode(input: AppendWorkNodeInput): Promise<WorkGraphNode>;
-}
+export { InMemoryWorkGraphStore } from "./adapters/inMemoryWorkGraphStore.js";
+export { FixtureAgentRuntimeAdapter } from "./adapters/fixtureAgentRuntime.js";
+export type { FixtureAgentRuntimeDeps } from "./adapters/fixtureAgentRuntime.js";
+export { systemClockNow } from "./adapters/clock.js";
