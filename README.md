@@ -1,3 +1,68 @@
+# Sporta 2.0
+
+Sporta 2.0 is an intent-driven creative and sports-production operating environment built on the ZCode execution substrate.
+
+The core loop is:
+
+~~~text
+user intent
+  -> organization selection
+  -> agent execution
+  -> durable artifact
+  -> optional user/editor takeover
+  -> EditDelta
+  -> permitted learning
+  -> improved organization
+
+capability gap
+  -> Arena human expertise
+  -> validated result
+  -> learning artifact
+  -> organization candidate
+  -> evaluation
+  -> promotion
+~~~
+
+This repository is the **sole source of truth** for the Sporta 2.0 architecture and implementation. Chat history is not authoritative.
+
+## Start here
+
+Read these documents before making architectural or product changes:
+
+1. docs/source-of-truth.md
+2. docs/architecture/sporta-architecture-lock.md
+3. docs/architecture/sporta-dependency-graph.md
+4. docs/contracts/
+5. docs/architecture/editor-integration.md
+6. docs/architecture/deployment.md
+7. docs/roadmap/sporta-roadmap.md
+8. docs/work-orders/sporta-work-orders.md
+9. docs/testing/sporta-acceptance.md
+10. docs/agent-handoff/sporta-tech-lead.md
+11. docs/agent-handoff/sporta-worker-packets.md
+
+## Substrate
+
+Sporta 2.0 is forked from zai-org/zcode. ZCode remains the generic execution substrate: AgentRuntime, tools, permissions, MCP, subagents, dynamic workflows, local/remote workspaces and the Desktop/Web/CLI hosts.
+
+Do not build a competing runtime or task authority.
+
+## Product surface
+
+Sporta is intentionally not backend-only. Users should be able to express intent, see the selected organization, watch execution, inspect artifacts, take over manually, continue editing in open-source specialist software, return changes as new revisions, and control what the system learns.
+
+Initial open-source editor targets are Kdenlive, Blender, Godot, Krita, Inkscape, Audacity and Penpot. They are adapters/capabilities, not semantic authorities.
+
+## Human capability loop
+
+When the organization reaches a typed capability gap, Sporta may submit an idempotent escalation to payswapdotorg/Arena. Arena provides an isolated expert session and validated typed results. Sporta remains authoritative over its own Work Graph and decides whether a returned learning artifact is promoted.
+
+## Current implementation state
+
+Architecture is locked and implementation has not yet started. See docs/PROJECT-STATE.md for the authoritative status.
+
+---
+
 # ZCode
 
 <div align="center">
