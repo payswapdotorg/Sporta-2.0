@@ -116,13 +116,13 @@ arrive in Wave 2 per the roadmap.
 
 ## Failure semantics
 
-| Failure | Typed error |
-| --- | --- |
-| No eligible editor for the operation | `EditorResolutionError` |
-| Rights do not permit editing | `EditorRightsRefusalError` |
-| Checkpoint revision unknown | `UnknownRevisionError` |
-| Editor without registered adapter | `UnknownEditorError` |
-| Session id unknown at reconcile | `UnknownEditorSessionError` |
+| Failure                              | Typed error                 |
+| ------------------------------------ | --------------------------- |
+| No eligible editor for the operation | `EditorResolutionError`     |
+| Rights do not permit editing         | `EditorRightsRefusalError`  |
+| Checkpoint revision unknown          | `UnknownRevisionError`      |
+| Editor without registered adapter    | `UnknownEditorError`        |
+| Session id unknown at reconcile      | `UnknownEditorSessionError` |
 
 All errors extend `EditorError` with a machine-readable `detail`.
 
