@@ -143,6 +143,14 @@ modules:
     layers: { domain: domain, app: app, adapters: adapters }
     layerOrder: [domain, app, adapters]
     owner: worker-c
+  - id: sporta-product
+    roots: [packages/sporta-product/src]
+    managed: true
+    requires: [sporta-contracts, sporta-work, sporta-organizations, sporta-artifacts, sporta-editors, sporta-world, sporta-arena, sporta-evaluation, sporta-lab, sporta-policy]
+    publicEntrypoints: [packages/sporta-product/src/contract.ts]
+    layers: { domain: domain, app: app, adapters: adapters }
+    layerOrder: [domain, app, adapters]
+    owner: worker-c
 
 global:
   maxFileLines: 400

@@ -13,7 +13,7 @@ import type {
   EscalateInput,
   RecordCapabilityGapInput,
   ValidationVerdict,
-} from "../contract.js";
+} from "../domain/clientPorts.js";
 import type {
   ArenaEscalationRecord,
   ArenaResultRecord,

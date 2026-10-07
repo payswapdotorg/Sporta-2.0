@@ -24,6 +24,10 @@ The TL must convert these planned modules into managed architecture-policy entri
   (domain/app/adapters) and layer order are registered in
   architecture-policy.yaml. See docs/PROJECT-STATE.md for the module
   table and verification evidence.
+- 2026 (Wave 1 integration, TL): a 12th managed module `sporta-product`
+  (the Worker C product-shell seam, work-order WO-C1) was created by
+  Worker C and registered by the TL at integration — not part of the
+  original planned list; documented in PROJECT-STATE.md.
 
 Each module must define:
 - root;

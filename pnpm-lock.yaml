@@ -1123,6 +1123,43 @@ importers:
         specifier: ^6.0.2
         version: 6.0.2
 
+  packages/sporta-product:
+    dependencies:
+      '@sporta/arena':
+        specifier: workspace:*
+        version: link:../sporta-arena
+      '@sporta/artifacts':
+        specifier: workspace:*
+        version: link:../sporta-artifacts
+      '@sporta/contracts':
+        specifier: workspace:*
+        version: link:../sporta-contracts
+      '@sporta/editors':
+        specifier: workspace:*
+        version: link:../sporta-editors
+      '@sporta/evaluation':
+        specifier: workspace:*
+        version: link:../sporta-evaluation
+      '@sporta/lab':
+        specifier: workspace:*
+        version: link:../sporta-lab
+      '@sporta/organizations':
+        specifier: workspace:*
+        version: link:../sporta-organizations
+      '@sporta/policy':
+        specifier: workspace:*
+        version: link:../sporta-policy
+      '@sporta/work':
+        specifier: workspace:*
+        version: link:../sporta-work
+      '@sporta/world':
+        specifier: workspace:*
+        version: link:../sporta-world
+    devDependencies:
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
+
   packages/sporta-work:
     dependencies:
       '@sporta/contracts':
