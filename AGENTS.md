@@ -1,3 +1,66 @@
+# Sporta 2.0 Agent Operating Rules
+
+## Source of truth
+
+The repository is authoritative. Read docs/source-of-truth.md and the canonical Sporta architecture before implementing behavior. Chat history is not an implementation dependency.
+
+## Architecture
+
+ZCode is the execution substrate. Sporta owns semantic product domains. Arena owns human expert intervention. External editors own their internal project state.
+
+Never create:
+- a second AgentRuntime;
+- a second task/job authority;
+- a parallel canonical artifact store;
+- a hidden provider-specific domain dependency;
+- an automatic global learning path from a single user edit.
+
+## Required workflow
+
+Before code:
+1. update the relevant repository spec;
+2. inspect the affected ZCode module and architecture context;
+3. run the architecture check;
+4. implement inside the assigned ownership boundary.
+
+After code:
+1. run architecture check again;
+2. run pnpm typecheck;
+3. run pnpm lint;
+4. run targeted tests;
+5. run E2E for material UX changes;
+6. record real-vs-fixture evidence honestly.
+
+## Concurrency
+
+Exactly three workers may run concurrently after TL Wave 0:
+
+- Worker A: Intent / WorkGraph / Organizations / Lab / Evaluation.
+- Worker B: Artifacts / Editors / Sports World / Compute.
+- Worker C: Arena / Capability Gaps / UX / Deployment.
+
+Workers must stay inside their owned directories. Shared contracts, root manifests, lockfiles and architecture-policy changes are TL-owned and serialized.
+
+## Infrastructure
+
+Infrastructure is provider-neutral. When a provider is the blocker, use another compatible provider, local execution, or an honest typed refusal according to the contract. Do not weaken acceptance criteria to accommodate infrastructure.
+
+## Evidence
+
+Every worker report must distinguish:
+- real execution;
+- fixture/synthetic execution;
+- blocked/unmeasured work;
+- external authorization requirements.
+
+Never claim a capability is complete without repository evidence.
+
+## Existing ZCode rules
+
+The remainder of this file preserves the upstream ZCode operating rules below. Sporta rules above take precedence only where they define new Sporta semantic ownership.
+
+---
+
 ## 核心原则
 
 - 新增或修改行为前，先更新对应 spec；目录不存在时按需创建。先明确产品规则、状态所有者、接口和验收场景，再实现代码。
@@ -80,3 +143,4 @@
 - `info` 用于进程和会话生命周期、权限结果、一次性初始化等生产可用事件。
 - `warn` 用于可恢复异常；`error` 用于崩溃、握手失败、鉴权丢失等不可恢复错误。
 - 不在日志、示例或提交中写入凭据、真实用户数据和内部服务地址。
+
