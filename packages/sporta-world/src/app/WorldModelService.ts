@@ -1,6 +1,5 @@
 import type {
   PolicySet,
-  ProvenanceDescriptor,
   SportsWorldModelRecord,
   SportaId,
 } from "@sporta/contracts/contract";
