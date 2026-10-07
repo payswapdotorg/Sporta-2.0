@@ -84,12 +84,12 @@ no filesystem IO. It is real executed domain logic, not a stub.
 
 ## Failure semantics
 
-| Failure | Typed error |
-| --- | --- |
-| Commit for an unrecorded artifact | `UnknownArtifactError` |
-| Parent chain violation (4 cases above) | `LineageIntegrityError` |
-| Blob missing | `ArtifactBlobNotFoundError` |
-| Blob content/address mismatch (read, put collision) | `ArtifactIntegrityError` |
+| Failure                                             | Typed error                 |
+| --------------------------------------------------- | --------------------------- |
+| Commit for an unrecorded artifact                   | `UnknownArtifactError`      |
+| Parent chain violation (4 cases above)              | `LineageIntegrityError`     |
+| Blob missing                                        | `ArtifactBlobNotFoundError` |
+| Blob content/address mismatch (read, put collision) | `ArtifactIntegrityError`    |
 
 All errors extend `ArtifactError` and carry a machine-readable `detail`.
 
