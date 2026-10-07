@@ -78,7 +78,10 @@ test("escalation lifecycle: validating branches into the three documented outcom
 test("escalation lifecycle: single-step transition legality", () => {
   assert.equal(transitionEscalationLifecycle("created", "triaged"), "triaged");
   assert.equal(transitionEscalationLifecycle("submitted", "validating"), "validating");
-  assert.equal(transitionEscalationLifecycle("validating", "revision_required"), "revision_required");
+  assert.equal(
+    transitionEscalationLifecycle("validating", "revision_required"),
+    "revision_required",
+  );
   assert.equal(transitionEscalationLifecycle("rejected", "closed"), "closed");
   const illegal: readonly [EscalationLifecycle, EscalationLifecycle][] = [
     ["created", "closed"],
@@ -109,7 +112,11 @@ test("escalation lifecycle: path function returns legal walks and rejects unreac
     "in_progress",
     "submitted",
   ]);
-  assert.deepEqual(escalationLifecyclePath("validating", "closed"), ["validating", "accepted_result", "closed"]);
+  assert.deepEqual(escalationLifecyclePath("validating", "closed"), [
+    "validating",
+    "accepted_result",
+    "closed",
+  ]);
   assert.deepEqual(escalationLifecyclePath("created", "created"), ["created"]);
   assert.throws(
     () => escalationLifecyclePath("accepted_result", "submitted"),
@@ -122,8 +129,16 @@ test("escalation lifecycle: path function returns legal walks and rejects unreac
 });
 
 test("result validation policy table covers every session mode", () => {
-  assert.deepEqual(expectedResultTypes("observe"), ["evidence-bundle", "review", "evaluation-verdict"]);
-  assert.deepEqual(expectedResultTypes("teach"), ["knowledge-patch", "solution", "learning-artifact-ref"]);
+  assert.deepEqual(expectedResultTypes("observe"), [
+    "evidence-bundle",
+    "review",
+    "evaluation-verdict",
+  ]);
+  assert.deepEqual(expectedResultTypes("teach"), [
+    "knowledge-patch",
+    "solution",
+    "learning-artifact-ref",
+  ]);
   assert.equal(expectedResultTypes("takeover").includes("correction"), true);
   assert.equal(expectedResultTypes("review").includes("solution"), false);
 });

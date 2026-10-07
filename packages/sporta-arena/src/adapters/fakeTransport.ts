@@ -14,7 +14,11 @@
  * application).
  */
 import { createHash } from "node:crypto";
-import type { ArenaEscalationRecord, ArenaResultRecord, SportaId } from "@sporta/contracts/contract";
+import type {
+  ArenaEscalationRecord,
+  ArenaResultRecord,
+  SportaId,
+} from "@sporta/contracts/contract";
 import type {
   ArenaTransportPort,
   ArenaTransportStatus,
@@ -79,10 +83,7 @@ export class InMemoryArenaTransport implements ArenaTransportPort {
    * The result is produced when the lifecycle reaches `submitted`.
    * Saturates at `closed`; returns the reached lifecycle.
    */
-  async advance(
-    escalationId: SportaId,
-    steps = 1,
-  ): Promise<ArenaEscalationRecord["lifecycle"]> {
+  async advance(escalationId: SportaId, steps = 1): Promise<ArenaEscalationRecord["lifecycle"]> {
     const entry = this.#entries.get(escalationId);
     if (entry === undefined) {
       throw new Error(`fake transport: unknown escalation ${escalationId}`);

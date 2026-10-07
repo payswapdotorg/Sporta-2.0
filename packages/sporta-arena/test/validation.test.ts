@@ -38,9 +38,17 @@ test("validateResult accepts a well-formed arena-session result for a matching s
   assert.equal(verdict.accepted, true);
   assert.deepEqual(
     verdict.checks.map((check) => check.check),
-    ["payload-hash-present", "provenance-source-kind", "escalation-known", "result-type-session-mode"],
+    [
+      "payload-hash-present",
+      "provenance-source-kind",
+      "escalation-known",
+      "result-type-session-mode",
+    ],
   );
-  assert.equal(verdict.checks.every((check) => check.passed), true);
+  assert.equal(
+    verdict.checks.every((check) => check.passed),
+    true,
+  );
 });
 
 test("validateResult fails on a missing payload hash", async () => {

@@ -78,10 +78,7 @@ export {
 export type { GapStatus } from "./domain/gap.js";
 
 /** Arena escalation lifecycle state and outcome (contract chain). */
-export type {
-  EscalationLifecycle,
-  EscalationOutcome,
-} from "./domain/escalation.js";
+export type { EscalationLifecycle, EscalationOutcome } from "./domain/escalation.js";
 
 /** Session-mode and result-type views used by validation. */
 export type { SessionMode, ArenaResultType } from "./domain/resultValidation.js";

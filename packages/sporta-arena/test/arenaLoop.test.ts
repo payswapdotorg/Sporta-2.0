@@ -36,9 +36,7 @@ test("fixture loop: gap -> escalate -> Arena advances -> readResult mirrors -> v
   assert.equal(verdict.accepted, true);
 
   // the client's own record copy now mirrors the Arena lifecycle (still same id)
-  const retried = await client.escalate(
-    fixtureEscalateInput({ idempotencyKey: "esc-loop-key" }),
-  );
+  const retried = await client.escalate(fixtureEscalateInput({ idempotencyKey: "esc-loop-key" }));
   assert.equal(retried.escalationId, escalation.escalationId);
   assert.equal(retried.lifecycle, "closed");
 

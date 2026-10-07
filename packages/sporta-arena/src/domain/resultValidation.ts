@@ -19,7 +19,9 @@ export type ArenaResultType = ArenaResultRecord["resultType"];
  * Additive module policy (the escalation contract fixes the result-type
  * vocabulary; this table maps it onto session modes).
  */
-const SESSION_MODE_EXPECTED_RESULT_TYPES: Readonly<Record<SessionMode, readonly ArenaResultType[]>> = {
+const SESSION_MODE_EXPECTED_RESULT_TYPES: Readonly<
+  Record<SessionMode, readonly ArenaResultType[]>
+> = {
   observe: ["evidence-bundle", "review", "evaluation-verdict"],
   correct: ["correction", "solution"],
   unblock: ["unblock", "solution", "correction"],
@@ -74,7 +76,8 @@ export function validateArenaResultChecks(
     {
       check: "result-type-session-mode",
       passed:
-        escalation !== null && expectedResultTypes(escalation.sessionMode).includes(result.resultType),
+        escalation !== null &&
+        expectedResultTypes(escalation.sessionMode).includes(result.resultType),
     },
   ];
 }

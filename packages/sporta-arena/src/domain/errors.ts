@@ -9,10 +9,7 @@ import type { CapabilityGapRecord } from "@sporta/contracts/contract";
 
 /** Base class of every sporta-arena failure. */
 export class ArenaError extends Error {
-  constructor(
-    message: string,
-    options?: { cause?: unknown },
-  ) {
+  constructor(message: string, options?: { cause?: unknown }) {
     super(message, options);
     this.name = new.target.name;
   }

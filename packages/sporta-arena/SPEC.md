@@ -62,19 +62,19 @@ Wave 2 (C5); rights propagation across planes is Wave 2 (C6).
   3. `escalation-known` — the escalation exists in the client store;
   4. `result-type-session-mode` — `result.resultType` is compatible with
      the escalation's `sessionMode` (policy table below).
-  `accepted: false` when any check fails. `ArenaResultRecord.validated`
-  is an Arena-side flag and is NOT trusted as Sporta validation.
+     `accepted: false` when any check fails. `ArenaResultRecord.validated`
+     is an Arena-side flag and is NOT trusted as Sporta validation.
 
 ## Session-mode → expected result-type policy (v1 table)
 
-| sessionMode | expected resultTypes |
-| --- | --- |
-| observe | evidence-bundle, review, evaluation-verdict |
-| correct | correction, solution |
-| unblock | unblock, solution, correction |
-| takeover | correction, solution |
-| teach | knowledge-patch, solution, learning-artifact-ref |
-| review | review, evaluation-verdict, correction |
+| sessionMode | expected resultTypes                             |
+| ----------- | ------------------------------------------------ |
+| observe     | evidence-bundle, review, evaluation-verdict      |
+| correct     | correction, solution                             |
+| unblock     | unblock, solution, correction                    |
+| takeover    | correction, solution                             |
+| teach       | knowledge-patch, solution, learning-artifact-ref |
+| review      | review, evaluation-verdict, correction           |
 
 ## Lifecycles (pure transition functions; illegal transitions are typed errors)
 

@@ -1,10 +1,7 @@
 /**
  * Shared test fixtures for sporta-arena tests (fixture-grade, in-memory).
  */
-import type {
-  ArenaEscalationRecord,
-  PolicySet,
-} from "@sporta/contracts/contract";
+import type { ArenaEscalationRecord, PolicySet } from "@sporta/contracts/contract";
 import type { EscalateInput, RecordCapabilityGapInput } from "../src/contract.js";
 import type { ArenaTransportPort, ArenaTransportSubmission } from "../src/app/arenaTransport.js";
 
@@ -30,9 +27,7 @@ export function fixtureGapInput(
   };
 }
 
-export function fixtureEscalateInput(
-  overrides: Partial<EscalateInput> = {},
-): EscalateInput {
+export function fixtureEscalateInput(overrides: Partial<EscalateInput> = {}): EscalateInput {
   return {
     idempotencyKey: "esc-key-fixture",
     gapId: "gap:fixture",

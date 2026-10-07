@@ -8,7 +8,11 @@
  * app -> adapters imports. The port is module-internal: it is NOT part
  * of the public contract (consumers depend on `ArenaClientPort` only).
  */
-import type { ArenaEscalationRecord, ArenaResultRecord, SportaId } from "@sporta/contracts/contract";
+import type {
+  ArenaEscalationRecord,
+  ArenaResultRecord,
+  SportaId,
+} from "@sporta/contracts/contract";
 
 /**
  * What the client submits to the Arena transport: the escalation record
