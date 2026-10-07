@@ -16,6 +16,15 @@ The TL must convert these planned modules into managed architecture-policy entri
 - sporta-evaluation
 - sporta-policy
 
+## Conversion status
+
+- 2026 (Wave 0, TL): all 11 planned modules converted to managed
+  architecture-policy entries with frozen public contract entrypoints.
+  Roots, owners, requires, public entrypoints, layers
+  (domain/app/adapters) and layer order are registered in
+  architecture-policy.yaml. See docs/PROJECT-STATE.md for the module
+  table and verification evidence.
+
 Each module must define:
 - root;
 - owner;

@@ -1025,6 +1025,124 @@ importers:
         specifier: ^6.0.2
         version: 6.0.2
 
+  packages/sporta-arena:
+    dependencies:
+      '@sporta/contracts':
+        specifier: workspace:*
+        version: link:../sporta-contracts
+    devDependencies:
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
+
+  packages/sporta-artifacts:
+    dependencies:
+      '@sporta/contracts':
+        specifier: workspace:*
+        version: link:../sporta-contracts
+    devDependencies:
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
+
+  packages/sporta-compute:
+    dependencies:
+      '@sporta/contracts':
+        specifier: workspace:*
+        version: link:../sporta-contracts
+    devDependencies:
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
+
+  packages/sporta-contracts:
+    dependencies:
+      '@sporta/policy':
+        specifier: workspace:*
+        version: link:../sporta-policy
+    devDependencies:
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
+
+  packages/sporta-editors:
+    dependencies:
+      '@sporta/artifacts':
+        specifier: workspace:*
+        version: link:../sporta-artifacts
+      '@sporta/contracts':
+        specifier: workspace:*
+        version: link:../sporta-contracts
+    devDependencies:
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
+
+  packages/sporta-evaluation:
+    dependencies:
+      '@sporta/contracts':
+        specifier: workspace:*
+        version: link:../sporta-contracts
+      '@sporta/organizations':
+        specifier: workspace:*
+        version: link:../sporta-organizations
+    devDependencies:
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
+
+  packages/sporta-lab:
+    dependencies:
+      '@sporta/contracts':
+        specifier: workspace:*
+        version: link:../sporta-contracts
+      '@sporta/organizations':
+        specifier: workspace:*
+        version: link:../sporta-organizations
+      '@sporta/work':
+        specifier: workspace:*
+        version: link:../sporta-work
+    devDependencies:
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
+
+  packages/sporta-organizations:
+    dependencies:
+      '@sporta/contracts':
+        specifier: workspace:*
+        version: link:../sporta-contracts
+    devDependencies:
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
+
+  packages/sporta-policy:
+    devDependencies:
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
+
+  packages/sporta-work:
+    dependencies:
+      '@sporta/contracts':
+        specifier: workspace:*
+        version: link:../sporta-contracts
+    devDependencies:
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
+
+  packages/sporta-world:
+    dependencies:
+      '@sporta/contracts':
+        specifier: workspace:*
+        version: link:../sporta-contracts
+    devDependencies:
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
+
   packages/ui:
     dependencies:
       '@aiden0z/pptx-renderer':
@@ -16172,11 +16290,11 @@ snapshots:
 
   lodash.merge@4.6.2: {}
 
+  lodash.pickby@4.6.0: {}
+
   lodash.uniqby@4.7.0: {}
 
   lodash@4.18.1: {}
-
-  lodash.pickby@4.6.0: {}
 
   log-symbols@4.1.0:
     dependencies:

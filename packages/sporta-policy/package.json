@@ -1,0 +1,14 @@
+{
+  "name": "@sporta/policy",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./contract": "./src/contract.ts"
+  },
+  "scripts": {
+    "lint": "oxlint"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.2"
+  }
+}

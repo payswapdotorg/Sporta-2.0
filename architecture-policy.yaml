@@ -55,6 +55,94 @@ modules:
   - id: zcode-cli
     roots: [apps/zcode-cli]
     managed: false
+  - id: sporta-policy
+    roots: [packages/sporta-policy/src]
+    managed: true
+    requires: []
+    publicEntrypoints: [packages/sporta-policy/src/contract.ts]
+    layers: { domain: domain, app: app, adapters: adapters }
+    layerOrder: [domain, app, adapters]
+    owner: tl
+  - id: sporta-contracts
+    roots: [packages/sporta-contracts/src]
+    managed: true
+    requires: [sporta-policy]
+    publicEntrypoints: [packages/sporta-contracts/src/contract.ts]
+    layers: { domain: domain, app: app, adapters: adapters }
+    layerOrder: [domain, app, adapters]
+    owner: tl
+  - id: sporta-work
+    roots: [packages/sporta-work/src]
+    managed: true
+    requires: [sporta-contracts]
+    publicEntrypoints: [packages/sporta-work/src/contract.ts]
+    layers: { domain: domain, app: app, adapters: adapters }
+    layerOrder: [domain, app, adapters]
+    owner: worker-a
+  - id: sporta-organizations
+    roots: [packages/sporta-organizations/src]
+    managed: true
+    requires: [sporta-contracts]
+    publicEntrypoints: [packages/sporta-organizations/src/contract.ts]
+    layers: { domain: domain, app: app, adapters: adapters }
+    layerOrder: [domain, app, adapters]
+    owner: worker-a
+  - id: sporta-lab
+    roots: [packages/sporta-lab/src]
+    managed: true
+    requires: [sporta-contracts, sporta-work, sporta-organizations]
+    publicEntrypoints: [packages/sporta-lab/src/contract.ts]
+    layers: { domain: domain, app: app, adapters: adapters }
+    layerOrder: [domain, app, adapters]
+    owner: worker-a
+  - id: sporta-evaluation
+    roots: [packages/sporta-evaluation/src]
+    managed: true
+    requires: [sporta-contracts, sporta-organizations]
+    publicEntrypoints: [packages/sporta-evaluation/src/contract.ts]
+    layers: { domain: domain, app: app, adapters: adapters }
+    layerOrder: [domain, app, adapters]
+    owner: worker-a
+  - id: sporta-artifacts
+    roots: [packages/sporta-artifacts/src]
+    managed: true
+    requires: [sporta-contracts]
+    publicEntrypoints: [packages/sporta-artifacts/src/contract.ts]
+    layers: { domain: domain, app: app, adapters: adapters }
+    layerOrder: [domain, app, adapters]
+    owner: worker-b
+  - id: sporta-editors
+    roots: [packages/sporta-editors/src]
+    managed: true
+    requires: [sporta-contracts, sporta-artifacts]
+    publicEntrypoints: [packages/sporta-editors/src/contract.ts]
+    layers: { domain: domain, app: app, adapters: adapters }
+    layerOrder: [domain, app, adapters]
+    owner: worker-b
+  - id: sporta-world
+    roots: [packages/sporta-world/src]
+    managed: true
+    requires: [sporta-contracts]
+    publicEntrypoints: [packages/sporta-world/src/contract.ts]
+    layers: { domain: domain, app: app, adapters: adapters }
+    layerOrder: [domain, app, adapters]
+    owner: worker-b
+  - id: sporta-compute
+    roots: [packages/sporta-compute/src]
+    managed: true
+    requires: [sporta-contracts]
+    publicEntrypoints: [packages/sporta-compute/src/contract.ts]
+    layers: { domain: domain, app: app, adapters: adapters }
+    layerOrder: [domain, app, adapters]
+    owner: worker-b
+  - id: sporta-arena
+    roots: [packages/sporta-arena/src]
+    managed: true
+    requires: [sporta-contracts]
+    publicEntrypoints: [packages/sporta-arena/src/contract.ts]
+    layers: { domain: domain, app: app, adapters: adapters }
+    layerOrder: [domain, app, adapters]
+    owner: worker-c
 
 global:
   maxFileLines: 400
