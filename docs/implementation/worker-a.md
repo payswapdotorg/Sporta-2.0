@@ -497,4 +497,4 @@ file touched):
    summary mapping in `sporta-lab/src/domain/candidateReads.ts` — the
    field-for-field law allows supersets.
 
-DELIVERY: branch wave3/worker-a @ <sha recorded in the chat report — the single work commit on top of base 14836c6>
+DELIVERY: branch wave3/worker-a @ d421db688d99a940a43aa7d65d9cb0011afda3cc (work commit on top of base 14836c6)
