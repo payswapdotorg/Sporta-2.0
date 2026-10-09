@@ -143,61 +143,93 @@ fixture; measured evidence must state how it was measured.
 
 ## Implementation status
 
-All lines below dated 2026-10-07 at the wave-1 integration commit (see
-integration log W1 for the merge SHA and per-worker branches).
+Status lines dated 2026-10-09 at the wave-2 integration head `b5c3f97`
+(see integration log W2 for the merge SHAs, per-worker branches and the
+TL-measured battery; battery re-verified after the pod recycle).
 
 - Sporta semantic packages: 12 modules implemented (Wave 0 skeleton +
-  Wave 1 domain/app/adapters + tests) — fixture-grade in-memory adapters,
-  honestly typed
+  Wave 1 domain/app/adapters + Wave 2 real-execution adapters + tests)
 - Intent/Work Graph: IMPLEMENTED (worker-a; idempotent appends, status
-  machine, takeover-first-class, AgentRuntime seam DECLARED — fixture
-  adapter until the ZCode-side adapter wave)
+  machine, takeover-first-class, AgentRuntime seam REAL since W2:
+  packages/sporta-work/src/adapters/zcodeAgentRuntime.ts — real child
+  process driving the zcode-cli headless interface; fixture adapter
+  retained and labeled)
 - Organization Lab: IMPLEMENTED (worker-a; population search, replay,
   deterministic explainable resolver, immutable promotion, per-user
   personalization isolation)
 - Artifact Graph: IMPLEMENTED (worker-b; immutable revisions, lineage,
-  content-addressed store with read-time integrity verification)
+  content-addressed store with read-time integrity verification; REAL
+  durable FS store since W2: FsArtifactBlobStore)
 - Editor Broker: IMPLEMENTED (worker-b; explainable resolution,
-  rights-gated sessions, round-trip + opaque-import paths, kdenlive +
-  unknown-format fixture adapters)
+  rights-gated sessions, round-trip + opaque-import paths; REAL kdenlive
+  MLT XML round-trip adapter since W2: KdenliveAdapter + kdenliveXml)
 - Sports World Model runtime: IMPLEMENTED (worker-b; provenance-gated
   idempotent ingestion, uncertainty carried)
 - Arena integration: IMPLEMENTED (worker-c; idempotent gaps/escalations,
-  context minimization, validate-before-apply — fake transport only)
+  context minimization, validate-before-apply; REAL HTTP transport since
+  W2: httpArenaTransport.ts — entrypoint re-export is a wave-3 note)
 - Organization evaluation/promotion: IMPLEMENTED (worker-a; honest basis
   labels, intervention cost, evidence-gated immutable promotion)
 - Product UX conversion: PROJECTION IMPLEMENTED (worker-c; 12-stage
-  ProductLoopTrace + learning-consent intake; UI host conversion is a
-  later wave)
-- Provider/deployment conversion: NOT STARTED (C5/C6, wave 2 — typed
-  work-order notes recorded in worker-c.md)
+  ProductLoopTrace + learning-consent intake; takeover/editor/learning/
+  result/organization-improvement stages still SEAM-PENDING — the
+  wave-3 read-seams + packages/web host conversion frontier; UI host
+  conversion not started)
+- Provider/deployment conversion: SEAM IMPLEMENTED (worker-c W2;
+  descriptor-level DeploymentDescriptor + deployment adapter in
+  sporta-product — no live provider credentials exercised; the
+  Vercel/Neon/R2/Upstash preview target per deployment.md stays typed
+  as future)
+- A17 real-execution leg: EXECUTION REAL since W2 (a17-real-execution
+  test: real spawn, real wall time, real exit code, stream-json on real
+  pipes; stores + executable fixture/stand-in, honestly labeled — the
+  real zcode-cli bundle is unbuildable in this sandbox, typed in
+  BLOCKERS)
 
 ## A17 acceptance status
 
-A17 (complete loop) is proven as ONE coherent seeded WorkGraph/artifact
-lineage by packages/sporta-product/test/a17-seeded-loop.test.ts:
-intent -> organization -> execution (fixture seam) -> artifact ->
-external editor -> user edit -> learning -> capability gap -> Arena ->
-expert result -> organization candidate -> evaluation -> promotion, with
-append-only WorkGraph and preserved r1 lineage asserted. EVIDENCE CLASS:
-fixture (in-memory stores, fake transport, fixture runtime seam). The
-real-execution A17 (ZCode AgentRuntime adapter, real editors, real Arena)
-remains open and is the wave-2/3 frontier — never claim it as done.
+A17 (complete loop) is proven at two evidence grades:
+
+1. SEEDED (fixture): packages/sporta-product/test/a17-seeded-loop.test.ts
+   — the complete loop on ONE WorkGraph/artifact lineage with append-only
+   WorkGraph and preserved r1 lineage asserted. EVIDENCE CLASS: fixture
+   (in-memory stores, fake transport, fixture runtime seam).
+2. REAL-EXECUTION LEG (W2): packages/sporta-product/test/
+   a17-real-execution.test.ts — the SAME seeded loop with the REAL
+   zcodeAgentRuntime adapter at the execution seam. EVIDENCE CLASS: REAL
+   execution leg (real spawn, real wall time, real stream-json events on
+   real pipes, real exit code) + FIXTURE stores and executable stand-in
+   (the vendored apps/zcode-cli cannot build in this sandbox — typed in
+   the test header and BLOCKERS).
+
+The FULL-REAL A17 (real runtime + real FS store + real kdenlive editor +
+real HTTP arena in ONE lineage) remains open and is the wave-3 frontier —
+never claim it as done.
 
 ## Current frontier
 
-Wave 2 candidates (typed from worker NEXT DEPENDENCIES):
+Wave 3 candidates (typed from worker NEXT DEPENDENCIES + the roadmap
+phases P3/P7/P8; wave-2 items 1-6 are landed, see integration log W2):
 
-1. ZCode AgentRuntime adapter implementing @sporta/work's
-   AgentRuntimeExecutionPort (the real execution leg of A17).
-2. Durable storage adapters for the Artifact Fabric (ZCode storage
-   port / R2) replacing in-memory fixture stores.
-3. Real editor adapters (kdenlive first) over ZCode local/remote
-   workspace facilities.
-4. Real Arena transport (HTTP) behind ArenaTransportPort.
-5. C5/C6: provider/deployment abstractions + rights propagation across
-   planes (Vercel/Neon/R2/Upstash preview target per deployment.md).
-6. Contracts wave-2 additions (per-candidate evaluation metrics, actor
-   field on WorkGraphNode, cancel/abandon status) — TL-serialized ADRs.
-7. Product UX host conversion (packages/web integration) + takeover/
-   editor/learning read seams to un-pend the projection stages.
+1. Product read seams to un-pend the ProductLoopTrace stages:
+   (a) editor-session history read port (takeover/editor stages);
+   (b) learning-artifact read port (learning stage);
+   (c) organization candidate/promotion read access
+   (organization-improvement stage);
+   (d) escalation/gap + expert-result refs reachable from a work graph
+   (arena/result stages);
+   contracts additions TL-serialized, additive-only.
+2. Product UX host conversion (packages/web integration): the product
+   shell UI host consuming the projection + learning-consent intake +
+   takeover UX (P3 human-takeover leg of the roadmap).
+3. A17 full-real loop test: wire the REAL zcodeAgentRuntime +
+   FsArtifactBlobStore + KdenliveAdapter + HttpArenaTransport into ONE
+   seeded lineage test (EVIDENCE CLASS: REAL per leg, honestly labeled).
+4. C6 rights propagation end-to-end (invariant 22: PolicySet propagation
+   across artifact/editor/arena planes, enforced and tested).
+5. Arena entrypoint additive re-export of HttpArenaTransport (TL note
+   from W2; needed for cross-package wiring in items 1/3).
+6. (Post-wave-3, roadmap P6/P7/P8) sports production perception/
+   tactical/3D/anime realities + playback; live/shared editor sessions
+   (integration level 3); provider fallback + persistent workers +
+   local install + hosted preview + product acceptance.
