@@ -50,3 +50,23 @@ export type {
 } from "./app/arenaTransport.js";
 export { InMemoryArenaTransport } from "./adapters/fakeTransport.js";
 export type { InMemoryArenaTransportDeps } from "./adapters/fakeTransport.js";
+
+// Wave-3 additive (ADR: docs/architecture/adr-wave3-read-seams.md): the
+// escalation read seam. `ArenaClientService` implements `EscalationReadPort`
+// additively (listEscalations/listResults — bounded, read-only, summaries
+// field-for-field with the canonical records). The port shapes are the
+// frozen contracts types; nothing here mutates state.
+export type {
+  EscalationReadPort,
+  EscalationSummary,
+  EscalationResultSummary,
+  EscalationQuery,
+  EscalationResultQuery,
+} from "@sporta/contracts/contract";
+
+// Wave-3 additive (the W2 note): the REAL HTTP Arena transport re-exported
+// through the public entrypoint — it was deep-importable only. Wire it into
+// `ArenaClientServiceDeps.transport`; `ArenaTransportError` is its public
+// error taxonomy (network/http/validation/timeout codes).
+export { HttpArenaTransport, ArenaTransportError } from "./adapters/httpArenaTransport.js";
+export type { HttpArenaTransportDeps } from "./adapters/httpArenaTransport.js";
