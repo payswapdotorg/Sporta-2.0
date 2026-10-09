@@ -1,12 +1,12 @@
 import type { EditOperation } from "../domain/operations.js";
 import type { EditorAdapterPort, EditorHashFn } from "../domain/ports.js";
+import { KdenliveAdapter } from "./KdenliveAdapter.js";
 /**
- * Fixture editor adapters (fixture-grade, in-memory).
+ * Editor adapters: fixture-grade and real implementations.
  *
- * They prove both reconcile paths: a KNOWN project format adapter
- * ("kdenlive", round-trip capable) and an UNKNOWN project tool
- * ("mystery-app", export-only, no declared known formats). Real editor
- * adapters over ZCode workspace facilities arrive in Wave 2.
+ * Fixture adapters (KdenliveFixtureAdapter, MysteryAppFixtureAdapter) are used for testing
+ * and provide predictable behavior. Real adapters (KdenliveAdapter) provide actual
+ * implementations for real editor integration.
  */
 
 function sortedEntries(projectState: object): [string, unknown][] {
@@ -56,3 +56,9 @@ export class MysteryAppFixtureAdapter implements EditorAdapterPort {
     return [];
   }
 }
+
+/**
+ * Real Kdenlive adapter: provides actual round-trip import/export
+ * functionality for real Kdenlive project files.
+ */
+export { KdenliveAdapter } from "./KdenliveAdapter.js";
