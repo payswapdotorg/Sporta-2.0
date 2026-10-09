@@ -8,7 +8,8 @@ invariants, failure semantics and event order before the implementation.
 
 Intent admission (`openIntent`), WorkGraph construction, idempotent node
 append, status lifecycle, the append ledger (manual-takeover provenance) and
-the declared (not implemented) AgentRuntime execution seam.
+the declared (not simulated) AgentRuntime execution seam — the Wave 2
+real adapter spawns real processes, the domain beneath it stays pure.
 
 Everything is in-memory fixture-grade. No IO, no network, no timers in
 `src/domain`. Clocks are injected.
@@ -115,13 +116,23 @@ shape, plus they drive the user-activity trigger.
 ## AgentRuntime execution seam
 
 `AgentRuntimeExecutionPort` (`startRun(workGraphId, organization, task) →
-handle`, `observeRun(runRef) → events`) is a **seam declaration only**.
-ZCode's AgentRuntime adapter implements it in a later wave. Until then
-`adapters/fixtureAgentRuntimeAdapter.ts` simulates deterministic run events
-(`started` / `progress` / `completed` with "fixture simulation" details).
-`startRun` is idempotent per deterministic `runId`
-(`run:<workGraphId>:<orgId>:<version>`); `observeRun` of an unknown run
-returns `[]` (no events yet — the seam never fabricates history).
+handle`, `observeRun(runRef) → events`) is the declared seam. Wave 2 adds
+`adapters/zcodeAgentRuntime.ts`: the REAL ZCode AgentRuntime adapter that
+spawns the zcode-cli binary as a real child process
+(`zcode --prompt <task> --output-format stream-json`) and turns its real
+lifecycle into typed events — adapter-owned monotonic `seq`, real wall-clock
+timestamps from the injected clock, a terminal event whose verdict comes
+from the REAL exit code, spawn-error capture (`error`), stdio drained before
+the terminal event (`close`, not `exit`), and a kill-on-`dispose()` hygiene
+path. `startRun` is idempotent per deterministic `runId`
+(`run:<workGraphId>:<orgId>:<version>`) — a completed run is never silently
+re-executed; `observeRun` of an unknown run returns `[]` (no events yet —
+the seam never fabricates history).
+
+`adapters/fixtureAgentRuntime.ts` (Wave 1) stays for tests that explicitly
+label their evidence fixture-grade: it simulates deterministic run events
+(`started` / `progress` / `completed` with "fixture simulation" details)
+with no process at all.
 
 ## Failure semantics
 
