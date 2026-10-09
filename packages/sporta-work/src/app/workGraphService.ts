@@ -1,16 +1,26 @@
 /**
  * WorkGraphService — the app-layer orchestrator. Implements the WorkGraph
- * ports (frozen v1 + additive lifecycle/ledger) over an injected store
- * port and injectable clock. All domain logic lives in src/domain (pure).
+ * ports (frozen v1 + additive lifecycle/ledger + Wave 3 refs) over an
+ * injected store port and injectable clock. All domain logic lives in
+ * src/domain (pure).
  */
-import type { SportaId, WorkGraphNode, WorkGraphRecord } from "@sporta/contracts/contract";
+import type {
+  SportaId,
+  WorkGraphNode,
+  WorkGraphNodeRef,
+  WorkGraphRecord,
+} from "@sporta/contracts/contract";
 import type {
   AppendWorkNodeInput,
+  CommitArtifactRevisionInput,
+  EscalateGapInput,
   OpenIntentInput,
+  RecordArenaResultInput,
   WorkAppendRecord,
   WorkGraphLifecyclePort,
   WorkGraphLedgerPort,
   WorkGraphPort,
+  WorkGraphRefsPort,
   WorkGraphStatus,
 } from "../domain/ports.js";
 import {
@@ -20,6 +30,7 @@ import {
   workGraphIdForIntent,
   type StoredWorkGraph,
 } from "../domain/workGraph.js";
+import { appendRefsToNode, requireNodeOfKind } from "../domain/nodeRefs.js";
 import { stableEquals } from "../domain/hash.js";
 import { WorkGraphIntentConflictError, WorkGraphNotFoundError } from "../domain/errors.js";
 
@@ -41,7 +52,7 @@ export interface WorkGraphServiceDeps {
 
 /** The single canonical writer of WorkGraph state. */
 export class WorkGraphService
-  implements WorkGraphPort, WorkGraphLifecyclePort, WorkGraphLedgerPort
+  implements WorkGraphPort, WorkGraphLifecyclePort, WorkGraphLedgerPort, WorkGraphRefsPort
 {
   private readonly store: WorkGraphStorePort;
   private readonly now: () => string;
@@ -101,6 +112,62 @@ export class WorkGraphService
   async readAppends(workGraphId: SportaId): Promise<readonly WorkAppendRecord[]> {
     const stored = await this.requireGraph(workGraphId);
     return stored.appends;
+  }
+
+  /**
+   * Wave 3 — escalate a capability gap on one node: take the escalation
+   * edge (executing/awaiting-user -> escalated) and append the
+   * `capability-gap` + `escalation` refs to the owning node. Illegal status
+   * edges throw before any write (no partial state). Idempotent: a retry
+   * on an already-escalated graph with the same refs writes nothing.
+   */
+  async escalateGap(input: EscalateGapInput): Promise<WorkGraphRecord> {
+    const stored = await this.requireGraph(input.workGraphId);
+    const refs: readonly WorkGraphNodeRef[] = [
+      { kind: "capability-gap", refId: input.gapId },
+      { kind: "escalation", refId: input.escalationId },
+    ];
+    const escalated = transitionWorkGraphStatus(stored, "escalated", this.now());
+    const result = appendRefsToNode(escalated, input.nodeId, refs, this.now());
+    if (escalated !== stored || result.appended) await this.store.write(result.stored);
+    return result.stored.graph;
+  }
+
+  /**
+   * Wave 3 — record a validated Arena result on one node: append the
+   * `arena-result` ref; when the arena owns the frontier (status
+   * `escalated`) the result resolves it back to `executing`. Recording a
+   * result on a non-escalated graph only appends the ref (e.g. a result
+   * landing after closure — cross-domain facts stay recordable; refs are
+   * never removed). Idempotent per input.
+   */
+  async recordArenaResult(input: RecordArenaResultInput): Promise<WorkGraphRecord> {
+    const stored = await this.requireGraph(input.workGraphId);
+    const refs: readonly WorkGraphNodeRef[] = [{ kind: "arena-result", refId: input.resultId }];
+    const resolved =
+      stored.graph.status === "escalated"
+        ? transitionWorkGraphStatus(stored, "executing", this.now())
+        : stored;
+    const result = appendRefsToNode(resolved, input.nodeId, refs, this.now());
+    if (resolved !== stored || result.appended) await this.store.write(result.stored);
+    return result.stored.graph;
+  }
+
+  /**
+   * Wave 3 — commit an artifact revision onto an artifact node: append
+   * the `artifact-revision` ref. The node must exist and be kind
+   * `artifact` (typed refusal otherwise). No status change — revision
+   * commits are not graph status transitions. Idempotent per input.
+   */
+  async commitArtifactRevision(input: CommitArtifactRevisionInput): Promise<WorkGraphNode> {
+    const stored = await this.requireGraph(input.workGraphId);
+    requireNodeOfKind(stored, input.nodeId, "artifact");
+    const refs: readonly WorkGraphNodeRef[] = [
+      { kind: "artifact-revision", refId: input.revisionId },
+    ];
+    const result = appendRefsToNode(stored, input.nodeId, refs, this.now());
+    if (result.appended) await this.store.write(result.stored);
+    return result.node;
   }
 
   private async requireGraph(workGraphId: SportaId): Promise<StoredWorkGraph> {

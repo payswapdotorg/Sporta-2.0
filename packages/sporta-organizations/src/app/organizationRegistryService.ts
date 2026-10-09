@@ -8,6 +8,7 @@ import type { OrganizationVersionRecord } from "@sporta/contracts/contract";
 import type {
   OrganizationCatalogEntry,
   OrganizationCatalogPort,
+  OrganizationPromotionHistoryPort,
   OrganizationPromotionPort,
   OrganizationRegistryPort,
   PromoteOrganizationInput,
@@ -38,7 +39,11 @@ export interface OrganizationRegistryServiceDeps {
 
 /** The single canonical writer of organization version state. */
 export class OrganizationRegistryService
-  implements OrganizationRegistryPort, OrganizationCatalogPort, OrganizationPromotionPort
+  implements
+    OrganizationRegistryPort,
+    OrganizationCatalogPort,
+    OrganizationPromotionPort,
+    OrganizationPromotionHistoryPort
 {
   private readonly store: OrganizationStorePort;
   private readonly now: () => string;
@@ -90,5 +95,16 @@ export class OrganizationRegistryService
     const result = promoteStoredVersion(entry, input, decidedAt);
     if (result.entry !== entry) await this.store.write(result.entry);
     return result.promotion;
+  }
+
+  /**
+   * Wave 3 additive — read-only promotion history: the immutable
+   * PromotionRecords granted so far, in store order ((organizationId asc,
+   * version asc) — deterministic). Unpromoted drafts contribute nothing.
+   * The store clones on read, so callers never alias registry state.
+   */
+  async listPromotionRecords(): Promise<readonly PromotionRecord[]> {
+    const entries = await this.store.list();
+    return entries.flatMap((entry) => (entry.promotion === undefined ? [] : [entry.promotion]));
   }
 }

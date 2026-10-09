@@ -347,3 +347,26 @@ test("setPreference is idempotent per userRef and getPreference is scoped", asyn
     "org:beta",
   );
 });
+
+test("listPromotionRecords (Wave 3 read port): deterministic order, drafts contribute nothing, stable after idempotent re-promotion", async () => {
+  const registry = makeRegistry();
+  await registry.registerDraft({ record: makeOrganization("org:alpha", 1) });
+  await registry.registerDraft({ record: makeOrganization("org:beta", 1) });
+  await registry.registerDraft({ record: makeOrganization("org:beta", 2) });
+  await registry.promote({ organizationId: "org:beta", version: 1 });
+  await registry.promote({ organizationId: "org:beta", version: 2 });
+
+  const records = await registry.listPromotionRecords();
+  assert.deepEqual(
+    records.map((record) => [record.promotionId, record.candidateId, record.decision]),
+    [
+      ["promotion:org:beta:1", "org:beta:1", "promoted"],
+      ["promotion:org:beta:2", "org:beta:2", "promoted"],
+    ],
+  );
+  assert.ok(records.every((record) => record.decidedAt === NOW));
+
+  // Idempotent re-promotion: the history is unchanged (immutable records).
+  await registry.promote({ organizationId: "org:beta", version: 1 });
+  assert.deepEqual(await registry.listPromotionRecords(), records);
+});

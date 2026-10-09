@@ -1,6 +1,9 @@
 import type {
   AppendWorkNodeInput,
+  CommitArtifactRevisionInput,
+  EscalateGapInput,
   OpenIntentInput,
+  RecordArenaResultInput,
   StartAgentRunInput,
   WorkGraphStatus,
 } from "./contract.js";
@@ -37,6 +40,31 @@ export const exampleUserAppend: AppendWorkNodeInput = {
 export const exampleEscalation: { workGraphId: string; next: WorkGraphStatus } = {
   workGraphId: "wg:example",
   next: "escalated",
+};
+
+/**
+ * Wave 3 — escalate a capability gap on the owning node: appends
+ * `capability-gap` + `escalation` refs and takes the escalation edge.
+ */
+export const exampleEscalateGap: EscalateGapInput = {
+  workGraphId: "wg:example",
+  nodeId: "node:wg:example:1",
+  gapId: "gap:example",
+  escalationId: "esc:example",
+};
+
+/** Wave 3 — record a validated Arena result on the owning node. */
+export const exampleRecordArenaResult: RecordArenaResultInput = {
+  workGraphId: "wg:example",
+  nodeId: "node:wg:example:1",
+  resultId: "res:example",
+};
+
+/** Wave 3 — commit an artifact revision onto an artifact node. */
+export const exampleCommitArtifactRevision: CommitArtifactRevisionInput = {
+  workGraphId: "wg:example",
+  nodeId: "node:wg:example:4",
+  revisionId: "rev:example",
 };
 
 /** Execution seam usage (the ZCode AgentRuntime adapter implements it later). */

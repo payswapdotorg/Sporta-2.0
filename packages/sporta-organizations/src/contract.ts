@@ -9,7 +9,9 @@
  * (src/domain/*, src/app/*, src/adapters/*) and are re-exported here —
  * the Wave 0 layout. The v1 surface below is unchanged; Wave 1
  * additions are additive (catalog, promotion, user preferences, service
- * and fixture adapters).
+ * and fixture adapters). Wave 3 adds the read-only promotion history
+ * port + the canonical candidateId convention export (ADR wave-3 read
+ * seams).
  */
 export type {
   AgentBodyRecord,
@@ -30,6 +32,7 @@ export type {
   OrganizationCatalogPort,
   PromoteOrganizationInput,
   OrganizationPromotionPort,
+  OrganizationPromotionHistoryPort,
   OrganizationUserPreference,
   SetUserPreferenceInput,
   UserPreferencePort,
@@ -45,6 +48,7 @@ export {
 } from "./domain/errors.js";
 
 export { FACTOR_WEIGHTS } from "./domain/scoring.js";
+export { candidateIdFor } from "./domain/registry.js";
 
 export { OrganizationRegistryService } from "./app/organizationRegistryService.js";
 export type {

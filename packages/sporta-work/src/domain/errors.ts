@@ -42,3 +42,27 @@ export class WorkGraphNotFoundError extends Error {
     this.name = "WorkGraphNotFoundError";
   }
 }
+
+/** The node referenced by a ref append does not exist in the graph. */
+export class WorkGraphNodeNotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "WorkGraphNodeNotFoundError";
+  }
+}
+
+/** The node kind does not fit the operation (e.g. artifact revisions attach to artifact nodes). */
+export class WorkGraphNodeKindError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "WorkGraphNodeKindError";
+  }
+}
+
+/** A malformed WorkGraphNodeRef (unknown kind or empty refId). */
+export class WorkGraphNodeRefError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "WorkGraphNodeRefError";
+  }
+}

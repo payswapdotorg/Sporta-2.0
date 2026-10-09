@@ -91,6 +91,18 @@ export interface OrganizationPromotionPort {
   promote(input: PromoteOrganizationInput): Promise<PromotionRecord>;
 }
 
+/**
+ * Wave 3 additive — read-only promotion history for the Lab's
+ * OrganizationCandidateReadPort seam (ADR wave-3 read seams). Lists the
+ * immutable PromotionRecords the registry has granted, deterministic
+ * order: (organizationId asc, version asc). Module-internal catalog
+ * granularity (like OrganizationCatalogPort.listVersions); the bounded
+ * read lives at the consuming seam, not here.
+ */
+export interface OrganizationPromotionHistoryPort {
+  listPromotionRecords(): Promise<readonly PromotionRecord[]>;
+}
+
 /** Per-user preference record (personalization boundary, A5). */
 export interface OrganizationUserPreference {
   userRef: SportaId;
