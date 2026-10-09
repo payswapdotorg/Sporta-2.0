@@ -1,6 +1,5 @@
 import type { EditOperation } from "../domain/operations.js";
 import type { EditorAdapterPort, EditorHashFn } from "../domain/ports.js";
-import { KdenliveAdapter } from "./KdenliveAdapter.js";
 /**
  * Editor adapters: fixture-grade and real implementations.
  *
@@ -58,7 +57,7 @@ export class MysteryAppFixtureAdapter implements EditorAdapterPort {
 }
 
 /**
- * Real Kdenlive adapter: provides actual round-trip import/export
- * functionality for real Kdenlive project files.
+ * Real Kdenlive adapter: actual round-trip import/export for real
+ * .kdenlive (MLT XML) project files — see KdenliveAdapter.ts.
  */
 export { KdenliveAdapter } from "./KdenliveAdapter.js";

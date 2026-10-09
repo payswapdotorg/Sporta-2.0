@@ -1,15 +1,169 @@
-import { createHash } from "node:crypto";
-import type { EditorAdapterPort } from "../domain/ports.js";
 import type { EditOperation } from "../domain/operations.js";
-import type { EditorHashFn } from "../domain/ports.js";
-
+import type { EditorAdapterPort, EditorHashFn } from "../domain/ports.js";
+import {
+  KdenliveXmlError,
+  parseXml,
+  serializeXmlAttributes,
+  escapeXmlText,
+  escapeXmlAttribute,
+  type XmlElement,
+} from "./kdenliveXml.js";
 /**
- * Real Kdenlive editor adapter.
+ * Real Kdenlive editor adapter — round-trip import/export for the MLT XML
+ * document shape used by .kdenlive project files (adapters layer).
  *
- * Implements round-trip import/export for Kdenlive project XML format.
- * Preserves IDs and provenance during import/export operations.
- * Handles unknown XML elements honestly by carrying them through.
+ * Honest understanding model: the adapter fully understands <mlt> root
+ * attributes, the <profile> element, <producer>/<playlist>/<tractor>
+ * containers with their <property>, <entry> and <track> children, and the
+ * five predefined XML entities plus numeric character references. Anything
+ * else (e.g. <blank> or <transition>) is carried through VERBATIM as raw
+ * source markup and re-emitted byte-identically on export — nothing is
+ * guessed and nothing is silently dropped. Order among entry/track/raw
+ * children is preserved (timeline order matters); the relative order of
+ * element kinds at the root is normalized (profile, producers, playlists,
+ * tractors, unknown) which is semantically inert in MLT (references are
+ * by id).
  */
+
+/** A child element the adapter does not understand, preserved verbatim. */
+export interface KdenliveRawElement {
+  readonly type: "unknown";
+  readonly tag: string;
+  /** Exact source markup of the element, from '<' to its closing '>'. */
+  readonly raw: string;
+}
+
+/** A playlist <entry producer="..." in="..." out="..."/> child. */
+export interface KdenliveEntry {
+  readonly type: "entry";
+  readonly attributes: Readonly<Record<string, string>>;
+}
+
+/** A tractor <track producer="..." hide="..."/> child. */
+export interface KdenliveTrack {
+  readonly type: "track";
+  readonly attributes: Readonly<Record<string, string>>;
+}
+
+/** <producer> element: attributes plus <property name="...">text pairs. */
+export interface KdenliveProducer {
+  readonly attributes: Readonly<Record<string, string>>;
+  readonly properties: Readonly<Record<string, string>>;
+  readonly unknown: readonly KdenliveRawElement[];
+}
+
+/** <playlist> element: attributes, properties, ordered children. */
+export interface KdenlivePlaylist {
+  readonly attributes: Readonly<Record<string, string>>;
+  readonly properties: Readonly<Record<string, string>>;
+  /** Document order of entries/blanks/… is preserved (timeline order). */
+  readonly children: readonly (KdenliveEntry | KdenliveRawElement)[];
+}
+
+/** <tractor> element: attributes, properties, ordered track children. */
+export interface KdenliveTractor {
+  readonly attributes: Readonly<Record<string, string>>;
+  readonly properties: Readonly<Record<string, string>>;
+  readonly children: readonly (KdenliveTrack | KdenliveRawElement)[];
+}
+
+/** The <mlt> root element of a kdenlive project document. */
+export interface KdenliveMlt {
+  readonly attributes: Readonly<Record<string, string>>;
+  readonly profile?: Readonly<Record<string, string>>;
+  readonly producers: readonly KdenliveProducer[];
+  readonly playlists: readonly KdenlivePlaylist[];
+  readonly tractors: readonly KdenliveTractor[];
+  readonly unknown: readonly KdenliveRawElement[];
+}
+
+/** Canonical parsed state of one .kdenlive (MLT) document. */
+export interface KdenliveProjectState {
+  readonly mlt: KdenliveMlt;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function sortedEntries(projectState: object): [string, unknown][] {
+  return Object.entries(projectState).sort(([left], [right]) =>
+    left < right ? -1 : left > right ? 1 : 0,
+  );
+}
+
+function rawOf(source: string, element: XmlElement): KdenliveRawElement {
+  return { type: "unknown", tag: element.tag, raw: source.slice(element.start, element.end) };
+}
+
+/** Childless, whitespace-free content check for attribute-only elements. */
+function isHollow(element: XmlElement): boolean {
+  return element.children.length === 0 && element.text.trim() === "";
+}
+
+/** Property name of a simple <property name="...">text</property>, else null. */
+function propertyName(child: XmlElement): string | null {
+  if (child.tag !== "property" || child.children.length > 0) return null;
+  const name = child.attributes.name;
+  return name === undefined ? null : name;
+}
+
+/** Add one property to the map (typed duplicate check); false if not one. */
+function addProperty(
+  properties: Record<string, string>,
+  child: XmlElement,
+  containerTag: string,
+): boolean {
+  const name = propertyName(child);
+  if (name === null) return false;
+  if (Object.hasOwn(properties, name)) {
+    throw new KdenliveXmlError(
+      `duplicate property "${name}" in <${containerTag}>`,
+      `duplicate-property:${name}`,
+    );
+  }
+  properties[name] = child.text;
+  return true;
+}
+
+function mapProducer(source: string, element: XmlElement): KdenliveProducer {
+  const properties: Record<string, string> = {};
+  const unknown: KdenliveRawElement[] = [];
+  for (const child of element.children) {
+    if (addProperty(properties, child, element.tag)) continue;
+    unknown.push(rawOf(source, child));
+  }
+  return { attributes: { ...element.attributes }, properties, unknown };
+}
+
+function mapPlaylist(source: string, element: XmlElement): KdenlivePlaylist {
+  const properties: Record<string, string> = {};
+  const children: (KdenliveEntry | KdenliveRawElement)[] = [];
+  for (const child of element.children) {
+    if (addProperty(properties, child, element.tag)) continue;
+    if (child.tag === "entry" && isHollow(child)) {
+      children.push({ type: "entry", attributes: { ...child.attributes } });
+    } else {
+      children.push(rawOf(source, child));
+    }
+  }
+  return { attributes: { ...element.attributes }, properties, children };
+}
+
+function mapTractor(source: string, element: XmlElement): KdenliveTractor {
+  const properties: Record<string, string> = {};
+  const children: (KdenliveTrack | KdenliveRawElement)[] = [];
+  for (const child of element.children) {
+    if (addProperty(properties, child, element.tag)) continue;
+    if (child.tag === "track" && isHollow(child)) {
+      children.push({ type: "track", attributes: { ...child.attributes } });
+    } else {
+      children.push(rawOf(source, child));
+    }
+  }
+  return { attributes: { ...element.attributes }, properties, children };
+}
+
 export class KdenliveAdapter implements EditorAdapterPort {
   readonly editorId = "kdenlive";
   readonly editorVersion = "24.08.0";
@@ -20,314 +174,193 @@ export class KdenliveAdapter implements EditorAdapterPort {
   constructor(private readonly hash: EditorHashFn) {}
 
   /**
-   * Derive typed edit operations from a changed Kdenlive project state.
-   * Parses the XML and extracts meaningful operations while preserving unknown elements.
+   * Derive typed set operations from a changed project state. Kdenlive
+   * (MLT-shaped) states get granular per-element paths; any other object
+   * state falls back to honest top-level carry (mirrors the fixture
+   * adapter). Non-objects derive nothing.
    */
   deriveOperations(projectState: unknown): readonly EditOperation[] {
-    if (typeof projectState !== "object" || projectState === null) {
-      return [];
-    }
-
+    if (!isPlainObject(projectState)) return [];
     const operations: EditOperation[] = [];
-    
-    // Handle Kdenlive-specific structure
-    if ("kdenliveproject" in projectState) {
-      const project = (projectState as any).kdenliveproject;
-      
-      if ("properties" in project && typeof project.properties === "object") {
-        // Extract property changes
-        Object.entries(project.properties).forEach(([key, value]) => {
-          operations.push({
-            kind: "set",
-            path: `/properties/${key}`,
-            valueHash: this.hash(JSON.stringify(value)),
-          });
-        });
-      }
-      
-      if ("playlist" in project && Array.isArray(project.playlist)) {
-        // Extract playlist entries
-        project.playlist.forEach((entry: any, index: number) => {
-          if (entry && typeof entry === "object") {
-            operations.push({
-              kind: "set",
-              path: `/playlist/${index}`,
-              valueHash: this.hash(JSON.stringify(entry)),
-            });
-            
-            // Extract producer references if present
-            if ("producer" in entry) {
-              operations.push({
-                kind: "set",
-                path: `/playlist/${index}/producer`,
-                valueHash: this.hash(JSON.stringify(entry.producer)),
-              });
-            }
-          }
-        });
-      }
-      
-      if ("tractor" in project && Array.isArray(project.tractor)) {
-        // Extract tractor entries
-        project.tractor.forEach((entry: any, index: number) => {
-          if (entry && typeof entry === "object") {
-            operations.push({
-              kind: "set",
-              path: `/tractor/${index}`,
-              valueHash: this.hash(JSON.stringify(entry)),
-            });
-            
-            // Extract track and playlist references if present
-            if ("track" in entry) {
-              operations.push({
-                kind: "set",
-                path: `/tractor/${index}/track`,
-                valueHash: this.hash(JSON.stringify(entry.track)),
-              });
-            }
-            
-            if ("playlist" in entry) {
-              operations.push({
-                kind: "set",
-                path: `/tractor/${index}/playlist`,
-                valueHash: this.hash(JSON.stringify(entry.playlist)),
-              });
-            }
-          }
-        });
-      }
-      
-      if ("producers" in project && Array.isArray(project.producers)) {
-        // Extract producer definitions
-        project.producers.forEach((producer: any, index: number) => {
-          if (producer && typeof producer === "object") {
-            operations.push({
-              kind: "set",
-              path: `/producers/${index}`,
-              valueHash: this.hash(JSON.stringify(producer)),
-            });
-            
-            // Extract producer properties if present
-            if ("properties" in producer) {
-              Object.entries(producer.properties).forEach(([key, value]) => {
-                operations.push({
-                  kind: "set",
-                  path: `/producers/${index}/properties/${key}`,
-                  valueHash: this.hash(JSON.stringify(value)),
-                });
-              });
-            }
-          }
-        });
-      }
+    if (isPlainObject(projectState.mlt)) {
+      operations.push(...this.mltOperations(projectState.mlt));
     }
-    
-    // Handle any top-level elements we don't understand
-    Object.entries(projectState).forEach(([key, value]) => {
-      if (key !== "kdenliveproject" && typeof value === "object") {
-        operations.push({
-          kind: "set",
-          path: `/${key}`,
-          valueHash: this.hash(JSON.stringify(value)),
-        });
-      }
-    });
-
+    for (const [key, value] of sortedEntries(projectState)) {
+      if (key === "mlt") continue;
+      operations.push({
+        kind: "set",
+        path: `/${key}`,
+        valueHash: this.hash(JSON.stringify(value)),
+      });
+    }
     return operations;
   }
 
-  /**
-   * Export a Kdenlive project state to well-formed XML.
-   * Creates a valid Kdenlive project structure with all provided data.
-   */
-  exportToKdenliveXml(projectState: unknown): string {
-    if (typeof projectState !== "object" || projectState === null) {
-      throw new Error("Invalid project state: must be an object");
+  /** Parse a .kdenlive (MLT) XML document into the canonical state. */
+  parseKdenliveXml(xml: string): KdenliveProjectState {
+    const root = parseXml(xml);
+    if (root.tag !== "mlt") {
+      throw new KdenliveXmlError(
+        `root element <${root.tag}> is not <mlt>: not a kdenlive/MLT document`,
+        `root:${root.tag}`,
+      );
     }
-
-    // Create XML structure
-    let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
-    xml += '<!DOCTYPE kdenlivedoc SYSTEM "kdenlive-0.9.dtd">\n';
-    xml += '<kdenliveproject version="1.0">\n';
-    
-    // Add properties if present
-    if ("properties" in projectState && typeof (projectState as any).properties === "object") {
-      xml += '  <properties>\n';
-      Object.entries((projectState as any).properties).forEach(([key, value]) => {
-        xml += `    <${key}>${this.escapeXml(value)}</${key}>\n`;
-      });
-      xml += '  </properties>\n';
-    }
-    
-    // Add producers if present
-    if ("producers" in projectState && Array.isArray((projectState as any).producers)) {
-      xml += '  <producers>\n';
-      (projectState as any).producers.forEach((producer: any, index: number) => {
-        xml += `    <producer id="producer${index}">\n`;
-        if (producer && typeof producer === "object" && "properties" in producer) {
-          Object.entries(producer.properties).forEach(([key, value]) => {
-            xml += `      <${key}>${this.escapeXml(value)}</${key}>\n`;
-          });
-        }
-        xml += '    </producer>\n';
-      });
-      xml += '  </producers>\n';
-    }
-    
-    // Add playlist if present
-    if ("playlist" in projectState && Array.isArray((projectState as any).playlist)) {
-      xml += '  <playlist>\n';
-      (projectState as any).playlist.forEach((entry: any, index: number) => {
-        xml += `    <entry producer="producer${index}"/>\n`;
-      });
-      xml += '  </playlist>\n';
-    }
-    
-    // Add tractor if present
-    if ("tractor" in projectState && Array.isArray((projectState as any).tractor)) {
-      xml += '  <tractor>\n';
-      (projectState as any).tractor.forEach((entry: any, index: number) => {
-        xml += `    <track>\n`;
-        xml += `      <playlist>\n`;
-        (entry as any)?.playlist?.forEach?.((_: any, idx: number) => {
-          xml += `        <entry producer="producer${idx}"/>\n`;
-        });
-        xml += `      </playlist>\n`;
-        xml += `    </track>\n`;
-      });
-      xml += '  </tractor>\n';
-    }
-    
-    // Add any other top-level elements
-    Object.entries(projectState).forEach(([key, value]) => {
-      if (key !== "properties" && key !== "producers" && key !== "playlist" && key !== "tractor") {
-        xml += `  <${key}>\n`;
-        if (typeof value === "object") {
-          Object.entries(value).forEach(([subKey, subValue]) => {
-            xml += `    <${subKey}>${this.escapeXml(subValue)}</${subKey}>\n`;
-          });
-        }
-        xml += `  </${key}>\n`;
+    const producers: KdenliveProducer[] = [];
+    const playlists: KdenlivePlaylist[] = [];
+    const tractors: KdenliveTractor[] = [];
+    const unknown: KdenliveRawElement[] = [];
+    let profile: Record<string, string> | undefined;
+    for (const child of root.children) {
+      if (child.tag === "profile" && profile === undefined && isHollow(child)) {
+        profile = { ...child.attributes };
+      } else if (child.tag === "producer") {
+        producers.push(mapProducer(xml, child));
+      } else if (child.tag === "playlist") {
+        playlists.push(mapPlaylist(xml, child));
+      } else if (child.tag === "tractor") {
+        tractors.push(mapTractor(xml, child));
+      } else {
+        unknown.push(rawOf(xml, child));
       }
-    });
-    
-    xml += '</kdenliveproject>';
-    return xml;
+    }
+    return {
+      mlt: {
+        attributes: { ...root.attributes },
+        ...(profile === undefined ? {} : { profile }),
+        producers,
+        playlists,
+        tractors,
+        unknown,
+      },
+    };
   }
 
   /**
-   * Parse Kdenlive XML project state into a JavaScript object.
-   * Preserves all elements including unknown ones.
+   * Export a canonical kdenlive project state to well-formed MLT XML.
+   * Known parts are emitted canonically; unknown elements are re-emitted
+   * with their raw source markup, byte-identically.
    */
-  parseKdenliveXml(xmlString: string): unknown {
-    try {
-      // Simple XML parsing - in a real implementation, you'd use a proper XML parser
-      // This is a simplified version for demonstration
-      const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(xmlString, "text/xml");
-      
-      if (xmlDoc.querySelector("parsererror")) {
-        throw new Error("Invalid XML format");
+  exportToKdenliveXml(state: KdenliveProjectState): string {
+    if (!isPlainObject(state) || !isPlainObject(state.mlt)) {
+      throw new KdenliveXmlError(
+        "exportToKdenliveXml: state is not a kdenlive project state (missing mlt)",
+        "not-kdenlive-state",
+      );
+    }
+    const mlt = state.mlt as KdenliveMlt;
+    const lines: string[] = ['<?xml version="1.0" encoding="utf-8"?>'];
+    lines.push(`<mlt${serializeXmlAttributes(mlt.attributes)}>`);
+    if (mlt.profile !== undefined) {
+      lines.push(`  <profile${serializeXmlAttributes(mlt.profile)}/>`);
+    }
+    for (const producer of mlt.producers) {
+      const properties = Object.entries(producer.properties);
+      if (properties.length === 0 && producer.unknown.length === 0) {
+        lines.push(`  <producer${serializeXmlAttributes(producer.attributes)}/>`);
+        continue;
       }
-      
-      const result: any = {};
-      
-      // Extract properties
-      const properties = xmlDoc.querySelector("properties");
-      if (properties) {
-        result.properties = {};
-        properties.childNodes.forEach((node: ChildNode) => {
-          if (node.nodeType === Node.ELEMENT_NODE) {
-            const element = node as Element;
-            result.properties[element.tagName] = element.textContent;
+      lines.push(`  <producer${serializeXmlAttributes(producer.attributes)}>`);
+      lines.push(...this.propertyLines(properties));
+      lines.push(...producer.unknown.map((element) => `    ${element.raw}`));
+      lines.push("  </producer>");
+    }
+    for (const playlist of mlt.playlists) {
+      const properties = Object.entries(playlist.properties);
+      if (properties.length === 0 && playlist.children.length === 0) {
+        lines.push(`  <playlist${serializeXmlAttributes(playlist.attributes)}/>`);
+        continue;
+      }
+      lines.push(`  <playlist${serializeXmlAttributes(playlist.attributes)}>`);
+      lines.push(...this.propertyLines(properties));
+      for (const child of playlist.children) {
+        lines.push(
+          child.type === "entry"
+            ? `    <entry${serializeXmlAttributes(child.attributes)}/>`
+            : `    ${child.raw}`,
+        );
+      }
+      lines.push("  </playlist>");
+    }
+    for (const tractor of mlt.tractors) {
+      const properties = Object.entries(tractor.properties);
+      if (properties.length === 0 && tractor.children.length === 0) {
+        lines.push(`  <tractor${serializeXmlAttributes(tractor.attributes)}/>`);
+        continue;
+      }
+      lines.push(`  <tractor${serializeXmlAttributes(tractor.attributes)}>`);
+      lines.push(...this.propertyLines(properties));
+      for (const child of tractor.children) {
+        lines.push(
+          child.type === "track"
+            ? `    <track${serializeXmlAttributes(child.attributes)}/>`
+            : `    ${child.raw}`,
+        );
+      }
+      lines.push("  </tractor>");
+    }
+    for (const element of mlt.unknown) {
+      lines.push(`  ${element.raw}`);
+    }
+    lines.push("</mlt>");
+    return `${lines.join("\n")}\n`;
+  }
+
+  private propertyLines(properties: [string, string][]): string[] {
+    return properties.map(
+      ([name, value]) =>
+        `    <property name="${escapeXmlAttribute(name)}">${escapeXmlText(value)}</property>`,
+    );
+  }
+
+  private mltOperations(mlt: Record<string, unknown>): EditOperation[] {
+    const operations: EditOperation[] = [];
+    const set = (path: string, value: unknown): void => {
+      operations.push({ kind: "set", path, valueHash: this.hash(JSON.stringify(value)) });
+    };
+    if (isPlainObject(mlt.attributes)) {
+      for (const [key, value] of sortedEntries(mlt.attributes)) {
+        set(`/mlt/attributes/${key}`, value);
+      }
+    }
+    if (isPlainObject(mlt.profile)) {
+      for (const [key, value] of sortedEntries(mlt.profile)) {
+        set(`/mlt/profile/${key}`, value);
+      }
+    }
+    const containers: [string, unknown][] = [
+      ["producers", mlt.producers],
+      ["playlists", mlt.playlists],
+      ["tractors", mlt.tractors],
+    ];
+    for (const [name, records] of containers) {
+      if (!Array.isArray(records)) continue;
+      records.forEach((record, index) => {
+        if (!isPlainObject(record)) return;
+        set(`/mlt/${name}/${index}`, record);
+        if (isPlainObject(record.properties)) {
+          for (const [key, value] of sortedEntries(record.properties)) {
+            set(`/mlt/${name}/${index}/properties/${key}`, value);
           }
-        });
-      }
-      
-      // Extract producers
-      const producers = xmlDoc.querySelectorAll("producers producer");
-      if (producers.length > 0) {
-        result.producers = [];
-        producers.forEach((producer: Element, index: number) => {
-          const producerObj: any = { id: producer.getAttribute("id") };
-          
-          const properties = producer.querySelectorAll("properties *");
-          if (properties.length > 0) {
-            producerObj.properties = {};
-            properties.forEach((prop: Element) => {
-              producerObj.properties[prop.tagName] = prop.textContent;
-            });
-          }
-          
-          result.producers.push(producerObj);
-        });
-      }
-      
-      // Extract playlist
-      const playlist = xmlDoc.querySelector("playlist");
-      if (playlist) {
-        result.playlist = [];
-        playlist.querySelectorAll("entry").forEach((entry: Element, index: number) => {
-          result.playlist.push({
-            producer: entry.getAttribute("producer"),
+        }
+        if (Array.isArray(record.children)) {
+          record.children.forEach((child, childIndex) => {
+            set(`/mlt/${name}/${index}/children/${childIndex}`, child);
           });
-        });
-      }
-      
-      // Extract tractor
-      const tractor = xmlDoc.querySelector("tractor");
-      if (tractor) {
-        result.tractor = [];
-        tractor.querySelectorAll("track").forEach((track: Element, index: number) => {
-          const trackObj: any = {};
-          
-          const playlist = track.querySelector("playlist");
-          if (playlist) {
-            trackObj.playlist = [];
-            playlist.querySelectorAll("entry").forEach((entry: Element, idx: number) => {
-              trackObj.playlist.push({
-                producer: entry.getAttribute("producer"),
-              });
-            });
-          }
-          
-          result.tractor.push(trackObj);
-        });
-      }
-      
-      // Extract any other top-level elements
-      xmlDoc.querySelectorAll("kdenliveproject > *").forEach((element: Element) => {
-        const tagName = element.tagName;
-        if (tagName !== "properties" && tagName !== "producers" && 
-            tagName !== "playlist" && tagName !== "tractor") {
-          result[tagName] = {};
-          element.childNodes.forEach((node: ChildNode) => {
-            if (node.nodeType === Node.ELEMENT_NODE) {
-              const childElement = node as Element;
-              result[tagName][childElement.tagName] = childElement.textContent;
-            }
+        }
+        if (Array.isArray(record.unknown)) {
+          record.unknown.forEach((element, elementIndex) => {
+            set(`/mlt/${name}/${index}/unknown/${elementIndex}`, element);
           });
         }
       });
-      
-      return result;
-    } catch (error) {
-      throw new Error(`Failed to parse Kdenlive XML: ${error}`);
     }
-  }
-
-  /**
-   * Escape XML special characters.
-   */
-  private escapeXml(text: unknown): string {
-    if (typeof text !== "string") {
-      text = String(text);
+    if (Array.isArray(mlt.unknown)) {
+      mlt.unknown.forEach((element, index) => {
+        set(`/mlt/unknown/${index}`, element);
+      });
     }
-    return text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&apos;");
+    return operations;
   }
 }
+
+export { KdenliveXmlError };

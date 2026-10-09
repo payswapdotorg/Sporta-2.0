@@ -55,5 +55,16 @@ export { EditorBrokerService } from "./app/EditorBrokerService.js";
 
 export { InMemoryEditorSessionStore } from "./adapters/InMemoryEditorSessionStore.js";
 export { KdenliveFixtureAdapter, MysteryAppFixtureAdapter } from "./adapters/editors.js";
+export { KdenliveAdapter, KdenliveXmlError } from "./adapters/KdenliveAdapter.js";
+export type {
+  KdenliveProjectState,
+  KdenliveMlt,
+  KdenliveProducer,
+  KdenlivePlaylist,
+  KdenliveTractor,
+  KdenliveEntry,
+  KdenliveTrack,
+  KdenliveRawElement,
+} from "./adapters/KdenliveAdapter.js";
 export { sha256EditorHash } from "./adapters/hash.js";
 export { FixedClock, SystemClock } from "./adapters/clock.js";
