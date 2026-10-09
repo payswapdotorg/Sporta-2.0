@@ -1,207 +1,207 @@
 /**
- * A17 Seeded Loop with REAL execution adapter.
- * 
- * This test runs the complete A17 seeded loop using the REAL ZCode AgentRuntime adapter
- * instead of the fixture adapter. Only the execution leg is real; the rest of the loop
- * uses fixture stores for simplicity.
- * 
- * EVIDENCE CLASS: REAL for execution leg (process timings, exit codes), fixture for the rest.
+ * A17 seeded loop with the REAL ZCode AgentRuntime adapter at the
+ * execution seam (Wave 2).
+ *
+ * EVIDENCE CLASS (honest labeling):
+ *   - REAL: the execution leg. The REAL adapter spawns a REAL child
+ *     process through the declared seam (zcode-cli headless interface:
+ *     `--prompt <task> --output-format stream-json`). Every execution
+ *     assertion below is a real process observation: real spawn, real
+ *     wall time, real stream-json events on real pipes, real exit code.
+ *   - FIXTURE: everything else — the stores (InMemoryWorkGraphStore), the
+ *     organization record, and the EXECUTABLE itself. The vendored
+ *     apps/zcode-cli workspace is missing internal packages required by
+ *     its own dependency graph (@zcode/model-option-map, @zcode/provider,
+ *     @zcode/provider-node, @zcode/zcode-cua, @zcode/shared), so the real
+ *     zcode-cli bundle cannot be built in this sandbox;
+ *     test/fixtures/zcode-cli-standin.mjs is a REAL process-level
+ *     stand-in speaking the same headless interface (see BLOCKERS in the
+ *     work report: real zcode-cli execution is unmeasured here).
  */
-import { describe, it, expect, beforeAll, afterAll } from "node:test";
-import { v4 as uuidv4 } from "uuid";
-import type {
-  IntentSpec,
-  OrganizationVersionRecord,
-  SportaId,
-  WorkGraphRecord,
-} from "@sporta/contracts/contract";
-import { 
-  InMemoryWorkGraphStore, 
-  WorkGraphService 
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { fileURLToPath } from "node:url";
+import type { IntentSpec, OrganizationVersionRecord } from "@sporta/contracts/contract";
+import type { AgentRunEvent } from "@sporta/work/contract";
+import {
+  InMemoryWorkGraphStore,
+  WorkGraphService,
+  ZCodeAgentRuntimeAdapter,
+  systemClockNow,
 } from "@sporta/work/contract";
-import { 
-  ZCodeAgentRuntimeAdapter, 
-  type ZCodeAgentRuntimeDeps 
-} from "@sporta/work/adapters/zcodeAgentRuntime";
-import { createClock } from "@sporta/work/adapters/clock";
 
-// Test configuration
-const TEST_ORGANIZATION_ID = "test-org-1";
-const TEST_ORGANIZATION_VERSION = "1.0.0";
-const TEST_TASK = "Create a simple analysis report about sports performance metrics";
+const STANDIN_PATH = fileURLToPath(new URL("./fixtures/zcode-cli-standin.mjs", import.meta.url));
 
-describe("A17 Seeded Loop with REAL Execution", () => {
-  let workGraphService: WorkGraphService;
-  let executionAdapter: ZCodeAgentRuntimeAdapter;
-  let workGraphId: SportaId;
-  let organization: OrganizationVersionRecord;
+const policy: IntentSpec["policy"] = {
+  rights: { holders: ["holder:operator"], usages: ["render", "edit", "derive"], prohibitions: [] },
+  privacy: { visibility: "tenant", exportableFields: [] },
+  retention: { disposition: "retain" },
+};
 
-  beforeAll(async () => {
-    // Create test dependencies (fixture grade except execution)
-    workGraphService = new WorkGraphService({ 
-      store: new InMemoryWorkGraphStore(), 
-      now: createClock().now 
-    });
-    
-    // Create the REAL execution adapter
-    const deps: ZCodeAgentRuntimeDeps = {
-      now: createClock().now,
-      // Use a simple node process for testing since we can't guarantee zcode-cli is built
-      zcodeCliPath: process.execPath,
-    };
-    executionAdapter = new ZCodeAgentRuntimeAdapter(deps);
-    
-    // Create a test organization
-    organization = {
-      organizationId: TEST_ORGANIZATION_ID,
-      version: TEST_ORGANIZATION_VERSION,
-      name: "Test Organization",
-      description: "Test organization for A17 real execution",
-      agentBodies: [],
-      toolGraph: [],
-      workflowGraph: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    
-    // Create a test work graph
-    const intent: IntentSpec = {
-      id: uuidv4(),
-      type: "analysis",
-      objective: "Create a simple analysis report about sports performance metrics",
-      context: {},
-      priority: "normal",
-      deadline: null,
-    };
-    
-    const workGraphResult = await workGraphService.openIntent({ intent });
-    workGraphId = workGraphResult.workGraphId;
+const intent: IntentSpec = {
+  goal: "produce a sports performance analysis report",
+  constraints: ["authorized sources only"],
+  artifactRequirements: ["analysis-report"],
+  learningPolicy: { scopes: ["workflow"], requireConsent: true },
+  policy,
+};
+
+const organization: OrganizationVersionRecord = {
+  organizationId: "org:a17-real",
+  version: 1,
+  intentProfile: "sports-analysis",
+  roleGraph: [],
+  agentBodies: [],
+  cognitiveSubstrates: [],
+  toolGraph: [],
+  workflowGraph: [],
+  environmentProfile: "local",
+  fallbacks: [],
+  budgets: {},
+  learnedPreferences: [],
+  evidence: [],
+  policy,
+};
+
+const TASK = "Create a simple analysis report about sports performance metrics";
+
+const ISO_8601 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/;
+
+test("A17 real execution: the REAL adapter runs a real process and the seeded loop preserves the WorkGraph lineage", async () => {
+  const workService = new WorkGraphService({
+    store: new InMemoryWorkGraphStore(),
+    now: systemClockNow,
+  });
+  const runtime = new ZCodeAgentRuntimeAdapter({
+    now: systemClockNow,
+    zcodeCliPath: STANDIN_PATH,
   });
 
-  afterAll(async () => {
-    // Clean up the execution adapter
-    executionAdapter.dispose();
-  });
+  // --- stage 1: intent -> open WorkGraph (fixture store) ---
+  const graph = await workService.openIntent({ workGraphId: "wg:a17-real", intent });
+  assert.strictEqual(graph.status, "open", "a fresh WorkGraph opens");
+  const nodesBefore = graph.nodes.length;
 
-  it("should run complete A17 seeded loop with REAL execution", async () => {
-    // 1. OPEN INTENT -> WORKGRAPH (fixture)
-    expect(workGraphId).toBeDefined();
-    const initialWorkGraph = await workGraphService.readWorkGraph(workGraphId);
-    expect(initialWorkGraph).toBeDefined();
-    expect(initialWorkGraph?.status).toBe("open");
-    
-    // 2. ORGANIZATION RESOLUTION (fixture)
-    expect(organization.organizationId).toBe(TEST_ORGANIZATION_ID);
-    expect(organization.version).toBe(TEST_ORGANIZATION_VERSION);
-    
-    // 3. REAL EXECUTION (real process)
-    const startTime = Date.now();
-    const startRunInput = {
-      workGraphId,
-      organization,
-      task: TEST_TASK,
-    };
-    
-    const runHandle = await executionAdapter.startRun(startRunInput);
-    expect(runHandle.runId).toBeDefined();
-    expect(runHandle.workGraphId).toBe(workGraphId);
-    expect(runHandle.startedAt).toBeDefined();
-    
-    // Observe run events (real process output)
-    const events = await executionAdapter.observeRun(runHandle.runId);
-    expect(events.length).toBeGreaterThan(0);
-    
-    // Verify real execution evidence
-    const realWallTime = Date.now() - startTime;
-    expect(realWallTime).toBeGreaterThan(0); // Real process should take some time
-    
-    // Check that we have the expected event sequence
-    const startEvent = events.find(e => e.type === "started");
-    const progressEvent = events.find(e => e.type === "progress");
-    const completeEvent = events.find(e => e.type === "completed");
-    const failedEvent = events.find(e => e.type === "failed");
-    
-    expect(startEvent).toBeDefined();
-    expect(startEvent?.seq).toBe(1);
-    expect(startEvent?.at).toBeDefined();
-    
-    // Either completed successfully or failed (but not both)
-    if (completeEvent) {
-      expect(completeEvent?.seq).toBeGreaterThan(1);
-      expect(completeEvent?.detail).toContain("Process exited with code 0");
-      expect(failedEvent).toBeUndefined();
-    } else if (failedEvent) {
-      expect(failedEvent?.seq).toBeGreaterThan(1);
-      expect(failedEvent?.detail).toContain("Process exited");
-    } else {
-      // Process might still be running
-      expect(progressEvent).toBeDefined();
-    }
-    
-    // Verify real timestamps are ISO8601
-    const iso8601Regex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?$/;
-    expect(iso8601Regex.test(startEvent?.at || "")).toBe(true);
-    
-    // 4. APPEND WORKGRAPH NODE (fixture)
-    const executionNode = await workGraphService.appendNode({
-      workGraphId,
-      kind: "execution",
-      actor: {
-        actorKind: "agent-run",
-        actorRef: runHandle.runId,
-      },
-    });
-    expect(executionNode).toBeDefined();
-    expect(executionNode.kind).toBe("execution");
-    
-    // 5. TRANSITION STATUS (fixture)
-    const transitioned = await workGraphService.transitionStatus(workGraphId, "executing");
-    expect(transitioned.status).toBe("executing");
-    
-    // 6. SIMULATED LEARNING (fixture)
-    const learningNode = await workGraphService.appendNode({
-      workGraphId,
-      kind: "learning",
-      parent: executionNode.nodeId,
-      actor: {
-        actorKind: "agent-run",
-        actorRef: runHandle.runId,
-      },
-    });
-    
-    // 7. SIMULATED EVALUATION (fixture)
-    const evaluationNode = await workGraphService.appendNode({
-      workGraphId,
-      kind: "evaluation",
-      parent: learningNode.nodeId,
-      actor: {
-        actorKind: "agent-run",
-        actorRef: runHandle.runId,
-      },
-    });
-    
-    // 8. FINAL PROMOTION (fixture)
-    const finalGraph = await workGraphService.transitionStatus(workGraphId, "closed");
-    expect(finalGraph.status).toBe("closed");
-    
-    // Verify append-only WorkGraph preservation
-    const finalAppends = await workGraphService.readAppends(workGraphId);
-    expect(finalAppends.length).toBeGreaterThan(5); // All the nodes we added
-    
-    // Verify r1 lineage preservation (first execution node still exists)
-    const r1Lineage = finalAppends.find(append => append.nodeId === executionNode.nodeId);
-    expect(r1Lineage).toBeDefined();
-    
-    // Report real evidence metrics
-    console.log(`REAL EVIDENCE METRICS:`);
-    console.log(`- Wall time: ${realWallTime}ms`);
-    console.log(`- Process events: ${events.length}`);
-    console.log(`- Exit code: ${completeEvent ? '0' : (failedEvent ? 'non-zero' : 'unknown')}`);
-    console.log(`- Real timestamps: ${events.length > 0 ? 'yes' : 'no'}`);
-    
-    // Verify complete loop trace
-    expect(finalGraph).toBeDefined();
-    expect(finalGraph.nodes.length).toBeGreaterThan(0);
-    expect(finalGraph.status).toBe("closed");
+  // --- stage 2: organization resolution input (fixture record) ---
+  assert.strictEqual(organization.organizationId, "org:a17-real");
+
+  // --- stage 3: REAL execution through the declared AgentRuntime seam ---
+  const startedWall = Date.now();
+  const handle = await runtime.startRun({ workGraphId: "wg:a17-real", organization, task: TASK });
+  assert.strictEqual(handle.runId, "run:wg:a17-real:org:a17-real:1", "deterministic runId");
+  assert.strictEqual(handle.workGraphId, "wg:a17-real");
+  assert.ok(ISO_8601.test(handle.startedAt), "startedAt is a real ISO-8601 timestamp");
+
+  // Seam law: idempotent per deterministic runId — a retry never re-spawns.
+  const retry = await runtime.startRun({ workGraphId: "wg:a17-real", organization, task: TASK });
+  assert.strictEqual(retry.runId, handle.runId);
+  assert.strictEqual(retry.startedAt, handle.startedAt);
+
+  // Seam law: the seam never fabricates history for unknown runs.
+  assert.deepEqual(await runtime.observeRun("run:wg:a17-real:org:unknown:9"), []);
+
+  // REAL wall-clock wait: poll the real process until its real terminal event.
+  const isTerminal = (event: AgentRunEvent | undefined): boolean =>
+    event !== undefined && (event.type === "completed" || event.type === "failed");
+  let events: readonly AgentRunEvent[] = [];
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    events = await runtime.observeRun(handle.runId);
+    if (isTerminal(events[events.length - 1])) break;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  const wallMs = Date.now() - startedWall;
+
+  // Real evidence: the run really happened in real time.
+  assert.ok(events.length > 0, "the real process produced observable events");
+  assert.ok(wallMs > 0, "real wall time elapsed");
+  const terminal = events[events.length - 1];
+  assert.ok(isTerminal(terminal), `the run reached a terminal event within 10s (events: ${events.length})`);
+  assert.strictEqual(terminal.type, "completed", "the real process exited successfully");
+  assert.ok(
+    terminal.detail.includes("exited with code 0"),
+    `the terminal event carries the real exit code: ${terminal.detail}`,
+  );
+  assert.ok(
+    !events.some((event) => event.type === "failed"),
+    "a run that exits 0 has no failed events (verdict comes from the exit code, not stderr)",
+  );
+
+  // Adapter-owned monotonic seq: 1..N in observation order.
+  assert.deepEqual(
+    events.map((event) => event.seq),
+    events.map((_, index) => index + 1),
+    "seq is strictly monotonic from 1",
+  );
+  assert.strictEqual(events[0]?.type, "started", "the adapter records the real spawn first (seq 1)");
+  assert.ok(
+    events.some((event) => event.type === "progress"),
+    "real stdout stream-json lines were parsed into progress events",
+  );
+  for (const event of events) {
+    assert.ok(ISO_8601.test(event.at), `event ${event.seq} carries a real ISO-8601 timestamp`);
+  }
+
+  // Honest metrics in the test output (real measurements, not assertions).
+  console.log("A17 REAL EXECUTION EVIDENCE:");
+  console.log(`- wall time (spawn -> terminal observation): ${wallMs}ms`);
+  console.log(`- observed events: ${events.length}`);
+  console.log(`- terminal: ${terminal.type} (${terminal.detail})`);
+
+  // --- stage 4: the run is first-class WorkGraph lineage (fixture store) ---
+  const runNode = await workService.appendNode({
+    workGraphId: "wg:a17-real",
+    kind: "run",
+    actor: { actorKind: "agent-run", actorRef: handle.runId },
   });
+  assert.strictEqual(runNode.kind, "run");
+
+  // Append-driven trigger: agent-activity moved the open graph to executing.
+  const executing = await workService.readWorkGraph("wg:a17-real");
+  assert.strictEqual(executing?.status, "executing", "the agent run drives open -> executing");
+
+  // --- stage 5: the run's real exit is durable evidence in the graph ---
+  const evidenceNode = await workService.appendNode({
+    workGraphId: "wg:a17-real",
+    kind: "evidence",
+    parent: runNode.nodeId,
+    actor: { actorKind: "agent-run", actorRef: handle.runId },
+  });
+  assert.strictEqual(evidenceNode.kind, "evidence");
+
+  // --- stage 6: outcome closes the loop (append-driven, no skips) ---
+  const outcomeNode = await workService.appendNode({
+    workGraphId: "wg:a17-real",
+    kind: "outcome",
+    parent: runNode.nodeId,
+    actor: { actorKind: "agent-run", actorRef: handle.runId },
+  });
+  assert.strictEqual(outcomeNode.kind, "outcome");
+  const closed = await workService.readWorkGraph("wg:a17-real");
+  assert.strictEqual(closed?.status, "closed", "work-completed drives executing -> closed");
+
+  // --- invariants: the canonical WorkGraph only ever APPENDED ---
+  const finalGraph = await workService.readWorkGraph("wg:a17-real");
+  assert.ok(finalGraph !== null);
+  assert.ok(finalGraph.nodes.length > nodesBefore, "the loop appended nodes");
+  assert.deepEqual(
+    finalGraph.nodes.slice(0, nodesBefore),
+    graph.nodes,
+    "pre-existing WorkGraph nodes are never rewritten",
+  );
+  assert.ok(
+    finalGraph.nodes.every((node, index) => index === 0 || finalGraph.nodes[index - 1].seq < node.seq),
+    "seq stays strictly monotonic",
+  );
+
+  // --- invariants: the append ledger carries the run's actor provenance ---
+  const appends = await workService.readAppends("wg:a17-real");
+  assert.ok(appends.length >= 3, "run + evidence + outcome are all in the ledger");
+  for (const append of appends) {
+    assert.strictEqual(append.actor.actorKind, "agent-run");
+    assert.strictEqual(append.actor.actorRef, handle.runId, "ledger entries trace back to the real run");
+  }
+
+  // --- process hygiene: dispose after terminal completion is a safe no-op kill ---
+  runtime.dispose();
 });

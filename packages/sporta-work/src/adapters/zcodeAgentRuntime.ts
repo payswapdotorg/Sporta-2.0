@@ -1,9 +1,18 @@
 /**
- * Real ZCode AgentRuntime adapter — SPAWNS a real zcode-cli process and captures real events.
+ * Real ZCode AgentRuntime adapter — SPAWNS the zcode-cli binary as a real
+ * child process and turns its real process lifecycle into typed
+ * AgentRunEvent evidence on the declared AgentRuntimeExecutionPort seam.
  *
- * This adapter implements the AgentRuntimeExecutionPort interface by spawning
- * the actual ZCode CLI as a child process and observing its real execution events.
- * The fixture adapter remains for tests that explicitly label it fixture.
+ * Real evidence only: events carry the observed process output, the real
+ * wall-clock timestamps come from the injected clock, and the terminal
+ * event's verdict comes from the REAL process exit code (never inferred
+ * from stderr chatter). The fixture adapter
+ * (fixtureAgentRuntime.ts) remains for tests that explicitly label their
+ * evidence fixture-grade.
+ *
+ * zcode-cli headless invocation (see apps/zcode-cli/packages/cli/src/
+ * arguments.ts + run.ts): `zcode --prompt <task> --output-format
+ * stream-json` — session events stream as JSON lines on stdout.
  */
 import type { SportaId } from "@sporta/contracts/contract";
 import type {
@@ -12,25 +21,43 @@ import type {
   AgentRuntimeExecutionPort,
   StartAgentRunInput,
 } from "../domain/ports.js";
-import { spawn, ChildProcess } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 import { EventEmitter } from "node:events";
+import { fileURLToPath } from "node:url";
 
 interface ActiveRun {
-  process: ChildProcess;
+  child: ChildProcess;
   events: AgentRunEvent[];
   completed: boolean;
 }
 
 export interface ZCodeAgentRuntimeDeps {
-  /** Path to zcode-cli executable (defaults to repo-relative apps/zcode-cli/dist/zcode.cjs) */
+  /**
+   * Executable spawned per run. Defaults to the repo-built zcode-cli
+   * bundle (apps/zcode-cli/packages/cli/dist/zcode.cjs), resolved from
+   * this module so the caller's cwd cannot skew it.
+   */
   zcodeCliPath?: string;
   /** Injectable ISO-8601 clock. */
   now: () => string;
 }
 
 /**
- * Real execution adapter that spawns zcode-cli processes and captures real events.
- * Implements the AgentRuntimeExecutionPort interface with actual process execution.
+ * Default CLI path resolved from this module: adapters/ -> src|dist ->
+ * sporta-work -> packages -> repo root, then into the zcode-cli bundle.
+ * (Same depth from src/ and dist/ because both live one level under the
+ * package root.)
+ */
+const DEFAULT_ZCODE_CLI_PATH = fileURLToPath(
+  new URL("../../../../apps/zcode-cli/packages/cli/dist/zcode.cjs", import.meta.url),
+);
+
+/**
+ * Real execution adapter: one real child process per run, typed events,
+ * deterministic-runId idempotency, and explicit process hygiene
+ * (spawn-error capture, stdio drain before the terminal event, kill on
+ * dispose). Implements the AgentRuntimeExecutionPort seam declared in
+ * domain/ports.ts — this is the ZCode substrate, never a second runtime.
  */
 export class ZCodeAgentRuntimeAdapter implements AgentRuntimeExecutionPort {
   private readonly activeRuns = new Map<SportaId, ActiveRun>();
@@ -39,149 +66,134 @@ export class ZCodeAgentRuntimeAdapter implements AgentRuntimeExecutionPort {
   private readonly now: () => string;
 
   constructor(deps: ZCodeAgentRuntimeDeps) {
-    this.zcodeCliPath = deps.zcodeCliPath || "./apps/zcode-cli/dist/zcode.cjs";
+    this.zcodeCliPath = deps.zcodeCliPath ?? DEFAULT_ZCODE_CLI_PATH;
     this.now = deps.now;
   }
 
   async startRun(input: StartAgentRunInput): Promise<AgentRunHandle> {
     const runId = `run:${input.workGraphId}:${input.organization.organizationId}:${input.organization.version}`;
-    
-    // Check if run already exists
+    // Idempotent per deterministic runId (spec law): a re-start of the
+    // same run returns the existing handle — completed runs are NOT
+    // silently re-executed.
     const existing = this.activeRuns.get(runId);
-    if (existing && !existing.completed) {
+    if (existing !== undefined) {
       return {
         runId,
         workGraphId: input.workGraphId,
-        startedAt: existing.events[0]?.at || this.now(),
+        startedAt: existing.events[0]?.at ?? this.now(),
       };
     }
 
-    // Create a new run
-    const handle: AgentRunHandle = {
-      runId,
-      workGraphId: input.workGraphId,
-      startedAt: this.now(),
-    };
+    const startedAt = this.now();
+    // Real zcode-cli headless interface: --prompt <task> with the
+    // stream-json event format on stdout.
+    const args = ["--prompt", input.task, "--output-format", "stream-json"];
 
-    // Build the zcode-cli command
-    const args = [
-      "target", // Use target command for programmatic execution
-      input.task, // The task to execute
-      "--json", // JSON output for easier parsing
-      "--output-format", "stream-json", // Stream JSON for real-time events
-    ];
-
-    // Spawn the zcode-cli process
-    const process = spawn(this.zcodeCliPath, args, {
+    // NOTE: the spawn result is bound to `child`, NOT `process` — a local
+    // named `process` would shadow the Node global inside its own options
+    // initializer (TS7022/TS2448).
+    const child = spawn(this.zcodeCliPath, args, {
       cwd: process.cwd(),
-      env: {
-        ...process.env,
-        // Ensure clean environment for reproducible runs
-        NODE_ENV: "test",
-      },
+      env: { ...process.env },
+      // The adapter never drives the CLI's stdin; stdout/stderr are the
+      // observed evidence channels.
+      stdio: ["ignore", "pipe", "pipe"],
     });
 
     const events: AgentRunEvent[] = [];
-    let completed = false;
+    const activeRun: ActiveRun = { child, events, completed: false };
+    this.activeRuns.set(runId, activeRun);
 
-    // Handle process output
-    process.stdout.on("data", (data: Buffer) => {
-      try {
-        const lines = data.toString().split("\n").filter(line => line.trim());
-        for (const line of lines) {
-          const event = this.parseEvent(line, runId);
-          if (event) {
-            events.push(event);
-            this.eventEmitter.emit("event", runId, event);
-          }
-        }
-      } catch (error) {
-        // Emit error event instead of logging
-        const errorEvent: AgentRunEvent = {
-          runId,
-          seq: events.length + 1,
-          type: "failed",
-          detail: `Parse error: ${error instanceof Error ? error.message : String(error)}`,
-          at: this.now(),
-        };
-        events.push(errorEvent);
-        this.eventEmitter.emit("event", runId, errorEvent);
+    /** Adapter-owned monotonic seq — ordering evidence is ours, not the CLI's. */
+    const record = (type: AgentRunEvent["type"], detail: string, at: string = this.now()) => {
+      const event: AgentRunEvent = { runId, seq: events.length + 1, type, detail, at };
+      events.push(event);
+      this.eventEmitter.emit("event", runId, event);
+      return event;
+    };
+
+    // Real spawn observation: seq 1 records the real start moment.
+    record("started", `spawned zcode-cli for task: ${input.task}`, startedAt);
+
+    // stdout: parse the CLI's stream-json lines into typed events.
+    child.stdout?.on("data", (chunk: Buffer) => {
+      for (const line of chunk.toString().split("\n")) {
+        if (line.trim() === "") continue;
+        const parsed = this.parseEvent(line);
+        if (parsed !== null) record(parsed.type, parsed.detail, parsed.at);
       }
     });
 
-    // Handle process errors
-    process.stderr.on("data", (data: Buffer) => {
-      const errorEvent: AgentRunEvent = {
-        runId,
-        seq: events.length + 1,
-        type: "failed",
-        detail: `Process error: ${data.toString()}`,
-        at: this.now(),
-      };
-      events.push(errorEvent);
-      this.eventEmitter.emit("event", runId, errorEvent);
+    // stderr is REAL observation evidence, not a verdict: a CLI may warn
+    // on stderr and still exit 0. The terminal verdict comes from the
+    // exit code below.
+    child.stderr?.on("data", (chunk: Buffer) => {
+      record("progress", `stderr: ${chunk.toString().trim()}`);
     });
 
-    // Handle process exit
-    process.on("exit", (code: number | null, signal: NodeJS.Signals | null) => {
-      completed = true;
-      const exitEvent: AgentRunEvent = {
-        runId,
-        seq: events.length + 1,
-        type: code === 0 ? "completed" : "failed",
-        detail: `Process exited with code ${code}${signal ? `, signal: ${signal}` : ""}`,
-        at: this.now(),
-      };
-      events.push(exitEvent);
-      this.eventEmitter.emit("event", runId, exitEvent);
+    /** Terminal transition — exactly one per run, whatever fires first. */
+    const finish = (type: "completed" | "failed", detail: string) => {
+      if (activeRun.completed) return;
+      activeRun.completed = true;
+      record(type, detail);
+    };
+
+    // Process hygiene: spawn failures (ENOENT, EACCES, ...) surface here
+    // as REAL typed failure evidence instead of an unhandled 'error'.
+    child.on("error", (error: Error) => {
+      finish("failed", `zcode-cli process failed to start: ${error.message}`);
     });
 
-    // Store the active run
-    this.activeRuns.set(runId, { process, events, completed });
+    // 'close' (not 'exit'): fires only after the stdio streams drained,
+    // so the terminal event is genuinely the last observed event.
+    child.on("close", (code: number | null, signal: NodeJS.Signals | null) => {
+      finish(
+        code === 0 ? "completed" : "failed",
+        `zcode-cli exited with code ${code === null ? "null" : code}${signal === null ? "" : `, signal: ${signal}`}`,
+      );
+    });
 
-    // Return the handle
-    return handle;
+    return { runId, workGraphId: input.workGraphId, startedAt };
   }
 
   async observeRun(runRef: SportaId): Promise<readonly AgentRunEvent[]> {
     const run = this.activeRuns.get(runRef);
-    if (!run) return [];
-    
-    // Return a copy of the events to prevent external mutation
-    return run.events.map(event => ({ ...event }));
+    // The seam never fabricates history: unknown runs have no events yet.
+    if (run === undefined) return [];
+    return run.events.map((event) => ({ ...event }));
   }
 
   /**
-   * Clean up all active runs by killing their processes.
-   * Called when the adapter is being disposed.
+   * Process hygiene: kill every still-running child and mark it failed.
+   * Runs that already reached their terminal event are left alone.
    */
   dispose(): void {
     for (const [runId, run] of this.activeRuns) {
-      if (!run.completed && !run.process.killed) {
-        run.process.kill();
-        const cleanupEvent: AgentRunEvent = {
-          runId,
-          seq: run.events.length + 1,
-          type: "failed",
-          detail: "Process killed by adapter disposal",
-          at: this.now(),
-        };
-        run.events.push(cleanupEvent);
-      }
+      if (run.completed) continue;
+      run.completed = true;
+      if (!run.child.killed) run.child.kill();
+      run.events.push({
+        runId,
+        seq: run.events.length + 1,
+        type: "failed",
+        detail: "zcode-cli process killed by adapter disposal",
+        at: this.now(),
+      });
     }
     this.activeRuns.clear();
   }
 
   /**
-   * Parse a line of zcode-cli JSON output into an AgentRunEvent.
+   * Parse one zcode-cli stream-json line into event fields (the seq is
+   * assigned by the adapter's own monotonic counter). Unparseable lines
+   * become raw progress evidence — output is never dropped.
    */
-  private parseEvent(line: string, runId: SportaId): AgentRunEvent | null {
+  private parseEvent(line: string): Pick<AgentRunEvent, "type" | "detail" | "at"> | null {
     try {
-      const data = JSON.parse(line);
-      
-      // Map zcode-cli event types to AgentRunEvent types
+      const data: { type?: unknown; message?: unknown; detail?: unknown; timestamp?: unknown } =
+        JSON.parse(line);
       let type: AgentRunEvent["type"];
-      switch (data.type?.toLowerCase()) {
+      switch (typeof data.type === "string" ? data.type.toLowerCase() : "") {
         case "start":
         case "started":
           type = "started";
@@ -200,26 +212,18 @@ export class ZCodeAgentRuntimeAdapter implements AgentRuntimeExecutionPort {
           type = "failed";
           break;
         default:
-          // Unknown type, treat as progress
           type = "progress";
       }
-
-      return {
-        runId,
-        seq: data.sequence || 1,
-        type,
-        detail: data.message || data.detail || JSON.stringify(data),
-        at: data.timestamp || this.now(),
-      };
-    } catch (error) {
-      // If parsing fails, create a generic progress event
-      return {
-        runId,
-        seq: 1,
-        type: "progress",
-        detail: `Raw output: ${line}`,
-        at: this.now(),
-      };
+      const detail =
+        typeof data.message === "string"
+          ? data.message
+          : typeof data.detail === "string"
+            ? data.detail
+            : JSON.stringify(data);
+      const at = typeof data.timestamp === "string" ? data.timestamp : this.now();
+      return { type, detail, at };
+    } catch {
+      return { type: "progress", detail: `raw output: ${line.trim()}`, at: this.now() };
     }
   }
 }

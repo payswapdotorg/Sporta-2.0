@@ -100,9 +100,10 @@ export interface AgentRunEvent {
 
 /**
  * Execution seam declaration ONLY. ZCode's AgentRuntime adapter implements
- * this port in a later wave; sporta-work never implements a second
- * runtime (architecture-lock invariant 2). The adapter in src/adapters is
- * a deterministic fixture simulation, not a runtime.
+ * this port (Wave 2: src/adapters/zcodeAgentRuntime.ts spawns the real
+ * CLI process); sporta-work never implements a second
+ * runtime (architecture-lock invariant 2). The fixture adapter in
+ * src/adapters remains for fixture-labeled tests.
  */
 export interface AgentRuntimeExecutionPort {
   startRun(input: StartAgentRunInput): Promise<AgentRunHandle>;
