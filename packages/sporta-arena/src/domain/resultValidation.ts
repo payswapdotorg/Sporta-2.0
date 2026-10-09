@@ -14,6 +14,40 @@ export type SessionMode = ArenaEscalationRecord["sessionMode"];
 /** Result type of an Arena result. */
 export type ArenaResultType = ArenaResultRecord["resultType"];
 
+/** Provenance source kind of an Arena result (contract view). */
+export type ProvenanceSourceKind = ArenaResultRecord["provenance"]["sourceKind"];
+
+/**
+ * The full result-type vocabulary of the escalation contract. Boundary
+ * adapters narrow wire strings against this list before constructing a
+ * typed ArenaResultRecord (validate-before-apply).
+ */
+export const ARENA_RESULT_TYPES: readonly ArenaResultType[] = [
+  "correction",
+  "unblock",
+  "solution",
+  "review",
+  "evidence-bundle",
+  "knowledge-patch",
+  "tool-gap-signal",
+  "evaluation-verdict",
+  "learning-artifact-ref",
+];
+
+/**
+ * The full provenance source-kind vocabulary of the contract. Boundary
+ * adapters narrow wire strings against this list the same way.
+ */
+export const ARENA_PROVENANCE_SOURCE_KINDS: readonly ProvenanceSourceKind[] = [
+  "authorized-source",
+  "observation",
+  "measurement",
+  "human-judgment",
+  "agent-run",
+  "editor-session",
+  "arena-session",
+];
+
 /**
  * v1 policy table: which result types each session mode may produce.
  * Additive module policy (the escalation contract fixes the result-type
