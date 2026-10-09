@@ -3,6 +3,7 @@ import type { SportaId, Iso8601 } from "./primitives.js";
  * Intent & Work records — IntentSpec, WorkGraph nodes/record, AgentBody, Capability, OrganizationVersion, ToolSession.
  */
 import type { PolicySet } from "@sporta/policy/contract";
+import type { WorkGraphNodeRef } from "./readSeams.js";
 
 /** How learning is permitted for a run. Empty scopes = no learning. */
 export interface LearningPolicyRef {
@@ -41,6 +42,14 @@ export interface WorkGraphNode {
   parent?: SportaId;
   /** Monotonic sequence within the graph. */
   seq: number;
+  /**
+   * Wave-3 additive: typed cross-domain references (escalations, gaps,
+   * arena results, artifact revisions, editor sessions, learning
+   * artifacts) reachable from this node. Optional — v1 graphs without
+   * refs stay valid (the projection degrades to seam-pending).
+   * Shape authority: records/readSeams.ts (TL-serialized).
+   */
+  refs?: readonly WorkGraphNodeRef[];
 }
 
 /** Intent -> Tasks -> Runs -> Actions -> Artifacts -> Evidence -> Outcomes. */

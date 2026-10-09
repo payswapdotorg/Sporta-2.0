@@ -56,3 +56,23 @@ export type {
   EvaluationMetric,
   PromotionRecord,
 } from "./records/arena.js";
+
+export type {
+  WorkGraphNodeRefKind,
+  WorkGraphNodeRef,
+  EditorSessionSummary,
+  EditorSessionHistoryQuery,
+  EditorSessionHistoryReadPort,
+  LearningArtifactSummary,
+  LearningArtifactQuery,
+  LearningArtifactReadPort,
+  OrganizationCandidateSummary,
+  PromotionSummary,
+  OrganizationCandidateQuery,
+  OrganizationCandidateReadPort,
+  EscalationSummary,
+  EscalationResultSummary,
+  EscalationQuery,
+  EscalationResultQuery,
+  EscalationReadPort,
+} from "./records/readSeams.js";
