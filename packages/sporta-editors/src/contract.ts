@@ -16,6 +16,12 @@ export type {
   ArtifactRevisionRecord,
 } from "@sporta/contracts/contract";
 
+export type {
+  EditorSessionSummary,
+  EditorSessionHistoryQuery,
+  EditorSessionHistoryReadPort,
+} from "@sporta/contracts/contract";
+
 export type { ArtifactGraphPort } from "@sporta/artifacts/contract";
 
 export type {
@@ -36,6 +42,23 @@ export type {
 export type { EditOperation } from "./domain/operations.js";
 export { serializeEditOperation, parseEditOperation } from "./domain/operations.js";
 
+export type {
+  EditorSessionHistoryUsageContext,
+  EditorSessionHistoryListInput,
+  EditorSessionHistoryFilter,
+  EditorSessionHistoryStorePort,
+  EditorSessionHistoryDeps,
+} from "./domain/history.js";
+export {
+  EDITOR_SESSION_HISTORY_DEFAULT_LIMIT,
+  EDITOR_SESSION_HISTORY_MAX_LIMIT,
+  resolveEditorSessionHistoryLimit,
+  sessionVisibleToUsage,
+  toEditorSessionSummary,
+  matchesEditorSessionHistoryFilter,
+  compareEditorSessionsNewestFirst,
+} from "./domain/history.js";
+
 export {
   requiredIntegrationLevel,
   licensePermitsUsage,
@@ -49,11 +72,16 @@ export {
   UnknownEditorError,
   UnknownRevisionError,
   UnknownEditorSessionError,
+  EditorSessionHistoryQueryError,
+  EditorSessionHistoryIntegrityError,
 } from "./domain/errors.js";
 
 export { EditorBrokerService } from "./app/EditorBrokerService.js";
+export { EditorSessionHistoryService } from "./app/EditorSessionHistoryService.js";
 
 export { InMemoryEditorSessionStore } from "./adapters/InMemoryEditorSessionStore.js";
+export { InMemoryEditorSessionHistoryStore } from "./adapters/InMemoryEditorSessionHistoryStore.js";
+export { FsEditorSessionHistoryStore } from "./adapters/FsEditorSessionHistoryStore.js";
 export { KdenliveFixtureAdapter, MysteryAppFixtureAdapter } from "./adapters/editors.js";
 export { KdenliveAdapter, KdenliveXmlError } from "./adapters/KdenliveAdapter.js";
 export type {

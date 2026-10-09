@@ -60,3 +60,17 @@ export class UnknownEditorSessionError extends EditorError {
     this.editorSessionId = editorSessionId;
   }
 }
+
+/** A session-history query is malformed (e.g. a non-positive limit). */
+export class EditorSessionHistoryQueryError extends EditorError {
+  constructor(message: string, detail: string) {
+    super(message, `history-query:${detail}`);
+  }
+}
+
+/** A durable session-history ledger entry failed its integrity checks. */
+export class EditorSessionHistoryIntegrityError extends EditorError {
+  constructor(message: string, detail: string) {
+    super(message, `history-integrity:${detail}`);
+  }
+}

@@ -140,3 +140,89 @@ All errors extend `EditorError` with a machine-readable `detail`.
 
 The unknown path replaces step 5 with `recordArtifact` (opaque) +
 `commitRevision` (first revision) and skips step 7.
+
+## Wave 3 — the editor-session history read seam (W3B-1/W3B-2)
+
+Status: SPEC — written with the implementation (ADR:
+docs/architecture/adr-wave3-read-seams.md is the authority; the frozen
+contracts shapes in `packages/sporta-contracts/src/records/readSeams.ts`
+are implemented EXACTLY — `EditorSessionHistoryReadPort`,
+`EditorSessionHistoryQuery`, `EditorSessionSummary`).
+
+### listEditorSessions(input) -> readonly EditorSessionSummary[]
+
+- The public port is the frozen contracts shape. The input this package
+  accepts is the ADDITIVE `EditorSessionHistoryListInput`: the contracts
+  query plus `usage?` — an options object carrying the caller's
+  permitted usages (`EditorSessionHistoryUsageContext`). A bare
+  contracts query is valid input that declares no usages.
+- Summaries mirror `EditorSessionRecord` field-for-field
+  (editorSessionId, editorId, revisionId, mode, integrationLevel,
+  openedAt, closedAt?) — no fewer fields, and nothing else: the
+  session's `PolicySet` never leaks through the read seam.
+- Structural filters: `revisionId`, `editorSessionId`, `openOnly`
+  (open = no `closedAt`). Order is newest-first: descending `openedAt`,
+  ties broken by descending `editorSessionId` (deterministic on every
+  store alike).
+- Bounded-query law: `limit` defaults to 50 when absent, is
+  hard-capped at 500, and a non-positive/non-integer limit is a typed
+  `EditorSessionHistoryQueryError` (the seam never guesses what a
+  malformed bound meant). The bound applies to the STORE page read; the
+  rights gate then filters that page, so a result MAY be shorter than
+  the limit when prohibited sessions occupy early page slots — callers
+  needing older permitted sessions narrow the structural filters or
+  raise the limit (capped at 500).
+
+### The rights gate (invariant 22 — the C6 read half)
+
+- A session is listed iff AT LEAST ONE usage declared by the caller is
+  affirmatively permitted by the session's PolicySet
+  (`rights.usages`) AND NO declared usage is prohibited
+  (`rights.prohibitions`). A mixed context is judged as a whole: any
+  declared prohibited usage hides the session.
+- FAIL-CLOSED: a missing or empty usage context lists NOTHING — the
+  gate cannot affirm any permission, so the seam refuses by emptiness.
+- REFUSAL IS HONEST: filtered-out sessions are simply NOT returned.
+  The seam is a read seam, not an authorization oracle — it never
+  errors on a rights refusal, never explains an absence, and never
+  reveals whether a session exists behind a prohibition. Absence is
+  the only signal.
+- Holders are not evaluated (usage-class gating only); holder-bound
+  authorization is a policy-domain concern above this port.
+
+### The session-history store (durable-capable projection)
+
+- `EditorSessionHistoryStorePort` (domain): `append` (idempotent per
+  session id, first write wins), `close` (first close wins; unknown
+  session is a typed `UnknownEditorSessionError`), `list` (bounded,
+  newest-first, structural filters only — rights gating happens in the
+  service, above the store).
+- `EditorBrokerDeps.sessionHistory?` — OPTIONAL additive wiring. When
+  present, every session the broker opens is appended to the history
+  (and an idempotent re-open re-appends the EXISTING record, which
+  self-heals a projection that missed the original append). Absent ⇒
+  no history is written and broker behavior is unchanged.
+- `InMemoryEditorSessionHistoryStore` — fixture-grade, for tests.
+- `FsEditorSessionHistoryStore` — REAL durable JSON ledger following
+  the W2 `FsArtifactBlobStore` pattern: one pretty-printed record per
+  session at `rootDir/<sha256(id)[0:2]>/<sha256(id)>.json`, atomic
+  writes (stage under `.tmp`, rename into place), integrity verified on
+  EVERY read (parses, required fields present, and the record's
+  `editorSessionId` hashes back to the file's own address) with typed
+  `EditorSessionHistoryIntegrityError` on any violation — never silent
+  corruption. A fresh instance over the same directory reads everything
+  earlier instances wrote (real durability).
+- Session closure is recorded through the store's `close()`. A
+  broker-level close-session flow is future work; the read seam honors
+  whatever `closedAt` the durable record carries.
+
+### Wave 3 failure semantics
+
+| Failure                              | Typed error                            |
+| ------------------------------------ | -------------------------------------- |
+| Malformed history limit              | `EditorSessionHistoryQueryError`       |
+| Ledger entry fails integrity checks  | `EditorSessionHistoryIntegrityError`   |
+| Close of an unknown session          | `UnknownEditorSessionError`            |
+
+Rights refusal at the READ boundary is deliberately NOT in this table:
+it is not an error, it is honest absence.

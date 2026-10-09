@@ -30,3 +30,27 @@ Invariants that types cannot express:
   advances on understood reconciles (multi-save chains: r1 -> r2 -> r3).
 - Everything is in-memory fixture-grade; real editor adapters over ZCode
   workspace facilities are Wave 2.
+
+## Wave 3 implementation notes
+
+- `EditorSessionHistoryService` implements the frozen contracts
+  `EditorSessionHistoryReadPort` exactly (bounded
+  `listEditorSessions`); its accepted input is the additive
+  `EditorSessionHistoryListInput` — the contracts query plus the
+  caller's usage context (`usage?: { usages }`).
+- The invariant-22 read gate: a session is listed iff at least one
+  declared usage is permitted by the session's PolicySet rights and no
+  declared usage is prohibited; missing/empty usage context lists
+  nothing (fail-closed). Filtered-out sessions are simply not returned
+  — the seam never errors on a rights refusal (a read seam, not an
+  authorization oracle).
+- Bounded queries: default limit 50, hard cap 500, malformed limits
+  are typed `EditorSessionHistoryQueryError`.
+- The backing store port `EditorSessionHistoryStorePort` has an
+  in-memory implementation and a REAL filesystem JSON ledger
+  (`FsEditorSessionHistoryStore`, the W2 FsArtifactBlobStore pattern:
+  sharded addresses, atomic .tmp+rename writes, read-time integrity
+  verification, durability across fresh instances).
+- `EditorBrokerDeps.sessionHistory?` is OPTIONAL additive wiring: when
+  present, opened sessions are appended to the durable history (the
+  idempotent re-open re-appends, self-healing a missed projection).
