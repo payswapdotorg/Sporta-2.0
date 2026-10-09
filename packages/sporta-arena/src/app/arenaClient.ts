@@ -1,11 +1,19 @@
 /**
- * ArenaClientService — app-layer implementation of `ArenaClientPort`.
+ * ArenaClientService — app-layer implementation of `ArenaClientPort`
+ * and (Wave 3, additive) of `EscalationReadPort`.
  *
  * Owns (in-memory, fixture-grade): gap records, escalation records and
  * the idempotency index. It never mutates work-graph/organization/
  * artifact state; its only outside interaction is the injected
  * transport port. Results are validated as verdicts only — Arena never
  * mutates Sporta state, and unvalidated results are never auto-applied.
+ *
+ * Wave-3 read seam (ADR: docs/architecture/adr-wave3-read-seams.md):
+ * `listEscalations` / `listResults` are bounded, read-only queries over
+ * the records this service already owns; summaries mirror the canonical
+ * records field-for-field. `listResults` reuses `readResult`, so it
+ * inherits the same boundary law (transport status + lifecycle
+ * mirroring through the legal path only). The seam never mutates state.
  */
 import { createHash } from "node:crypto";
 import type {
@@ -18,6 +26,11 @@ import type {
   ArenaEscalationRecord,
   ArenaResultRecord,
   CapabilityGapRecord,
+  EscalationReadPort,
+  EscalationResultQuery,
+  EscalationResultSummary,
+  EscalationQuery,
+  EscalationSummary,
   SportaId,
 } from "@sporta/contracts/contract";
 import { escalationLifecyclePath } from "../domain/escalation.js";
@@ -30,6 +43,11 @@ import {
   UnknownGapError,
 } from "../domain/errors.js";
 import { validateArenaResultChecks } from "../domain/resultValidation.js";
+import {
+  escalationReadLimit,
+  escalationSummaryOf,
+  resultSummaryOf,
+} from "../domain/escalationReadSeam.js";
 import type { ArenaTransportPort } from "./arenaTransport.js";
 
 /** Constructor dependencies of the Arena client service. */
@@ -81,8 +99,8 @@ function escalationIdFor(tenantRef: string, idempotencyKey: string): SportaId {
   return `esc:${digest}`;
 }
 
-/** The Arena client boundary service. */
-export class ArenaClientService implements ArenaClientPort {
+/** The Arena client boundary service (client port + Wave-3 read seam). */
+export class ArenaClientService implements ArenaClientPort, EscalationReadPort {
   readonly #gaps = new Map<SportaId, GapEntry>();
   readonly #escalations = new Map<SportaId, EscalationEntry>();
   readonly #byIdempotencyKey = new Map<string, EscalationEntry>();
@@ -204,5 +222,53 @@ export class ArenaClientService implements ArenaClientPort {
       accepted: checks.every((check) => check.passed),
       checks,
     };
+  }
+
+  /**
+   * Wave-3 read seam: bounded escalation list over the client's own
+   * store. Filters are optional; the default limit is capped
+   * (bounded-query law). Order is escalation creation order.
+   */
+  async listEscalations(query: EscalationQuery): Promise<readonly EscalationSummary[]> {
+    const limit = escalationReadLimit(query.limit);
+    const summaries: EscalationSummary[] = [];
+    for (const entry of this.#escalations.values()) {
+      if (summaries.length >= limit) break;
+      const record = entry.record;
+      if (query.escalationId !== undefined && record.escalationId !== query.escalationId) {
+        continue;
+      }
+      if (query.workGraphId !== undefined && record.workGraphId !== query.workGraphId) {
+        continue;
+      }
+      if (query.gapId !== undefined && record.gapId !== query.gapId) {
+        continue;
+      }
+      summaries.push(escalationSummaryOf(record));
+    }
+    return summaries;
+  }
+
+  /**
+   * Wave-3 read seam: bounded arena-result list. Results live on the
+   * Arena side, so this reuses `readResult` (one transport status query
+   * per escalation — bounded by the limit); summaries mirror
+   * ArenaResultRecord field-for-field. Read-only: verdicts and records
+   * are never mutated by listing.
+   */
+  async listResults(query: EscalationResultQuery): Promise<readonly EscalationResultSummary[]> {
+    const limit = escalationReadLimit(query.limit);
+    const escalationIds: readonly SportaId[] =
+      query.escalationId !== undefined ? [query.escalationId] : [...this.#escalations.keys()];
+    const summaries: EscalationResultSummary[] = [];
+    for (const escalationId of escalationIds) {
+      if (summaries.length >= limit) break;
+      const result = await this.readResult(escalationId);
+      if (result === null) continue;
+      if (query.resultId !== undefined && result.resultId !== query.resultId) continue;
+      if (query.validatedOnly === true && result.validated !== true) continue;
+      summaries.push(resultSummaryOf(result));
+    }
+    return summaries;
   }
 }

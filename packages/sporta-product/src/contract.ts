@@ -74,3 +74,15 @@ export {
   LearningConsentRefusedError,
   LearningScopeError,
 } from "./domain/errors.js";
+
+// Wave-3 additive (ADR: docs/architecture/adr-wave3-read-seams.md): the
+// learning read seam. `LearningIntakeService` implements
+// `LearningArtifactReadPort` additively (bounded listLearningArtifacts,
+// summaries field-for-field with LearningArtifactRecord). The projection
+// consumes it (and the sibling read seams) as OPTIONAL injected deps —
+// absent seams keep their stages honestly pending.
+export type {
+  LearningArtifactReadPort,
+  LearningArtifactSummary,
+  LearningArtifactQuery,
+} from "@sporta/contracts/contract";

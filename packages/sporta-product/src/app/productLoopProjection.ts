@@ -3,46 +3,37 @@
  * `ProductLoopProjectionPort`.
  *
  * Composes the five injected v1 ports (work, organizations, artifacts,
- * editors, arena) plus optional ambient shell context. It is a read
- * model only: it calls read methods (readWorkGraph, resolve, lineage),
- * implements no domain logic, and mutates nothing. Stages that the v1
- * public contracts cannot derive (takeover, editor, learning, result,
- * organization-improvement) are reported honestly as "pending" with a
- * detail naming the missing read seam — nothing is fabricated.
+ * editors, arena) plus optional ambient shell context and — since Wave 3
+ * — the four OPTIONAL read seams (ADR: docs/architecture/
+ * adr-wave3-read-seams.md): editorSessionHistory, learningArtifacts,
+ * organizationCandidates, escalations. It is a read model only: it calls
+ * read methods (readWorkGraph, resolve, lineage, seam list queries),
+ * implements no domain logic, and mutates nothing.
+ *
+ * Degradation law: an ABSENT seam leaves its stage's honest
+ * `pending: …` detail exactly as v1 — never throw, never lie (see
+ * src/app/productLoopSeamStages.ts for the seam derivations).
+ * Regression law: v1-shaped inputs with no seams injected produce
+ * byte-identical traces (the a17-seeded-loop test stays green unchanged).
  */
 import type { ProductLoopProjectionPort, ProductLoopStage, ProductLoopTrace } from "../contract.js";
-import type { WorkGraphRecord, WorkGraphNode } from "@sporta/contracts/contract";
-import type { WorkGraphPort } from "@sporta/work/contract";
-import type { OrganizationResolverPort } from "@sporta/organizations/contract";
-import type { ArtifactGraphPort } from "@sporta/artifacts/contract";
-import type { EditorBrokerPort } from "@sporta/editors/contract";
-import type { ArenaClientPort } from "@sporta/arena/contract";
+import type {
+  ArtifactRevisionRecord,
+  OrganizationVersionRecord,
+  WorkGraphNode,
+} from "@sporta/contracts/contract";
+import type { WorkGraphRecord } from "@sporta/contracts/contract";
+import type { OrganizationSelection } from "@sporta/organizations/contract";
 import { UnknownWorkGraphError } from "../domain/errors.js";
+import type { ProductLoopProjectionDeps } from "./productLoopDeps.js";
+import { ARTIFACT_BREADTH, learningStage, takeoverEditorStages } from "./productLoopSeamStages.js";
+import {
+  escalationStages,
+  organizationImprovementStage,
+  resultStage,
+} from "./productLoopEscalationStages.js";
 
-/** Injected ports + optional ambient shell context. */
-export interface ProductLoopProjectionDeps {
-  workGraphs: WorkGraphPort;
-  organizations: OrganizationResolverPort;
-  artifacts: ArtifactGraphPort;
-  editors: EditorBrokerPort;
-  arena: ArenaClientPort;
-  /** Ambient shell context for organization selection (defaults: "unknown" / []). */
-  environmentProfile?: string;
-  userRef?: string;
-  constraints?: readonly string[];
-}
-
-const SEAM_TAKEOVER =
-  "pending: v1 ports expose no takeover/editor-session history read seam (Wave 2 event projection)";
-const SEAM_EDITOR =
-  "pending: v1 ports expose no editor-session history read seam (Wave 2 editor read port)";
-const SEAM_LEARNING =
-  "pending: learning state becomes traceable when arena-result/learning read seams land (Wave 2)";
-const SEAM_ARENA =
-  "pending: no in-flight escalation; v1 work-graph status is the only escalation signal";
-const SEAM_RESULT =
-  "pending: reading the Arena result requires escalation refs which v1 work-graph nodes do not carry";
-const SEAM_IMPROVEMENT = "pending: organization candidate/promotion read seams (Worker A, Wave 2)";
+export type { ProductLoopProjectionDeps } from "./productLoopDeps.js";
 
 function nodesOfKind(
   graph: WorkGraphRecord,
@@ -57,17 +48,7 @@ function intentStage(graph: WorkGraphRecord): ProductLoopStage {
   return { stage: "intent", ref: graph.workGraphId, state: "done", detail: "intent admitted" };
 }
 
-async function organizationStage(
-  deps: ProductLoopProjectionDeps,
-  graph: WorkGraphRecord,
-): Promise<ProductLoopStage> {
-  const selection = await deps.organizations.resolve({
-    intent: graph.intent,
-    workGraph: graph,
-    userRef: deps.userRef,
-    environmentProfile: deps.environmentProfile ?? "unknown",
-    constraints: deps.constraints ?? [],
-  });
+function organizationStage(selection: OrganizationSelection): ProductLoopStage {
   const organization = selection.selected.organization;
   return {
     stage: "organization",
@@ -110,16 +91,13 @@ function progressStage(graph: WorkGraphRecord): ProductLoopStage {
   return { stage: "progress", state: "pending", detail };
 }
 
-async function artifactStage(
-  deps: ProductLoopProjectionDeps,
-  graph: WorkGraphRecord,
-): Promise<ProductLoopStage> {
-  const artifactNodes = nodesOfKind(graph, "artifact");
-  const latest = artifactNodes.at(-1);
+function artifactStage(
+  latest: WorkGraphNode | undefined,
+  revisions: readonly ArtifactRevisionRecord[],
+): ProductLoopStage {
   if (latest === undefined) {
     return { stage: "artifact", state: "pending", detail: "no artifact node yet" };
   }
-  const revisions = await deps.artifacts.lineage(latest.nodeId);
   if (revisions.length > 0) {
     return {
       stage: "artifact",
@@ -136,22 +114,6 @@ async function artifactStage(
   };
 }
 
-function escalationStages(graph: WorkGraphRecord): readonly ProductLoopStage[] {
-  const escalated = graph.status === "escalated";
-  return [
-    escalated
-      ? { stage: "capability-gap", state: "done", detail: "work graph status: escalated" }
-      : {
-          stage: "capability-gap",
-          state: "pending",
-          detail: "no escalation signal in v1 work-graph status",
-        },
-    escalated
-      ? { stage: "arena", state: "active", detail: "escalation in flight at the Arena" }
-      : { stage: "arena", state: "pending", detail: SEAM_ARENA },
-  ];
-}
-
 /** The product loop projection service. */
 export class ProductLoopProjection implements ProductLoopProjectionPort {
   readonly #deps: ProductLoopProjectionDeps;
@@ -165,18 +127,42 @@ export class ProductLoopProjection implements ProductLoopProjectionPort {
     if (graph === null) {
       throw new UnknownWorkGraphError(workGraphId);
     }
+
+    // Shared derivation context — every expensive read happens exactly once.
+    const selection = await this.#deps.organizations.resolve({
+      intent: graph.intent,
+      workGraph: graph,
+      userRef: this.#deps.userRef,
+      environmentProfile: this.#deps.environmentProfile ?? "unknown",
+      constraints: this.#deps.constraints ?? [],
+    });
+    const organization: OrganizationVersionRecord = selection.selected.organization;
+
+    // Lineages of the (bounded) latest artifact nodes — the artifact stage
+    // uses the latest node's lineage; the takeover/editor stages read the
+    // reachable revisions and their editor-session provenance.
+    const artifactNodes = nodesOfKind(graph, "artifact");
+    const lineages = new Map<string, readonly ArtifactRevisionRecord[]>();
+    for (const node of artifactNodes.slice(-ARTIFACT_BREADTH)) {
+      lineages.set(node.nodeId, await this.#deps.artifacts.lineage(node.nodeId));
+    }
+    const latest = artifactNodes.at(-1);
+    const latestLineage = latest === undefined ? [] : (lineages.get(latest.nodeId) ?? []);
+
+    const [capabilityGap, arena, escalations] = await escalationStages(this.#deps, graph);
+
     const stages: readonly ProductLoopStage[] = [
       intentStage(graph),
-      await organizationStage(this.#deps, graph),
+      organizationStage(selection),
       executionStage(graph),
       progressStage(graph),
-      await artifactStage(this.#deps, graph),
-      { stage: "takeover", state: "pending", detail: SEAM_TAKEOVER },
-      { stage: "editor", state: "pending", detail: SEAM_EDITOR },
-      { stage: "learning", state: "pending", detail: SEAM_LEARNING },
-      ...escalationStages(graph),
-      { stage: "result", state: "pending", detail: SEAM_RESULT },
-      { stage: "organization-improvement", state: "pending", detail: SEAM_IMPROVEMENT },
+      artifactStage(latest, latestLineage),
+      ...(await takeoverEditorStages(this.#deps, graph, lineages)),
+      await learningStage(this.#deps, graph, selection),
+      capabilityGap,
+      arena,
+      await resultStage(this.#deps, graph, escalations),
+      await organizationImprovementStage(this.#deps, organization),
     ];
     return { workGraphId, stages };
   }
