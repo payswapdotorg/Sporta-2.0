@@ -1,6 +1,6 @@
 # Sporta 2.0 Project State
 
-Status: WAVE 1 INTEGRATED — A17 SEEDED LOOP PROVEN (FIXTURE-GRADE); WAVE 2 FRONTIER OPEN
+Status: WAVE 3 IN FLIGHT — WORKER-B LANE LANDED @ 677e624 (editor-session history read seam + rights-gated reads; 222/222 TL-measured); W3A/W3C LANES DISPATCHED AND IN FLIGHT
 
 ## Repository identity
 
@@ -143,7 +143,7 @@ fixture; measured evidence must state how it was measured.
 
 ## Implementation status
 
-Status lines dated 2026-10-09 at the wave-2 integration head `b5c3f97`
+Status lines dated 2026-10-09 at the wave-3 worker-b merge head `677e624`
 (see integration log W2 for the merge SHAs, per-worker branches and the
 TL-measured battery; battery re-verified after the pod recycle).
 
@@ -162,7 +162,10 @@ TL-measured battery; battery re-verified after the pod recycle).
   durable FS store since W2: FsArtifactBlobStore)
 - Editor Broker: IMPLEMENTED (worker-b; explainable resolution,
   rights-gated sessions, round-trip + opaque-import paths; REAL kdenlive
-  MLT XML round-trip adapter since W2: KdenliveAdapter + kdenliveXml)
+  MLT XML round-trip adapter since W2: KdenliveAdapter + kdenliveXml;
+  editor-session history READ SEAM since W3-B: EditorSessionHistoryService
+  on the frozen contracts port, rights-gated per invariant 22, backed by
+  the real FS history ledger FsEditorSessionHistoryStore)
 - Sports World Model runtime: IMPLEMENTED (worker-b; provenance-gated
   idempotent ingestion, uncertainty carried)
 - Arena integration: IMPLEMENTED (worker-c; idempotent gaps/escalations,
@@ -212,13 +215,17 @@ Wave 3 candidates (typed from worker NEXT DEPENDENCIES + the roadmap
 phases P3/P7/P8; wave-2 items 1-6 are landed, see integration log W2):
 
 1. Product read seams to un-pend the ProductLoopTrace stages:
-   (a) editor-session history read port (takeover/editor stages);
-   (b) learning-artifact read port (learning stage);
+   (a) editor-session history read port — DONE (W3-B landed @ 677e624:
+   EditorSessionHistoryReadPort implemented exactly + rights-gated
+   per invariant 22 + real FS-backed history ledger; see integration
+   log W3-B);
+   (b) learning-artifact read port (learning stage) — w3c lane in
+   flight;
    (c) organization candidate/promotion read access
-   (organization-improvement stage);
+   (organization-improvement stage) — w3a lane in flight;
    (d) escalation/gap + expert-result refs reachable from a work graph
-   (arena/result stages);
-   contracts additions TL-serialized, additive-only.
+   (arena/result stages) — w3c lane in flight;
+   contracts additions TL-serialized @ 14836c6, additive-only.
 2. Product UX host conversion (packages/web integration): the product
    shell UI host consuming the projection + learning-consent intake +
    takeover UX (P3 human-takeover leg of the roadmap).
@@ -226,7 +233,8 @@ phases P3/P7/P8; wave-2 items 1-6 are landed, see integration log W2):
    FsArtifactBlobStore + KdenliveAdapter + HttpArenaTransport into ONE
    seeded lineage test (EVIDENCE CLASS: REAL per leg, honestly labeled).
 4. C6 rights propagation end-to-end (invariant 22: PolicySet propagation
-   across artifact/editor/arena planes, enforced and tested).
+   across artifact/editor/arena planes, enforced and tested) — the
+   editor READ half is landed (W3-B); the remaining planes are open.
 5. Arena entrypoint additive re-export of HttpArenaTransport (TL note
    from W2; needed for cross-package wiring in items 1/3).
 6. (Post-wave-3, roadmap P6/P7/P8) sports production perception/
