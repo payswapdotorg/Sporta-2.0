@@ -268,7 +268,7 @@ None for the W3C scope. Carried environment notes (TL-recorded, unchanged): full
 5. WAVE-4: the packages/web product UX host conversion consuming the un-pended projection + read seams (PROJECT-STATE frontier item 2) — the projection deps are now seam-complete for that host.
 6. The arena side of C6 rights propagation at the read boundary (ADR consequence 5): decide whether ArenaClientService seams gain a caller-context gate (PolicySet/tenant check) or whether the transport-level authorization is deemed sufficient for v1.
 
-DELIVERY: branch wave3/worker-c @ <commit-sha>
+DELIVERY: branch wave3/worker-c @ 6f4c0d2 (work commit; delivery sha recorded in a doc rider commit on top)
 
 Gate table (real, measured on this sandbox, final pre-commit run):
 
