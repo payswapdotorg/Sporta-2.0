@@ -118,7 +118,7 @@ export class FixtureDeploymentAdapter extends BaseDeploymentAdapter {
 
   async doInitialize(): Promise<void> {
     // Fixture initialization - no actual setup needed
-    this.deploymentStatus.forEach((status, plane) => {
+    this.deploymentStatus.forEach((status) => {
       status.lastUpdated = new Date().toISOString();
     });
   }
@@ -197,7 +197,7 @@ export const FixtureDeploymentFactory: DeploymentFactory = {
     return "fixture";
   },
 
-  validateConfig(config: DeploymentConfig): { valid: boolean; errors: string[] } {
+  validateConfig(_config: DeploymentConfig): { valid: boolean; errors: string[] } {
     // Fixture provider accepts any configuration
     return { valid: true, errors: [] };
   },

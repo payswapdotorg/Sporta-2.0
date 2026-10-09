@@ -169,14 +169,21 @@ export interface DeploymentStatus {
   providerStatus?: Record<string, unknown>;
 }
 
-/** Provider adapter factory */
-export interface DeploymentAdapterFactory {
-  /** Create a new adapter instance */
+/**
+ * A single deployment provider's factory: creates adapter instances for
+ * one named provider. The adapters-layer registry (DeploymentAdapterFactory
+ * class) stores these; the domain only declares the seam.
+ */
+export interface DeploymentFactory {
+  /** Create a new adapter instance for the provider. */
   create(config: DeploymentConfig): DeploymentAdapterPort;
-  
-  /** Get provider name */
+
+  /** Provider name this factory registers under. */
   getProviderName(): string;
-  
-  /** Validate configuration */
+
+  /** Validate configuration for this provider. */
   validateConfig(config: DeploymentConfig): { valid: boolean; errors: string[] };
 }
+
+/** Legacy alias of {@link DeploymentFactory} — the same seam, older name. */
+export type DeploymentAdapterFactory = DeploymentFactory;
