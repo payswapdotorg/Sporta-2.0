@@ -35,5 +35,6 @@ export {
 export { ArtifactGraphService } from "./app/ArtifactGraphService.js";
 
 export { InMemoryArtifactBlobStore } from "./adapters/InMemoryArtifactBlobStore.js";
+export { FsArtifactBlobStore } from "./adapters/FsArtifactBlobStore.js";
 export { FixedClock, SystemClock } from "./adapters/clock.js";
 export { sha256Content, sha256Text } from "./adapters/hash.js";
