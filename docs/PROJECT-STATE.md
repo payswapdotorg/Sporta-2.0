@@ -1,6 +1,6 @@
 # Sporta 2.0 Project State
 
-Status: WAVE 3 IN FLIGHT — WORKER-B LANE LANDED @ 677e624 (editor-session history read seam + rights-gated reads; 222/222 TL-measured); W3A/W3C LANES DISPATCHED AND IN FLIGHT
+Status: WAVE 3 IN FLIGHT — WORKER-B + WORKER-C LANES LANDED (read seams 1a/1b/1d + A17 FULL-REAL proven; 246/246 TL-measured @ 140a81e); W3A LANE (read seams 1c) IN FLIGHT
 
 ## Repository identity
 
@@ -143,7 +143,7 @@ fixture; measured evidence must state how it was measured.
 
 ## Implementation status
 
-Status lines dated 2026-10-09 at the wave-3 worker-b merge head `677e624`
+Status lines dated 2026-10-09 at the wave-3 worker-c merge head `140a81e`
 (see integration log W2 for the merge SHAs, per-worker branches and the
 TL-measured battery; battery re-verified after the pod recycle).
 
@@ -219,24 +219,28 @@ phases P3/P7/P8; wave-2 items 1-6 are landed, see integration log W2):
    EditorSessionHistoryReadPort implemented exactly + rights-gated
    per invariant 22 + real FS-backed history ledger; see integration
    log W3-B);
-   (b) learning-artifact read port (learning stage) — w3c lane in
-   flight;
+   (b) learning-artifact read port (learning stage) — DONE (W3-C landed
+   @ 140a81e: LearningArtifactReadPort + product projection wiring with
+   optional read-seam deps, graceful degradation law);
    (c) organization candidate/promotion read access
    (organization-improvement stage) — w3a lane in flight;
    (d) escalation/gap + expert-result refs reachable from a work graph
-   (arena/result stages) — w3c lane in flight;
+   (arena/result stages) — DONE (W3-C: EscalationReadPort in
+   sporta-arena + entrypoint re-export of HttpArenaTransport — the W2
+   note closed);
    contracts additions TL-serialized @ 14836c6, additive-only.
 2. Product UX host conversion (packages/web integration): the product
    shell UI host consuming the projection + learning-consent intake +
    takeover UX (P3 human-takeover leg of the roadmap).
-3. A17 full-real loop test: wire the REAL zcodeAgentRuntime +
-   FsArtifactBlobStore + KdenliveAdapter + HttpArenaTransport into ONE
-   seeded lineage test (EVIDENCE CLASS: REAL per leg, honestly labeled).
+3. A17 full-real loop test — DONE (W3-C: a17-full-real.test.ts — real
+   process + real FS store + real MLT XML round-trip + real HTTP arena in
+   ONE lineage, every ProductLoopTrace stage done, per-leg evidence
+   honestly labeled).
 4. C6 rights propagation end-to-end (invariant 22: PolicySet propagation
    across artifact/editor/arena planes, enforced and tested) — the
    editor READ half is landed (W3-B); the remaining planes are open.
-5. Arena entrypoint additive re-export of HttpArenaTransport (TL note
-   from W2; needed for cross-package wiring in items 1/3).
+5. Arena entrypoint additive re-export of HttpArenaTransport — DONE
+   (W3-C closed the W2 note).
 6. (Post-wave-3, roadmap P6/P7/P8) sports production perception/
    tactical/3D/anime realities + playback; live/shared editor sessions
    (integration level 3); provider fallback + persistent workers +
