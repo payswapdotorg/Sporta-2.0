@@ -5,6 +5,6 @@
 export const sportaEditorsModule = {
   id: "sporta-editors",
   requires: ["sporta-contracts", "sporta-artifacts"],
-  provides: ["editor-broker-port"],
+  provides: ["editor-broker-port", "editor-session-history-read-port"],
   publicEntrypoints: ["contract.ts"],
 } as const;

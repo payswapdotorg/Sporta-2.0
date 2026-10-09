@@ -327,3 +327,344 @@ boundaries; no other worker's package was imported):
 6. Compute provider registration policy (TL): when real providers land,
    the broker's provider set should be assembled from a TL-owned
    composition root, not hardcoded by consumers.
+
+---
+
+# Wave 3 — Worker B: editor session history read seam + rights-gated reads
+
+Status: WAVE 3 W3B-1 + W3B-2 IMPLEMENTED (branch wave3/worker-b, base
+14836c6). The wave-1 report above is preserved unchanged; wave-2 history
+lives in docs/implementation/integration-log.md (merge bec4d47).
+
+## WORK ITEMS
+
+- W3B-1 `EditorSessionHistoryReadPort` — DONE (real, tested):
+  `EditorSessionHistoryService` (app layer) implements the frozen
+  contracts port EXACTLY (`listEditorSessions` bounded query ->
+  `readonly EditorSessionSummary[]`), re-exported additively from
+  `@sporta/editors/contract` together with the contracts shapes
+  (`EditorSessionSummary`, `EditorSessionHistoryQuery`,
+  `EditorSessionHistoryReadPort`). Summaries mirror
+  `EditorSessionRecord` field-for-field (editorSessionId, editorId,
+  revisionId, mode, integrationLevel, openedAt, closedAt?) and carry
+  NOTHING else — the session's PolicySet never leaks through the seam.
+  Filters: revisionId / editorSessionId / openOnly, newest-first order
+  (descending openedAt, deterministic descending-id tie-break). Bounded:
+  default limit 50, hard cap 500, malformed limits are a typed
+  `EditorSessionHistoryQueryError`.
+- W3B-1 RIGHTS-GATED reads (invariant 22, the C6 read half) — DONE
+  (real, tested): the input this service accepts is the ADDITIVE
+  `EditorSessionHistoryListInput` = contracts query + `usage?` (an
+  options object with the caller's permitted usages). Law
+  (`sessionVisibleToUsage`, pure domain): a session is listed iff at
+  least one declared usage is affirmatively permitted by the session's
+  PolicySet `rights.usages` AND no declared usage is in
+  `rights.prohibitions` (a mixed context is judged as a whole).
+  Fail-closed: missing/empty usage context lists nothing. REFUSAL IS
+  HONEST: filtered-out sessions are simply not returned — the seam is a
+  read seam, not an authorization oracle: it never errors on a rights
+  refusal, never explains an absence, never reveals whether a session
+  exists behind a prohibition. Documented in SPEC.md (Wave 3 section).
+- W3B-1 durable-capable session-history store — DONE (real, measured):
+  new `EditorSessionHistoryStorePort` (domain) with `append` (idempotent
+  per session id, first write wins), `close` (first close wins; unknown
+  id -> typed `UnknownEditorSessionError`), `list` (bounded structural
+  listing). Implementations: `InMemoryEditorSessionHistoryStore`
+  (fixture-grade, tests) and `FsEditorSessionHistoryStore` — a REAL
+  filesystem JSON ledger following the W2 FsArtifactBlobStore pattern:
+  one pretty-printed record per session at
+  `rootDir/<sha256(id)[0:2]>/<sha256(id)>.json`, atomic writes (stage
+  under `.tmp`, rename into place), read-time integrity verification
+  (parses, required fields present, and the record's editorSessionId
+  hashes back to the file's own address) with typed
+  `EditorSessionHistoryIntegrityError`, and real durability (a fresh
+  instance over the same directory reads everything earlier instances
+  wrote).
+- W3B-1 broker projection wiring — DONE: `EditorBrokerDeps` gains an
+  OPTIONAL additive `sessionHistory?` seam. When present, every session
+  the broker opens is appended to the durable history; an idempotent
+  re-open re-appends the EXISTING record, which self-heals a projection
+  that missed the original append. Absent => broker behavior is
+  byte-identical to wave 2 (opt-in, no behavior change for existing
+  wiring).
+- W3B-2 rights propagation enforcement on reads — DONE (real, tested
+  end-to-end on the REAL kdenlive lane): see TESTS.
+
+## CHANGED FILES
+
+All inside the owned boundary (sporta-editors + this report file); no
+file outside ownership touched; pnpm-lock.yaml and root manifests
+untouched (verified via git status/diff); zero new dependencies.
+
+New (7):
+- `packages/sporta-editors/src/domain/history.ts` (165 lines — types,
+  limit law, the pure invariant-22 gate, filter/order helpers)
+- `packages/sporta-editors/src/app/EditorSessionHistoryService.ts` (53)
+- `packages/sporta-editors/src/adapters/InMemoryEditorSessionHistoryStore.ts` (44)
+- `packages/sporta-editors/src/adapters/FsEditorSessionHistoryStore.ts` (199)
+- `packages/sporta-editors/test/sessionHistory.test.ts` (414)
+- `packages/sporta-editors/test/FsEditorSessionHistoryStore.test.ts` (304)
+- `packages/sporta-editors/test/rightsReadGate.integration.test.ts` (330)
+
+Modified (9, additive-only):
+- `src/domain/errors.ts` (+`EditorSessionHistoryQueryError`,
+  +`EditorSessionHistoryIntegrityError`)
+- `src/domain/ports.ts` (+optional `sessionHistory?` on
+  `EditorBrokerDeps`)
+- `src/app/EditorBrokerService.ts` (append wiring on both open paths)
+- `src/contract.ts` (additive re-exports: 3 contracts shapes + 5 new
+  types + 7 pure functions + service + both stores + 2 errors)
+- `src/contract.example.ts` (compile-checked read-seam examples)
+- `src/module.ts` (provides += "editor-session-history-read-port")
+- `SPEC.md` (Wave 3 section: the read-seam law, the honest-refusal
+  doctrine, the gate law, the ledger layout, failure semantics)
+- `CONTRACT.md` (Wave 3 implementation notes)
+- `docs/implementation/worker-b.md` (this section)
+
+File-size law: every src file is <= 214 lines. The 414-line
+sessionHistory.test.ts is a test file — exempt per the repo's own
+oxlint override (`max-lines: off` for `**/*.test.ts`) and base
+precedent (sporta-arena/test/httpArenaTransport.test.ts is 507 lines at
+base 14836c6); the architecture checker (max-file-lines 400) walks
+src/ roots only and reports 0 violations.
+
+## TESTS
+
+Location: `packages/sporta-editors/test/`; runner: `pnpm exec tsx --test`
+(node:test + node:assert/strict — no new test frameworks). 23 new tests:
+
+- `sessionHistory.test.ts` (10) — W3B-1: frozen-port shape satisfied +
+  bare-query fail-close; summaries field-for-field with records (exact
+  key set, no policy leak); broker append + idempotent re-open without
+  duplication; re-open self-heal of a history that missed the append;
+  structural filters (revisionId/editorSessionId/openOnly) + closedAt
+  surfaced; close first-close-wins + typed unknown-session refusal;
+  rights gate differential (render/edit list, derive absent, mixed
+  context hidden by prohibition, empty/missing usage lists nothing);
+  pure gate law unit tests; bounded reads (default 50 of 55, explicit
+  limit, cap 500, malformed limits typed); malformed limit typed from
+  the service.
+- `FsEditorSessionHistoryStore.test.ts` (9) — REAL durable storage
+  evidence (W2 pattern): real JSON ledger file at the sharded id
+  address (byte-compared, size measured); durability across fresh
+  instances (twice); atomic writes (no .tmp leftovers, real file count
+  measured); append idempotency (first write wins ON DISK); close
+  unknown typed + first-close-wins on disk; structural filtering over
+  real files; three corruption scenarios -> typed
+  `EditorSessionHistoryIntegrityError` (not-json / id-address-mismatch
+  / missing fields); the durable ledger backing the rights-gated seam
+  end-to-end (incl. a restarted instance); real FS errors surfaced.
+- `rightsReadGate.integration.test.ts` (4) — W3B-2 on the REAL kdenlive
+  lane (W2 real code only): (1) real MLT XML round-trip ->
+  FsArtifactBlobStore (real bytes on real disk) -> real revision ->
+  broker (real KdenliveAdapter, level 2) -> FS history ledger; a render
+  caller lists the session (summary asserted field-for-field; blob +
+  ledger files stat'ed as real files); (2) a derive caller (prohibited)
+  and a mixed render+derive caller CANNOT list it — absent, never an
+  error; an edit caller still can; bare query lists nothing; (3) the
+  PolicySet travels VERBATIM: session-store record, durable ledger file
+  read back from real disk, and the gate's differential behavior all
+  agree on exactly the policy fields that gated the read
+  (usages=[render, edit], prohibitions=[derive]); (4) the gate survives
+  a REAL reconcile (chain grows r1 -> r2, summary stays anchored at the
+  checkpoint revision) and a ledger restart with identical results.
+
+## REAL EVIDENCE
+
+All commands run from /home/z/sporta-2.0 on branch wave3/worker-b at
+the delivered head; numbers are as printed by the tools (the TL
+re-measures at the integration station):
+
+1. `pnpm architecture:check` -> `architecture: OK / violations: 0 /
+   baseline: 0 / new: 0`.
+2. `node scripts/architecture/sporta-surface-check.mjs` ->
+   `ok: sporta-editors exports all 9 frozen names (+56 additive)` and
+   `sporta-surface-check: OK — frozen surfaces intact, growth is
+   additive-only`.
+3. `pnpm exec tsc -b packages/sporta-artifacts packages/sporta-editors
+   packages/sporta-world packages/sporta-compute` -> exit 0, no output
+   (clean).
+4. `pnpm exec tsx --test packages/sporta-artifacts/test/*.test.ts
+   packages/sporta-editors/test/*.test.ts` -> `tests 77 / pass 77 /
+   fail 0 / cancelled 0 / skipped 0`, duration_ms 1578 (base battery:
+   54 pass). Full sporta suite
+   `pnpm exec tsx --test packages/sporta-*/test/*.test.ts` ->
+   `tests 222 / pass 222 / fail 0` (base: 199) — 199 base + 23 new.
+5. `pnpm lint` -> `Found 70 warnings and 0 errors` — identical to the
+   pre-existing baseline (the one transient warning my first draft
+   added — a useless spread in a test — was fixed before commit).
+6. FS ledger, measured on this machine via a one-off tsx measurement
+   script (200 real appends into a real mkdtemp dir, real stat/readdir
+   aggregation): 200 appends in 80.7 ms (0.404 ms avg per atomic
+   append); listing a rights-gated page of 50 over the 200-file ledger
+   22.1 ms; a fully-gated-out (empty) list 22.7 ms; 200 real ledger
+   files totalling 105,692 bytes (528 bytes avg per pretty-printed
+   record). The same facts (file existence, byte sizes, file counts)
+   are asserted inside FsEditorSessionHistoryStore.test.ts and
+   rightsReadGate.integration.test.ts via node:fs stat/readFile on real
+   temp directories.
+
+## FIXTURE EVIDENCE
+
+- The gate, filter, order, limit and summary-projection logic is pure
+  domain code exercised by real tests; the InMemory history store is
+  fixture-grade by design (test double for the durable port).
+- In the W3B-2 integration lane, every element is REAL W2 code: the
+  KdenliveAdapter XML parse/export, the FsArtifactBlobStore, the
+  ArtifactGraphService, the KdenliveAdapter registered with the broker,
+  and the FsEditorSessionHistoryStore ledger. The ONLY fixture-grade
+  seams remaining in that lane are the FixedClock (deterministic
+  timestamps) and the InMemoryEditorSessionStore (the wave-2 session
+  store — the history projection itself is the real FS ledger).
+- The MLT document under test is a fixture DOCUMENT (mirrors the shape
+  real Kdenlive writes; the same document the W2 adapter tests use) —
+  labeled fixture evidence; the parse/export round-trip over it is real
+  code path execution.
+- No real kdenlive process is launched (the adapter operates on the MLT
+  XML document shape; that is the declared W2 integration level).
+
+## CONTRACT CHANGES
+
+Additive-only inside sporta-editors; the contracts package is FROZEN
+and untouched (no fork of any type — the frozen
+`EditorSessionHistoryReadPort`/`EditorSessionHistoryQuery`/
+`EditorSessionSummary` shapes are implemented exactly and re-exported):
+
+- `src/contract.ts` adds: type re-exports `EditorSessionSummary`,
+  `EditorSessionHistoryQuery`, `EditorSessionHistoryReadPort` (from
+  @sporta/contracts/contract); new types
+  `EditorSessionHistoryUsageContext`, `EditorSessionHistoryListInput`
+  (extends the frozen query additively), `EditorSessionHistoryFilter`,
+  `EditorSessionHistoryStorePort`, `EditorSessionHistoryDeps`; pure
+  exports `EDITOR_SESSION_HISTORY_DEFAULT_LIMIT` (50),
+  `EDITOR_SESSION_HISTORY_MAX_LIMIT` (500),
+  `resolveEditorSessionHistoryLimit`, `sessionVisibleToUsage`,
+  `toEditorSessionSummary`, `matchesEditorSessionHistoryFilter`,
+  `compareEditorSessionsNewestFirst`; classes
+  `EditorSessionHistoryService`, `InMemoryEditorSessionHistoryStore`,
+  `FsEditorSessionHistoryStore`; errors
+  `EditorSessionHistoryQueryError`, `EditorSessionHistoryIntegrityError`.
+- `EditorBrokerDeps` gains the OPTIONAL `sessionHistory?` field
+  (additive; existing wiring compiles and behaves identically).
+- Frozen v1 surface preserved (surface check green: 9 frozen names, 56
+  additive); `module.ts` provides grows additively.
+
+## RIGHTS-PROVENANCE
+
+- The read gate is invariant 22's C6 read half: rights PROPAGATE to the
+  read boundary. A session is listed only for callers whose declared
+  usage context is affirmatively permitted and not prohibited by the
+  session's PolicySet (the same PolicySet the broker verified at open
+  time and stamped onto the durable record).
+- The PolicySet travels VERBATIM: broker record == durable ledger file
+  == the fields that gated the read (deep-equality asserted in test 3
+  of rightsReadGate.integration.test.ts, including a read-back of the
+  real JSON file from real disk).
+- Fail-closed defaults: no usage context => nothing listed; any
+  prohibited usage in the context => the session is hidden; malformed
+  limit => typed error; corrupted ledger => typed integrity error.
+- The summary shape carries NO policy fields — rights data never leaks
+  through the read seam (asserted key-by-key).
+- Holders are not evaluated at this seam (usage-class gating only) —
+  holder-bound authorization remains a policy-domain concern (documented
+  in SPEC.md).
+
+## PERFORMANCE
+
+Measured, not guessed (see REAL EVIDENCE #6 for method): 0.404 ms avg
+per durable append (atomic tmp+rename, 528-byte records); a bounded
+page-of-50 gated read over a 200-record ledger is 22.1 ms (the FS store
+scans and integrity-verifies every ledger file — O(ledger); bounded
+queries bound the RESULT, the scan is the documented cost); the pure
+in-memory path is sub-millisecond. The full 77-test battery runs in
+~1.6 s wall; the whole 222-test sporta suite in ~5.6 s.
+
+## SECURITY
+
+- No credentials, tokens or real user data appear in code, tests or
+  this report (nothing needed fragment-assembly — no fake secrets
+  exist in this lane).
+- No network. Filesystem IO lives ONLY in the adapters layer (the
+  architecture checker's domain-io rule: 0 violations); the domain
+  layer stays pure.
+- Fail-closed everywhere: unknown/corrupt state is a typed error or an
+  honest absence, never a silent pass; the gate cannot be bypassed by
+  omitting the usage context (that lists nothing).
+- IDs remain opaque; ledger addresses are sha-256 of the session id
+  (no user-controlled path components reach the filesystem — shard
+  names are `[0-9a-f]{2}` only, enforced on both write and walk).
+
+## RISKS
+
+- The FS ledger `list` is O(ledger-files) per query (scan + parse +
+  verify). Correct and honest, but a production-scale deployment wants
+  an indexed store; the `EditorSessionHistoryStorePort` is the seam for
+  that swap (same shape as the W2 storage doctrine).
+- The rights gate applies AFTER the bounded store page read: when
+  prohibited sessions occupy early page slots the returned page can be
+  shorter than the limit (documented in SPEC.md; callers narrow filters
+  or raise the limit up to the 500 cap). A gate-aware pagination cursor
+  is future polish, not wave-3 scope.
+- Session closure is recorded via the store's `close()`; a broker-level
+  close-session flow (lifecycle events, retention enforcement) is
+  future work — the read seam honors whatever closedAt the durable
+  record carries.
+- The usage-context vocabulary is caller-declared (not
+  cryptographically authenticated); the seam enforces PROPAGATION of
+  the PolicySet gate, not caller identity (holders unevaluated).
+
+## BLOCKERS
+
+None. The frozen contracts shapes fit the implementation exactly; no
+type fork was needed.
+
+## DEVIATIONS
+
+- The additive usage-context option is named `usage` on
+  `EditorSessionHistoryListInput` (the packet said "an additive options
+  object with the caller's permitted usages" without fixing a name).
+- `sessionHistory?` on `EditorBrokerDeps` is optional-and-opt-in rather
+  than required: existing wave-2 wiring (tests, product code) must keep
+  compiling and behaving identically (additive-only law). The W3B-2
+  integration lane wires it for real.
+- oxfmt: base 14836c6 is NOT format-clean (45 of 67 files in
+  sporta-editors already fail `oxfmt --check` at base, pre-existing
+  from the wave-2 merge). I formatted ONLY my 7 new files (all pass
+  `oxfmt --check`) and left the pre-existing files untouched to keep
+  the diff reviewable; a repo-wide format pass is a TL decision, not a
+  worker-lane change.
+- Test-file line counts exceed 400 in one new test file (414) — within
+  the repo's explicit test exemption and base precedent (507-line test
+  file at base); all PRODUCTION files are <= 214 lines.
+
+## NEXT DEPENDENCIES
+
+1. TL note (wave-3 lane C): `ProductLoopProjectionDeps` can now wire
+   `EditorSessionHistoryReadPort` = `EditorSessionHistoryService` (from
+   `@sporta/editors/contract`) with the caller's usage context — the
+   takeover/editor stages can un-pend. The bare contracts port shape
+   also works (fail-closed: no usage => no sessions).
+2. TL note: a durable `EditorSessionStorePort` (the session-state
+   store itself is still in-memory in wiring) would make broker state
+   restartable; the FsEditorSessionHistoryStore pattern transfers
+   directly.
+3. TL note (policy domain): a caller-usage derivation source (who
+   vouches for the usages in `EditorSessionHistoryUsageContext`) and
+   holder-bound authorization sit ABOVE this seam by design.
+4. TL note: retention enforcement (PolicySet.retention dispositions
+   against history records) is a natural wave-4+ concern at the store
+   seam; nothing in this lane enforces retention beyond carrying the
+   policy verbatim.
+
+DELIVERY: branch wave3/worker-b @ ea27d703f500c1a41a4eeffc3fbb7b80ca0aca4e (code-complete; this report commit sits on top — the wave-1 documentation-commit pattern)
+
+## Gate table (measured at the delivered head)
+
+| Gate                                             | Base 14836c6        | wave3/worker-b                       |
+| ------------------------------------------------ | ------------------- | ------------------------------------ |
+| pnpm architecture:check                          | 0 violations        | 0 violations / baseline 0 / new 0   |
+| sporta-surface-check                             | OK                  | OK (editors 9 frozen + 56 additive) |
+| tsc -b (artifacts/editors/world/compute)         | clean               | clean (exit 0)                       |
+| tsx --test artifacts+editors                     | 54 pass / 0 fail    | 77 pass / 0 fail (54 + 23 new)       |
+| tsx --test packages/sporta-* (full suite)        | 199 pass / 0 fail   | 222 pass / 0 fail (199 + 23 new)     |
+| pnpm lint                                        | 0 errors / 70 warn  | 0 errors / 70 warnings (identical)   |

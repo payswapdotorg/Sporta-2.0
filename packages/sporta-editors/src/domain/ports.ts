@@ -7,6 +7,7 @@ import type {
   SportaId,
 } from "@sporta/contracts/contract";
 import type { EditOperation } from "./operations.js";
+import type { EditorSessionHistoryStorePort } from "./history.js";
 /**
  * sporta-editors ports and operational types (domain layer — pure).
  *
@@ -132,4 +133,11 @@ export interface EditorBrokerDeps {
   readonly artifactGraph: ArtifactGraphPort;
   readonly sessionStore: EditorSessionStorePort;
   readonly adapters: readonly EditorAdapterPort[];
+  /**
+   * Optional session-history projection (wave-3 read seam). When
+   * present, every session the broker opens (or idempotently re-opens)
+   * is appended to it — the projection the rights-gated history reads
+   * list from. Absent ⇒ no history is written (additive, opt-in).
+   */
+  readonly sessionHistory?: EditorSessionHistoryStorePort;
 }

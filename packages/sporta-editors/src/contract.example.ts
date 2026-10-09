@@ -1,5 +1,7 @@
 import type {
   EditOperation,
+  EditorSessionHistoryListInput,
+  EditorSessionHistoryReadPort,
   OpenEditorSessionInput,
   ReconcileSessionInput,
   ResolveEditorInput,
@@ -44,4 +46,17 @@ export const exampleEditOperation: EditOperation = {
   kind: "set",
   path: "/clips/0",
   valueHash: "ab" + "00".repeat(31),
+};
+
+export const exampleListEditorSessions: EditorSessionHistoryListInput = {
+  revisionId: "rev:example-1",
+  openOnly: true,
+  limit: 20,
+  usage: { usages: ["render"] },
+};
+
+// The frozen contracts port shape is satisfied by the additive input:
+// a bare query is valid (and lists nothing — fail-closed, no usages).
+export const examplePortQuery: Parameters<EditorSessionHistoryReadPort["listEditorSessions"]>[0] = {
+  openOnly: true,
 };

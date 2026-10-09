@@ -50,7 +50,13 @@ export class EditorBrokerService implements EditorBrokerPort {
   async openSession(input: OpenEditorSessionInput): Promise<EditorSessionRecord> {
     const editorSessionId = input.editorSessionId ?? this.mintId("es");
     const existing = await this.deps.sessionStore.find(editorSessionId);
-    if (existing !== null) return existing; // idempotent: first write wins
+    if (existing !== null) {
+      // Idempotent: first write wins. The history append is itself
+      // idempotent per session id, so re-opening also self-heals a
+      // projection that missed the original append (e.g. a failed write).
+      await this.deps.sessionHistory?.append(existing);
+      return existing;
+    }
 
     const rights = input.policy.rights;
     if (!rights.usages.includes("edit") || rights.prohibitions.includes("edit")) {
@@ -79,6 +85,7 @@ export class EditorBrokerService implements EditorBrokerPort {
     };
     await this.deps.sessionStore.save(record);
     await this.deps.sessionStore.advanceRevision(editorSessionId, input.revisionId);
+    await this.deps.sessionHistory?.append(record);
     return record;
   }
 
