@@ -155,3 +155,80 @@ rethrown by the app: `WorkGraphStatusError`, `WorkGraphIntentConflictError`,
 All stores and the runtime adapter are in-memory fixtures. They prove
 semantics (idempotency, ordering, status law), never production durability
 or real agent execution.
+
+## Wave 3 — node refs (typed cross-domain reference appends)
+
+Spec-before-code record for the Wave 3 read-seams lane (ADR:
+`docs/architecture/adr-wave3-read-seams.md`). Additive port:
+`WorkGraphRefsPort` (`escalateGap`, `recordArenaResult`,
+`commitArtifactRevision`), implemented by `WorkGraphService` (the single
+canonical writer — unchanged).
+
+### Shape authority
+
+`WorkGraphNode.refs?: readonly WorkGraphNodeRef[]` (from
+`@sporta/contracts`, records/readSeams.ts): `{ kind, refId }` with the
+closed kind union `capability-gap | escalation | arena-result |
+artifact-revision | editor-session | learning-artifact`.
+
+### Laws
+
+1. **Append-only immutable ledger**: refs are never removed and never
+   rewritten — no API exists to do so. Appending a ref already present
+   (same `kind` + `refId`) is an idempotent no-op (no write, `updatedAt`
+   unchanged). Ref order is append order.
+2. **Produced kinds only**: this module appends exactly `capability-gap`,
+   `escalation`, `arena-result`, `artifact-revision` — structurally, via
+   the three typed methods (no generic ref-append surface).
+   `editor-session` / `learning-artifact` refs are other lanes' outputs:
+   consumed read-only here, never produced.
+3. **v1 validity**: nodes without refs (all Wave 1/2 graphs) stay valid;
+   the `refs` array is created lazily at the first append and never
+   fabricated by reads.
+4. **No input-shape drift**: existing public inputs (`OpenIntentInput`,
+   `AppendWorkNodeInput`, …) keep their shapes — refs enter only through
+   the three new typed inputs. (A generic optional `refs` field on
+   `AppendWorkNodeInput` was rejected: it would allow producing kinds this
+   lane must not produce.)
+
+### Transitions (status edges the service already owns)
+
+- `escalateGap(workGraphId, nodeId, gapId, escalationId)`:
+  1. graph must exist → `WorkGraphNotFoundError`;
+  2. status edge `executing|awaiting-user -> escalated` via the frozen
+     successor table (`open -> escalated` and `closed -> escalated` throw
+     `WorkGraphStatusError` — no skips, terminal stays terminal);
+  3. appends `capability-gap` (gapId) + `escalation` (escalationId) refs
+     to the owning node → `WorkGraphNodeNotFoundError` when missing;
+  4. ONE store write after both steps succeed (illegal edges leave no
+     partial refs).
+- `recordArenaResult(workGraphId, nodeId, resultId)`:
+  1. appends the `arena-result` ref to the owning node;
+  2. when status is `escalated`, resolves the arena frontier
+     `escalated -> executing` (the resolution edge); on any other status
+     the ref is appended with NO status change (e.g. a result landing
+     after closure — cross-domain facts stay recordable);
+  3. idempotent per input.
+- `commitArtifactRevision(workGraphId, nodeId, revisionId)`:
+  1. the node must exist AND be kind `artifact` → typed refusals
+     (`WorkGraphNodeNotFoundError`, `WorkGraphNodeKindError`);
+  2. appends the `artifact-revision` ref; NO status change (revision
+     commits are not graph status transitions — the artifact fabric owns
+     revision truth, the graph references it);
+  3. idempotent per input.
+
+### Refs vs the closed-graph law
+
+The closed-graph law governs NODE appends (only `evidence`). Ref appends
+are a different ledger: they record cross-domain facts (a revision was
+committed in the artifact fabric, an Arena result was validated) and
+remain appendable to nodes of closed graphs — the immutable ref ledger
+records history; it never rewrites it. Documented decision, not an
+oversight.
+
+### Failure semantics (new typed errors)
+
+`WorkGraphNodeNotFoundError`, `WorkGraphNodeKindError`,
+`WorkGraphNodeRefError` (unknown kind or empty refId — runtime guard for
+callers that bypass types). Thrown by domain transitions, rethrown by the
+app; no partial writes, no silent fallbacks.

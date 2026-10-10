@@ -124,3 +124,24 @@ All stores are in-memory fixtures; scoring weights and factor formulas are
 declared Wave 1 heuristics over record fields, deterministic and
 explainable but NOT learned values. Selection evidence is fixture-grade
 until real organization outcome evidence is attached (later waves).
+
+## Wave 3 — promotion history read port
+
+Spec-before-code record for the Wave 3 read-seams lane (ADR:
+`docs/architecture/adr-wave3-read-seams.md`). Additive method on
+`OrganizationRegistryService`: `listPromotionRecords()` — read-only.
+
+- Lists the immutable `PromotionRecord`s the registry has granted, in store
+  order ((organizationId asc, version asc) — deterministic); unpromoted
+  drafts contribute nothing.
+- Module-internal catalog granularity (like `listVersions`): the bounded
+  query (filters + capped limit) lives at the consuming read seam
+  (`@sporta/lab`'s `OrganizationCandidateReadPort` implementation), not
+  here — the registry does not know about query limits.
+- Read-only: no mutation surface; store clones on read so callers never
+  alias registry state.
+- Also exported additively: `candidateIdFor(organizationId, version)` —
+  the canonical `<orgId>:<version>` candidate id convention, so the Lab
+  read seam and evaluation derive identical ids (no second convention).
+- `OrganizationPromotionHistoryPort` declares the method; the service
+  implements it alongside the registry/catalog/promotion ports.

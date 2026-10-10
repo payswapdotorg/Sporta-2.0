@@ -268,3 +268,233 @@ Work-order notes to the TL (no TL-owned file was touched):
 5. **Evaluation "measured" provenance**: a real measurement channel (e.g.
    EvidenceRecord-linked intervention measurements) should feed
    `InterventionCostInput.basis` before any "measured" label is trusted.
+
+---
+
+# Worker A Wave 3 Report — read seams (w3a)
+
+Status: WAVE 3 IMPLEMENTED (branch wave3/worker-a; base 14836c6 — the
+TL-serialized wave-3 contracts carry). Scope: W3A-1 WorkGraphNode refs
+(sporta-work) + W3A-2 OrganizationCandidateReadPort (sporta-lab, with the
+additive read-only promotion-history port in sporta-organizations).
+Authority order honored: ADR wave-3 read seams → contracts
+records/readSeams.ts → architecture lock → work orders.
+
+## WORK ITEMS
+
+- **W3A-1 — WorkGraphNode refs** (`packages/sporta-work`): the graph
+  service appends typed refs at the status transitions it ALREADY owns —
+  `escalateGap` (capability-gap + escalation refs on the owning node +
+  the `executing|awaiting-user -> escalated` edge), `recordArenaResult`
+  (arena-result ref; resolves `escalated -> executing` when the arena
+  owns the frontier), `commitArtifactRevision` (artifact-revision ref on
+  an artifact-kind node, no status change). New additive
+  `WorkGraphRefsPort` + three typed inputs; pure mechanics in
+  `src/domain/nodeRefs.ts` (append-only, idempotent per (kind, refId),
+  never removed/rewritten — immutable ledger law). editor-session /
+  learning-artifact kinds are NOT produced by this lane (consumed only;
+  the runtime kind guard still validates the full closed union).
+  Existing public inputs keep their shapes exactly; v1 graphs without
+  refs stay valid (proven by test).
+- **W3A-2 — OrganizationCandidateReadPort**
+  (`packages/sporta-lab`): `OrganizationCandidateReadService` implements
+  the contracts port EXACTLY — `listOrganizationCandidates` (summaries
+  field-for-field: candidateId/organizationId/version/status/basis;
+  filters organizationId/candidateId/status) and `listPromotions`
+  (mirrors PromotionRecord identity fields: promotionId/candidateId/
+  decision/decidedAt). Bounded queries: default limit 50, hard cap 50,
+  non-positive/non-integer limit = typed refusal. Read-only: no mutation
+  surface (proven structurally by test).
+  **Package choice (recorded per packet)**: the port is re-exported
+  additively from `@sporta/lab/contract` because the Lab is the package
+  whose population actually holds candidates (the organizations registry
+  catalog — already the Lab's declared dependency);
+  sporta-evaluation is stateless pure computation over caller-provided
+  candidates and holds no population.
+- **Enabling seam** (`packages/sporta-organizations`, owned lane):
+  additive read-only `OrganizationPromotionHistoryPort.
+  listPromotionRecords()` on `OrganizationRegistryService` (deterministic
+  store order; drafts contribute nothing) + additive export of
+  `candidateIdFor` (the canonical `<orgId>:<version>` convention) so the
+  Lab seam and evaluation derive identical ids — no second convention.
+
+## CHANGED FILES
+
+All inside the four owned packages (git diff --name-only 14836c6..HEAD):
+
+- sporta-work: `SPEC.md` (Wave 3 section), `CONTRACT.md`, `src/contract.ts`,
+  `src/contract.example.ts`, `src/domain/errors.ts` (+3 typed errors),
+  `src/domain/ports.ts` (+refs port), `src/app/workGraphService.ts`
+  (+3 methods), `src/domain/nodeRefs.ts` (NEW, 141 lines),
+  `test/workGraphRefs.test.ts` (NEW, 12 tests).
+- sporta-organizations: `SPEC.md`, `CONTRACT.md`, `src/domain/ports.ts`
+  (+history port), `src/app/organizationRegistryService.ts`
+  (+listPromotionRecords), `src/contract.ts` (additive re-exports),
+  `test/organization.test.ts` (+1 test).
+- sporta-lab: `SPEC.md` (Wave 3 section), `src/contract.ts` (additive
+  re-exports), `src/contract.example.ts`, `src/domain/errors.ts`
+  (+LabCandidateQueryError), `src/domain/candidateReads.ts` (NEW, pure),
+  `src/app/organizationCandidateReadService.ts` (NEW),
+  `test/candidateReads.test.ts` (NEW, 10 tests).
+- sporta-evaluation: unchanged (stateless; nothing to read).
+- This report file (append-only wave-3 section).
+
+Largest new file: 155 lines (`sporta-lab/src/domain/candidateReads.ts`);
+largest touched test file 372 lines (`organization.test.ts`); every file
+< 400 (file-size law measured via `wc -l`).
+
+## TESTS
+
+node:test + tsx only (no new frameworks). 23 new tests:
+
+| package | file | new tests |
+| --- | --- | --- |
+| sporta-work | test/workGraphRefs.test.ts | 12 (escalateGap refs+status+idempotency+illegal-edge-no-partial-state; recordArenaResult resolution/non-escalated/late-idempotency; commitArtifactRevision idempotency+kind-refusal; append-order ledger; v1-no-refs validity) |
+| sporta-lab | test/candidateReads.test.ts | 10 (field-for-field summaries; org/candidate/status filters; rejected/rolled-back honest empty; default cap 50 + explicit + capped; invalid-limit typed refusals; promotions field-for-field + filters + candidate-matches-nothing; empty registry; read-only surface) |
+| sporta-organizations | test/organization.test.ts | +1 (listPromotionRecords determinism, drafts contribute nothing, stable after idempotent re-promotion) |
+
+## REAL EVIDENCE
+
+Measured first-hand on this machine at the delivered branch head
+(`/home/z/sporta-2.0`, pnpm 10.33.2, node v24.21.0), commands exactly as
+the packet specifies:
+
+1. `pnpm architecture:check` → `architecture: OK / violations: 0 /
+   baseline: 0 / new: 0`.
+2. `node scripts/architecture/sporta-surface-check.mjs` → `OK — frozen
+   surfaces intact, growth is additive-only` (sporta-work +32 additive,
+   sporta-organizations +27, sporta-lab +15, sporta-evaluation +2).
+3. `pnpm exec tsc -b packages/sporta-work packages/sporta-organizations
+   packages/sporta-lab packages/sporta-evaluation` → exit 0, no output.
+4. `pnpm exec tsx --test packages/sporta-work/test/*.test.ts
+   packages/sporta-lab/test/*.test.ts
+   packages/sporta-evaluation/test/*.test.ts` → `tests 53, pass 53,
+   fail 0` (base: 31).
+5. Full sporta suite (all 12 packages) → `tests 222, pass 222, fail 0`
+   (base: 199; +23 = 12+10+1).
+6. `pnpm lint 2>&1 | tail -3` → `Found 70 warnings and 0 errors`
+   (identical to the pre-existing baseline; two transient warnings I
+   introduced in a new test were fixed before delivery — scoped oxlint
+   on my four packages reports 0 warnings).
+7. Hygiene: `pnpm exec oxfmt --check` on my four packages — every file
+   I created/modified is format-clean (the 96 pre-existing flagged
+   files in those directories are untouched baseline noise, including
+   gitignored dist/ artifacts).
+
+## FIXTURE EVIDENCE
+
+Everything runs on the in-memory fixture stores (InMemoryWorkGraphStore,
+InMemoryOrganizationStore) with a fixed clock — fixture-grade by design:
+the tests prove the read-seam and ref laws (idempotency, append-only,
+bounded queries, honest mapping), never durability. No fabricated ids:
+candidate ids/promotion ids/promotionId bases are derived from real
+registry state; `promotion record <promotionId>` basis references the
+actual immutable record read through the history port.
+
+## CONTRACT CHANGES
+
+None to `@sporta/contracts` (frozen; base 14836c6 types implemented
+verbatim). Additive-only growth of my owned entrypoints:
+
+- sporta-work: + types `WorkGraphNodeRef`, `WorkGraphNodeRefKind`,
+  `EscalateGapInput`, `RecordArenaResultInput`,
+  `CommitArtifactRevisionInput`, `WorkGraphRefsPort`; + errors
+  `WorkGraphNodeNotFoundError`, `WorkGraphNodeKindError`,
+  `WorkGraphNodeRefError`.
+- sporta-organizations: + type `OrganizationPromotionHistoryPort`; +
+  `candidateIdFor` function export.
+- sporta-lab: + types `OrganizationCandidateReadPort`,
+  `OrganizationCandidateSummary`, `PromotionSummary`,
+  `OrganizationCandidateQuery` (contracts re-exports); + error
+  `LabCandidateQueryError`; + consts `DEFAULT_CANDIDATE_LIMIT`,
+  `MAX_CANDIDATE_LIMIT`; + `OrganizationCandidateReadService` (+deps).
+- sporta-evaluation: no change.
+
+## RIGHTS-PROVENANCE
+
+Read seams propagate rights untouched: summaries carry no policy fields
+to strip (field-for-field law), the registry store clones on read so
+callers never alias policy-bearing records, and the refs appended by
+sporta-work reference external record ids only (gap/escalation/result/
+revision) — no policy weakening, no new data leaves its owner. The
+OrganizationCandidateReadService deps are read-only by construction
+(no mutation method exists on them). No hidden chain-of-thought is
+stored (refs are id references only).
+
+## PERFORMANCE
+
+All in-memory: escalateGap/recordArenaResult/commitArtifactRevision are
+O(nodes) per call (node lookup + map rebuild — same order as an append);
+the read seam is O(catalog + promotions) per query with a map join,
+bounded by the 50-row cap on output. Scoped 53-test battery runs in
+~1.0 s wall (tsx startup included); full 222-test suite ~4.8 s. No
+performance claims beyond fixture scale.
+
+## SECURITY
+
+No secrets or credentials in code/tests/report (the delivery token
+appears only in the push URL, never committed or echoed). Typed
+refusals everywhere: illegal status edges, missing nodes, wrong node
+kinds, malformed refs, invalid limits, promoted-without-record registry
+invariant violation — all typed errors, no silent fallbacks. Queries are
+bounded (no unbounded reads — ADR law). Domain layers remain pure
+(architecture checker domain-io rule: 0 violations).
+
+## RISKS
+
+- **recordArenaResult on a non-escalated graph appends the ref without
+  a status change** (including closed graphs). This is a documented
+  decision (cross-domain facts stay recordable; the ref ledger records
+  history, it never rewrites it) — see SPEC.md "Refs vs the closed-graph
+  law". If the TL wants results recordable ONLY while escalated, that is
+  a one-line policy change at the app layer.
+- **basis strings are minimal** ("unpromoted registry draft" /
+  "promotion record <id>") — deterministic and honest, but a richer
+  basis (gates/evidence summary) may be wanted when the projection UX
+  lands (wave 4).
+- **The 55-row bulk test pins the 50-row cap** — if the ADR cap changes,
+  the test constant travels with `MAX_CANDIDATE_LIMIT` (imported, not
+  duplicated).
+
+## BLOCKERS
+
+None. The contracts shapes worked as declared; no type was forked.
+
+## DEVIATIONS
+
+- `escalateGap` takes BOTH `gapId` and `escalationId` (the packet's
+  "escalation ref + capability-gap ref" requires two refIds; the input
+  carries both explicitly rather than deriving one from the other —
+  honest ids, no fabrication).
+- `commitArtifactRevision` returns the updated `WorkGraphNode` (not the
+  graph record) — the natural unit for a single-node ref append; the
+  other two methods return the graph record because they also transition
+  status. Documented in SPEC.md.
+- A generic optional `refs` field on `AppendWorkNodeInput` was
+  considered and REJECTED: it would let callers produce kinds this lane
+  must not produce (editor-session/learning-artifact). The additive
+  typed-method surface enforces the produced-kinds law structurally.
+  This satisfies "optional refs input field only where natural" — it
+  was not natural anywhere in this lane.
+- sporta-evaluation was left untouched: its population is caller-supplied
+  (stateless); the port belongs to the Lab (choice recorded above per
+  the packet's instruction).
+
+## NEXT DEPENDENCIES
+
+None required by this lane. Work-order notes for the TL (no TL-owned
+file touched):
+
+1. `rejected`/`rolled-back` candidate statuses and promotion decisions
+   remain unproducible (wave-1 note carried forward): the honest empty
+  arrays will become real data only after a rollback/rejection decision
+   path exists in the registry (contracts already carry the union).
+2. When worker-c's product projection consumes
+   `OrganizationCandidateReadPort`, it should inject it as an optional
+   dep per the ADR (absent seam ⇒ organization-improvement stage stays
+   seam-pending).
+3. If richer `basis` content is wanted for the wave-4 UX, extend the
+   summary mapping in `sporta-lab/src/domain/candidateReads.ts` — the
+   field-for-field law allows supersets.
+
+DELIVERY: branch wave3/worker-a @ d421db688d99a940a43aa7d65d9cb0011afda3cc (work commit on top of base 14836c6)

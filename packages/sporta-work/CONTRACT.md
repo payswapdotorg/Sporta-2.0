@@ -24,3 +24,15 @@ Wave 1 additions (see SPEC.md for full behavior):
 - Auto `workGraphId`s are content-derived (`wg:<intent-hash>`) and stay
   idempotent; auto `nodeId`s are deterministic per graph state
   (`node:<graphId>:<seq>`) but retry-stability requires an explicit nodeId.
+
+Wave 3 additions (see SPEC.md "Wave 3 — node refs"; ADR:
+docs/architecture/adr-wave3-read-seams.md):
+
+- `WorkGraphNode.refs?` is an append-only immutable ledger: refs are never
+  removed or rewritten; duplicate (kind, refId) appends are idempotent
+  no-ops.
+- Only the four produced kinds (`capability-gap`, `escalation`,
+  `arena-result`, `artifact-revision`) are appendable, structurally via
+  `WorkGraphRefsPort`; `editor-session`/`learning-artifact` refs are other
+  lanes' outputs (read-only here).
+- v1 graphs without refs stay valid; reads never fabricate a `refs` array.

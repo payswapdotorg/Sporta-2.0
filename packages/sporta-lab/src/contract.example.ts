@@ -1,4 +1,4 @@
-import type { LabReplayInput, LabSearchInput } from "./contract.js";
+import type { LabReplayInput, LabSearchInput, OrganizationCandidateQuery } from "./contract.js";
 
 export const exampleSearch: LabSearchInput = {
   intent: {
@@ -35,4 +35,13 @@ export const exampleReplay: LabReplayInput = {
     evidence: [],
     policy: exampleSearch.intent.policy,
   },
+};
+
+/**
+ * Wave 3 — bounded read-seam query: candidates of one organization,
+ * capped at the seam default (50). All filters are optional.
+ */
+export const exampleCandidateQuery: OrganizationCandidateQuery = {
+  organizationId: "org:example",
+  limit: 10,
 };

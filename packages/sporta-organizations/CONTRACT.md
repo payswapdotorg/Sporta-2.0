@@ -22,3 +22,11 @@ Wave 1 additions (see SPEC.md for full behavior):
   structurally isolated per user.
 - `setPreference` is idempotent per userRef: identical signals return the
   stored record unchanged.
+
+Wave 3 additions (see SPEC.md "Wave 3 — promotion history read port"):
+
+- `listPromotionRecords()` is read-only and deterministic (store order);
+  the bounded query lives at the consuming Lab read seam, not here.
+- `candidateIdFor` is the canonical `<orgId>:<version>` candidate id
+  convention, exported for the Lab/evaluation read seams (no second
+  convention).

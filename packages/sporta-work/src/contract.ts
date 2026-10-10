@@ -12,13 +12,16 @@
  * unchanged; Wave 1 additions are additive (lifecycle, ledger, execution
  * seam, service and fixture adapters). Wave 2 adds the REAL ZCode
  * AgentRuntime adapter alongside the fixture (additive; the fixture
- * stays for fixture-labeled tests).
+ * stays for fixture-labeled tests). Wave 3 adds the refs port (typed
+ * cross-domain reference appends — ADR wave-3 read seams).
  */
 export type {
   IntentSpec,
   SportaId,
   WorkGraphNode,
   WorkGraphNodeKind,
+  WorkGraphNodeRef,
+  WorkGraphNodeRefKind,
   WorkGraphRecord,
 } from "@sporta/contracts/contract";
 
@@ -31,6 +34,10 @@ export type {
   WorkGraphPort,
   WorkGraphLifecyclePort,
   WorkGraphLedgerPort,
+  EscalateGapInput,
+  RecordArenaResultInput,
+  CommitArtifactRevisionInput,
+  WorkGraphRefsPort,
   StartAgentRunInput,
   AgentRunHandle,
   AgentRunEvent,
@@ -43,6 +50,9 @@ export {
   WorkGraphNodeConflictError,
   WorkGraphNodeParentError,
   WorkGraphNotFoundError,
+  WorkGraphNodeNotFoundError,
+  WorkGraphNodeKindError,
+  WorkGraphNodeRefError,
 } from "./domain/errors.js";
 
 export { WorkGraphService } from "./app/workGraphService.js";
