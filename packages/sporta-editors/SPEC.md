@@ -509,3 +509,24 @@ All extend `EditorError` (machine-readable `detail` preserved).
   content-addressed blob store, real revision chain, real MLT XML
   through the REAL `KdenliveAdapter`, reconciled through the REAL
   broker — measured (files, bytes, wall time), labeled REAL.
+
+### Wave 6 implementation addenda (written with the implementation)
+
+- Delta ids: when a broadcast carries no caller-supplied `deltaId`, the
+  service derives one content-addressed over
+  `(sessionId, participantId, baseRevisionId, operations)` — identical
+  resubmissions dedupe by construction. Caller-supplied ids remain the
+  explicit idempotency key (the broker's `es:<n>` minting caveat does
+  not apply).
+- Validation order at save/close: the broker's `reconcileSession` is
+  the frozen session-rules law and commits its revision BEFORE the
+  shared-session validation runs (the broker's own writes are legal and
+  append-only). "Before any state is written" therefore means the
+  SHARED-SESSION state: a validation refusal (divergence detection)
+  writes no session/coordination/close-memo state — the shared session
+  stays open and refuses to adopt the moved head.
+- `SharedSessionHistoryReadPort` (the additive consumption shape for
+  the optional `historyRead` dep): the wave-3
+  `EditorSessionHistoryListInput` signature, which
+  `EditorSessionHistoryService` satisfies structurally — the frozen
+  contracts port is untouched.
