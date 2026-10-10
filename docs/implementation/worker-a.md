@@ -840,3 +840,420 @@ untouched). Work-order notes for the TL:
    decided states separately — a projection-layer choice).
 3. If a re-promotion-after-rollback lifecycle is ever wanted, it
    needs a TL-serialized ADR (see RISKS).
+
+# Wave 5 — Worker A (w5a)
+
+Status: WAVE 5 LANE A COMPLETE (branch wave5/worker-a, base e919f81;
+SPEC commit 317d90b before code; code commit 62341cc; this report
+commit sits on top — the W3-B/W4-B documentation-commit pattern).
+
+Scope executed: the TL-serialized wave-5 worker-A lane (ADR:
+docs/architecture/adr-wave5-p6-sports-production.md, Decision 1 +
+Decision 4) — W5A-1 (the sports-world-model contract's pipeline stages
+as pure additive domain functions in sporta-world), W5A-2 (end-to-end
+composition -> the EXISTING ingestObservations boundary), W5A-3 (the
+domain-extension law invariant with a second synthetic domain).
+
+## WORK ITEMS
+
+- **W5A-1 — pipeline domain surface (NEW
+  `packages/sporta-world/src/domain/pipeline/`, additive; the Wave 1
+  ingestion seam is FROZEN — zero edits to snapshot.ts/ports.ts/
+  WorldModelService.ts/domain errors, verified by empty diff at the
+  delivered head).** Six stage files + shared vocabulary + typed
+  errors + composition, every stage: typed input/output records,
+  typed errors (all extending the Wave 1 `WorldModelError`),
+  deterministic + idempotent per batch, provenance carried (every
+  output cites the authorized acquisition chain), uncertainty carried
+  (confidence NEVER raised — carry or min-lower only):
+  1. `acquisition.ts` — an authorized source declaration (media refs,
+     rights scope, provenance seed) becomes a typed acquisition
+     record (the chain root). Fail-closed: non-authorized source
+     kinds are a typed `AcquisitionProvenanceError` (the seam's
+     ingestible vocabulary, mirrored not invented); a rights scope
+     that affirms no usage is a typed `AcquisitionRightsError` (the
+     W3-B/W4-B empty-usage law); structural manifest violations (no
+     media, dup media/manifest ids, mixed domains in one batch) are
+     refused; the seed must DECLARE a valid confidence; the effective
+     source ceiling = min(seed confidence, declared ceiling).
+  2. `normalization.ts` — raw observations -> normalized records in
+     THE EXACT `ObservationInput` vocabulary `ingestObservations`
+     already accepts (zero seam edits): canonical payload hashing
+     (recursive key-sort; key-order independent), the SEAM's own
+     `deriveObservationId` for stable ids (natural retries idempotent
+     at the seam), provenance MINTED from the validated chain, the
+     manifest's declared policy carried on every observation, source
+     ceiling applied by min. Refusals: unknown media, unparseable
+     timestamps, out-of-range confidence, dup rawIds, non-plain
+     payloads.
+  3. `perception.ts` — HONEST typed transform (the SPEC's honesty
+     statement is law: NO ML model is loaded, executed or claimed
+     anywhere; every fact is a DECLARED rule applied
+     deterministically to a payload). Rule vocabulary: entity-state /
+     ball-state field maps (+ optional z, optional possession, rule
+     confidence factor). Application law: a rule engages when any
+     mapped field is present; every PRESENT mapped field must be
+     well-typed (mistyped = typed `PerceptionError` naming rule +
+     field); a fact is produced only when ALL required mapped fields
+     are present; absence is never a fact. Facts sorted+deduped by
+     deterministic factId (length-prefixed opaque id segments — no
+     hash seam threaded past normalization).
+  4. `tracking.ts` — entity continuity by DECLARED keys only
+     (grouping on (entityId, kind); positional proximity is never
+     identity — that would be guessing). Required `maxGapMs`
+     continuity budget (+ optional gap confidence ceiling); gaps
+     beyond budget are RECORDED as typed `TrackGap`s, never
+     interpolated (no state invented); states ordered by capturedAt
+     with factId tie-break; track confidence = min over states (min
+     gap ceiling when gaps exist).
+  5. `calibration.ts` — camera/timing alignment: typed parameters in,
+     typed corrections out. Optional `TimingCalibration` (per-media
+     ms offsets) and `CameraCalibration` (per-media axis-aligned
+     per-axis scale/translation); absent stage = dimension carried
+     unchanged. Fail-closed: an active stage must affirm EVERY cited
+     media ref; scales finite non-zero; offsets finite; ceilings
+     valid. The gap PAIRING was decided at tracking; calibration
+     corrects the measurement (corrected endpoints, recomputed
+     duration). Confidence narrowed by active ceilings only.
+  6. `eventReconstruction.ts` — the contract's event vocabulary:
+     `zone-entry` (axis-aligned ground-plane zone, watched entities;
+     fires ONLY on an observed outside->inside consecutive pair — a
+     first state already inside emits nothing) and `possession-change`
+     (the declared ball's ball-state track; fires only between
+     consecutive differing possessions; a change to/from an absent
+     possession is carried honestly with the missing side omitted).
+     Every event carries per-event provenance refs to its SOURCE
+     OBSERVATIONS (`sourceObservationIds`) and source facts, the
+     acquisition chains, the rule id, the calibrated timestamp and
+     min-carried confidence; deterministic eventIds; dedup + sort.
+- **W5A-2 — end-to-end composition (`pipeline/composition.ts`).**
+  `planPipelineObservations(plan, seams)` is a PURE evaluation of the
+  whole chain (manifest -> stages -> planned observations in the seam
+  vocabulary); `runPipeline(world, plan, seams)` then calls the
+  EXISTING `WorldModelPort.ingestObservations` boundary unchanged and
+  returns the `SportsWorldModelRecord`. All-or-nothing is STRUCTURAL:
+  every stage is pure, so a failure at ANY stage throws before the
+  seam is ever called (proven by tests at an early stage AND a late
+  stage: zero ledger entries, zero snapshots). Event observations are
+  minted deterministically (`obs:<eventId>`, payloadHash over the
+  canonical event detail INCLUDING source observation ids, eventRefs/
+  entityRefs, the declared policy) so pipeline retries re-ingest
+  idempotently. Composition refusals: missing manifest, empty raws
+  (mirroring the seam's own empty-batch refusal) — typed
+  `PipelineCompositionError`.
+- **W5A-3 — domain-extension law invariant (ADR Decision 4).** One
+  full end-to-end test with a SECOND synthetic domain that is not
+  football and not a sport at all — "warehouse-robotics" (site
+  telemetry + lidar, robots, a pallet) — flowing through the SAME
+  composition function, the SAME stage functions and the SAME types
+  with only new DATA (domain tag, different field vocabulary,
+  different zones, per-media calibration), landing an independent
+  `swm:warehouse-robotics` snapshot that coexists with `swm:football`
+  on the same world (disjoint entities, independent ledgers, no
+  cross-domain mutation). No WorkGraph or Organizations change exists
+  or is needed anywhere in this lane.
+
+## CHANGED FILES
+
+- `packages/sporta-world/SPEC.md` — appended the Wave 5 pipeline SPEC
+  section FIRST (own commit 317d90b, before any code — the
+  SPEC-before-code law), including the NO-ML honesty statement, stage
+  laws, per-stage behavior, composition semantics, the
+  domain-extension law and the failure-semantics table.
+- `packages/sporta-world/src/domain/pipeline/` (NEW, 9 files, 1673
+  lines total, all <= 288 lines): `provenance.ts` (shared chain
+  types, canonicalJson, opaque id segments, carry-or-lower,
+  runtime guards), `errors.ts` (8 typed pipeline errors),
+  `acquisition.ts` (209), `normalization.ts` (165),
+  `perception.ts` (222), `tracking.ts` (173), `calibration.ts` (288),
+  `eventReconstruction.ts` (283), `composition.ts` (165).
+- `packages/sporta-world/src/contract.ts` — additive re-exports only
+  (34 types + 18 values = 52 new public names; the frozen Wave 1
+  surface untouched; 121 lines, under the 300 contract-line cap).
+- `packages/sporta-world/src/contract.example.ts` — additive pipeline
+  example (manifest, raws, rules, a complete plan + seams).
+- `packages/sporta-world/CONTRACT.md` — additive "Wave 5 pipeline
+  notes" section (invariants types cannot express).
+- `packages/sporta-world/test/` — 8 NEW test files (all <= 333
+  lines): `pipeline-acquisition.test.ts` (5),
+  `pipeline-normalization.test.ts` (4), `pipeline-perception.test.ts`
+  (3), `pipeline-tracking.test.ts` (3), `pipeline-calibration.test.ts`
+  (4), `pipeline-events.test.ts` (4), `pipeline-composition.test.ts`
+  (8), `pipeline-domains.test.ts` (3) — 34 new tests total.
+- NOT touched: snapshot.ts, ports.ts, WorldModelService.ts, the Wave
+  1 domain errors, world.test.ts (empty diff at the delivered head —
+  the frozen-seam law), sporta-contracts, all other packages, root
+  manifests, pnpm-lock.yaml (zero new dependencies — stdlib only).
+
+## TESTS
+
+34 new tests (node:test via the repo tsx devDependency — zero new
+test-framework dependencies), all green:
+
+- acquisition (5): authorized manifest -> chain record; every
+  non-authorized source kind refused (all 5 non-ingestible kinds,
+  typed + named); seed-confidence law (missing/invalid/ceiling +
+  effective-ceiling min); empty-usage rights refused; malformed
+  batches (no media, dup media, dup manifest id, mixed domains)
+  refused; empty batch total.
+- normalization (4): exact seam vocabulary + minted provenance +
+  canonical hash + the seam's own id derivation; key-order
+  independence (same payload, same id); source ceiling carry-or-lower
+  (three exact values); typed refusals (unknown media, bad timestamp,
+  bad confidence, dup rawId, array payload) + empty-batch totality.
+- perception (3): deterministic extraction (sorted/deduped factIds,
+  exact confidences 0.9 carried / 0.8 narrowed, possession carried,
+  chain citations, re-run deepEqual); skip/partial/mistyped laws (no
+  match, engaged-but-incomplete, wrong type = typed refusal naming
+  rule+field, z present/absent semantics, optional possession);
+  mixed domains + malformed rule batches refused.
+- tracking (3): declared-key identity + gap recording (exact gap
+  9000ms, no interpolation, gap-ceiling confidence 0.7, acquisition
+  citations); factId tie-break determinism; param validation
+  (0/negative/NaN/Infinity, bad ceiling) even with empty facts.
+- calibration (4): exact corrections (offset +100ms re-serialized,
+  scale/translation positions, ceiling-narrowed confidences, gap
+  carried with corrected endpoints, re-run deepEqual); z-axis law
+  (declared -> corrected, undeclared -> carried); absent params carry
+  everything unchanged; refusals (undeclared media per active stage,
+  zero scale, NaN offset, bad ceiling) + declared-identity transform
+  legality + empty-batch totality.
+- events (4): zone-entry fires only on observed outside->inside
+  (exact record: timestamp, confidence, detail, 2 source
+  observations/facts, chains); first-state-inside/exit/unwatched emit
+  nothing; possession-change laws (differing fire with honest absent
+  side, equal/both-absent emit nothing, entity-state tracks are not
+  ball tracks); rule validation + determinism + sort.
+- composition (8): pure full-chain plan (every stage's records, 9
+  planned observations, deterministic re-plan deepEqual); end-to-end
+  SWM snapshot (entities/events/uncertainty exact multiset, declared
+  policy, all-authorized ledger, snapshot hash recomputed from the
+  ledger via the seam's own function, every event's source
+  observations present); idempotent re-run (same snapshot, no
+  duplicates); all-or-nothing at an EARLY stage and a LATE stage
+  (zero side effects both); composition refusals (empty raws,
+  missing manifest, null plan); absent optional stages (tracking
+  params still validated); weaker-policy re-run refused at the seam
+  (rights never weaken silently); confidence never raised through
+  the whole chain (per-observation against raw origins).
+- domains/W5A-3 (3): the second synthetic NON-SPORT domain
+  end-to-end through the SAME seams (independent snapshot, exact
+  uncertainty multiset, per-domain vocabulary, per-media timing
+  -50ms and camera +2 asserted on the events/tracks); two-domain
+  coexistence on one world (disjoint entities, independent ledgers,
+  football hash untouched); cross-domain manifest batch refused at
+  the gate.
+
+## REAL EVIDENCE
+
+How measured: every gate command run at the delivered code commit
+62341cc in this sandbox, outputs quoted verbatim in the gate table
+below. The pipeline functions themselves run for real — the tests
+assert EXACT deterministic outputs of the real functions on the real
+fixture inputs (exact confidences 0.95/0.9/0.85/0.8/0.7, exact
+canonical sha-256 payload hashes via the real
+`sha256WorldHash` adapter, exact corrected timestamps
+(2026-04-01T00:00:01.100Z etc.), exact corrected positions
+((5,5)->(11,11)), exact gap 9000ms, exact event records), and the
+determinism assertions are real re-run deepEquals against the real
+outputs. Test durations are real wall-time reported by node:test
+(individual pipeline tests 0.1-6.5ms; full battery 352 tests in
+~10.1s wall). The tsx caveat is the documented repo law: tests
+execute by transpilation without typechecking; src/ carries the full
+tsc gate (clean, exit 0).
+
+## FIXTURE EVIDENCE
+
+Everything the pipeline CONSUMES in the tests is fixture-grade,
+labeled in every test-file header exactly like the a17 reference: a
+synthetic football broadcast (one authorized broadcaster seed, one
+camera, one player, one ball, one zone — invented data), and a
+synthetic warehouse-robotics site (telemetry + lidar, one robot, one
+pallet — invented data, chosen NON-SPORT to prove the domain law the
+hard way). No real media file, real rights holder, real camera model
+or real perception provider exists in this lane, and none is claimed.
+The honest claim of this wave (typed in SPEC + test headers): the
+pipeline's LAWS (typing, provenance carry, confidence
+carry-or-lower, idempotency, fail-closed refusals, domain
+additivity, all-or-nothing composition) are proven end-to-end at
+fixture grade. NO ML: no model is loaded, executed or claimed — the
+perception stage is a deterministic rule-based typed transform, and
+the SPEC says so explicitly before the code.
+
+## CONTRACT CHANGES
+
+None to frozen contracts. `@sporta/contracts` untouched (the
+per-package duplication law — the pipeline's vocabulary lives in
+sporta-world's domain layer). sporta-world's public entrypoint grew
+ADDITIVELY: 52 new exported names (34 types + 18 values) re-exported
+from the new domain/pipeline files; the frozen Wave 1 surface is
+intact (surface check: "sporta-world exports all 3 frozen names
+(+71 additive)" — 19 additive before this wave, 71 after). The
+ingestion seam signatures are byte-identical to the base (empty git
+diff on snapshot.ts/ports.ts/WorldModelService.ts).
+
+## RIGHTS-PROVENANCE
+
+- The acquisition RIGHTS GATE is fail-closed and FIRST: a manifest
+  whose policy carries no rights scope, or whose rights declare NO
+  usage class, is refused before any observation enters the chain
+  (`AcquisitionRightsError`) — a scope that affirms nothing
+  authorizes nothing (the W3-B/W4-B doctrine, mirrored for the
+  pipeline entry).
+- Holders are carried, never evaluated (the seam-level doctrine:
+  holder-bound authorization is a policy-domain concern above this
+  package).
+- The declared manifest policy is carried on EVERY planned
+  observation, so it becomes the snapshot's established policy at the
+  seam; a later pipeline run with a weaker policy is refused by the
+  SEAM's own WorldPolicyConflictError (tested — rights are never
+  silently weakened through the pipeline path).
+- Provenance chain: every stage output cites the authorized
+  acquisition chain (acquisitionIds); reconstructed events
+  additionally cite their source observations and source facts; the
+  seam's per-observation ledger retains the minted authorized-source
+  provenance (tested: all 9 ledger entries cite the broadcaster).
+- C6 usage-context vocabulary consumed, never invented: the gate
+  checks `RightsScope.usages` classes only, exactly the
+  `@sporta/policy` vocabulary.
+
+## PERFORMANCE
+
+Measured (real wall-time, node:test durations on this 4 GB sandbox):
+individual pipeline stage tests 0.1-6.5ms; the full end-to-end
+composition test (6 raws -> 6 observations + 3 events -> seam ingest
+-> snapshot) ~1.5ms; the whole 352-test battery ~10.1s wall (base
+318-test battery was ~9.4s — the +34 tests add ~0.7s). Structural
+costs: canonical payload hashing is O(payload size) with one
+sha-256 per raw observation; perception is
+O(normalized x rules) with short-circuit engagement; tracking sorts
+per (entity,kind) group; calibration is O(states); event
+reconstruction is O(tracks x states). All state is per-call and
+ephemeral (pure functions) — no caching, no growth across calls. The
+in-memory WorldModelService seam remains fixture-grade (the Wave 1
+record); a durable store swap is the same seam change typed since
+Wave 2.
+
+## SECURITY
+
+- No credentials, tokens or real user data appear in code, tests or
+  this report (the git push URL token is never echoed in any
+  committed file).
+- No network, no filesystem, no timers in the new code (domain
+  layer — the architecture checker's domain-io rule: 0 violations).
+- Fail-closed everywhere: unauthorized source kinds, empty rights
+  scopes, unknown media, mistyped rule fields, undeclared
+  calibration media and malformed parameters are all typed refusals
+  that name the offending record; a refusal at any stage leaves zero
+  ingestion side effects (structural, tested at an early and a late
+  stage).
+- Runtime type guards on every caller-supplied structure (plain-
+  object/finite-number/non-empty-string checks) — malformed JS
+  callers get typed refusals, not TypeErrors.
+- Deterministic ids are length-prefixed over their segments —
+  caller-supplied id strings cannot collide through concatenation.
+- Canonical JSON is bounded by payload size; non-JSON payloads
+  (bigint) are a typed refusal, not a crash.
+
+## RISKS
+
+- The source-kind gate and the empty-usage rights gate mirror the
+  seam's vocabulary at the PIPELINE entry; the seam itself remains
+  the final enforcement (defense in depth, not a replacement).
+- Identity association is strictly by declared keys — two entities
+  sharing one declared id are ONE track by law (never positionally
+  disambiguated); callers must declare their identity vocabulary
+  honestly.
+- Calibration corrects measurements, not detections: a detected gap
+  can end up with a smaller (even negative) corrected duration when
+  per-media offsets diverge — the honest corrected measurement of a
+  real detection decision; renderers must not assume gapless or
+  positive-corrected chains.
+- Zone-entry is a consecutive-pair crossing law: entries that happen
+  entirely between two observed states (out->in->out within one gap)
+  are NOT detected — honest absence, but downstream consumers must
+  not equate "no event" with "never entered".
+- The fixture-grade in-memory seam is the production-truth store
+  today (the Wave 1 record); the pipeline is pure and seam-agnostic,
+  so a durable store swap changes nothing here.
+
+## BLOCKERS
+
+None. The frozen seam's `ObservationInput` vocabulary accepted the
+pipeline's planned observations exactly as specified — zero seam
+edits were needed (empty diff on all five frozen files).
+
+## DEVIATIONS
+
+- SPEC clarification (stage totality): the SPEC's stage-laws section
+  says every stage maps an empty batch to an empty batch, while the
+  normalization section listed "non-empty raws" as a validation.
+  Implemented per the stage-laws section (stages total on empty
+  input) with the COMPOSITION refusing empty raws (typed
+  `PipelineCompositionError`) — which the same SPEC paragraph
+  prescribes. No behavioral gap: direct stage callers get [];
+  pipeline callers get the seam-mirroring refusal.
+- `ReconstructedEvent` carries a `domain` field (the SPEC's
+  reconstructEvents signature takes a domain parameter; its field
+  list did not mention it) — resolved by carrying the validated
+  domain on every event so events self-describe; used by the
+  composition when minting event observations.
+- `zField` is required-if-declared (a rule declaring z applies only
+  to payloads that carry it) and `possessionField` is an optional
+  mapped field (present -> type-validated + carried; absent -> honest
+  possession-less fact) — both are the fail-closed readings of the
+  SPEC's "ALL mapped fields present" application law plus its
+  "optional carried possession" wording; documented in the stage
+  file headers.
+- Test files were split per stage (8 files) so every file stays
+  under the 400-line law — no file in this wave exceeds it (max
+  production file 288 lines, max test file 333 lines).
+- Three transient lint warnings appeared during development (one
+  unused import, two redundant spreads) and were fixed before
+  delivery — the delivered lint count is byte-identical to the
+  baseline (0 errors / 70 warnings).
+- Test-development note, honestly recorded: 3 initial test
+  EXPECTATIONS were wrong against the SPEC-correct implementation
+  (zField semantics, empty-batch calibration totality, a
+  reference-equality fixture bug) and were corrected in the tests —
+  zero implementation changes were needed for them; the
+  implementation never changed to make a test pass.
+
+## NEXT DEPENDENCIES
+
+1. w5b (renderer adapters + two materially different realities): the
+   pipeline result (`PipelineResult` carries facts, tracks,
+   calibrated tracks, events + the SWM record) is the natural input
+   for `SwmRenderModel` adapters — renderers consume the SNAPSHOT
+   through adapters per the invariant, but per-event detail records
+   (zone ids, possession from/to, source observation ids) are richer
+   in `ReconstructedEvent` than in the seam's eventRefs; the adapter
+   boundary decides which plane it reads (typed as a w5b concern).
+2. Event-instance scoping remains the Wave 1 typed dependency
+   (swmId is `swm:<domain>` per fixture-grade single-snapshot-per-
+   domain semantics); a multi-match pipeline (two acquisitions of
+   one domain landing distinct event instances) needs that additive
+   seam input first.
+3. TL note (optional, no action needed by this lane): the
+   acquisition gate requires the provenance seed to DECLARE a
+   confidence (fail-closed reading of the SPEC's seed-confidence
+   law); if the TL prefers optional-seed-confidence with ceiling
+   default 1.0, it is a one-line change in acquisition.ts +
+   SPEC — flagged for ratification.
+4. The composition takes ONE manifest per run (normalization's
+   signature); multi-manifest batches (acquireSources already
+   accepts them) compose by sequential runs today — a multi-
+   acquisition composition input is additive if a use case appears.
+
+DELIVERY: branch wave5/worker-a @ 62341cccd2db729172b49c674d6e97b583ad591f (code-complete; SPEC commit 317d90b precedes it; this report commit sits on top — the documentation-commit pattern)
+
+## Gate table (measured at the delivered head 62341cc)
+
+| Gate                                             | Base e919f81        | wave5/worker-a                          |
+| ------------------------------------------------ | ------------------- | --------------------------------------- |
+| pnpm architecture:check                          | 0 violations        | 0 violations / baseline 0 / new 0      |
+| sporta-surface-check                             | OK                  | OK (world 3 frozen +71 additive)       |
+| tsc -b packages/sporta-world                     | clean               | clean (exit 0, fresh build)            |
+| tsx --test packages/sporta-world                 | 9 pass / 0 fail     | 43 pass / 0 fail (9 + 34 new)          |
+| tsx --test packages/sporta-* (full battery)      | 318 pass / 0 fail   | 352 pass / 0 fail (318 + 34 new)       |
+| pnpm lint                                        | 0 errors / 70 warn  | 0 errors / 70 warnings (identical)     |
