@@ -36,9 +36,16 @@ function collectSourceFiles(dir: string): string[] {
 }
 
 test("ADAPTER BOUNDARY LAW (machine-checked): playback src consumes zero @sporta/* surfaces and never mentions the SWM record", () => {
-  const root = join(import.meta.dirname, "../src");
+  // TL integration scoping (2026-10-10 union): the W5B render-model lane of
+  // this same package legitimately consumes @sporta/contracts (the ADR's
+  // adapter law applies PER SURFACE). The machine check guards the PLAYBACK
+  // surface only: src/domain/playback/** must consume zero @sporta/* and
+  // never mention the SWM record. The package-level dependencies (the render
+  // lane's workspace edges) are the TL registration recorded in the w5c
+  // report's NEXT DEPENDENCIES — not a playback violation.
+  const root = join(import.meta.dirname, "../src/domain/playback");
   const files = collectSourceFiles(root);
-  assert.ok(files.length >= 7, `expected the playback surface sources, found ${files.length}`);
+  assert.ok(files.length >= 6, `expected the playback surface sources, found ${files.length}`);
   for (const file of files) {
     const source = readFileSync(file, "utf8");
     assert.ok(
@@ -53,9 +60,17 @@ test("ADAPTER BOUNDARY LAW (machine-checked): playback src consumes zero @sporta
   const packageJson = JSON.parse(
     readFileSync(join(import.meta.dirname, "../package.json"), "utf8"),
   );
-  assert.ok(
-    packageJson.dependencies === undefined || Object.keys(packageJson.dependencies).length === 0,
-  );
+  // TL registration (the w5c report NEXT DEPENDENCIES #1): the union package
+  // declares the render lane's workspace edges — contracts (type-only SWM
+  // contract consumption) + world (the REAL-ingestion e2e lane). Playback
+  // itself consumes neither (proven by the scan above).
+  const deps = Object.keys(packageJson.dependencies || {});
+  for (const dep of deps) {
+    assert.ok(
+      dep === "@sporta/contracts" || dep === "@sporta/world",
+      `unexpected package dependency ${dep} (only the TL-registered render-lane edges are allowed)`,
+    );
+  }
   assert.equal(packageJson.name, "@sporta/render");
 });
 

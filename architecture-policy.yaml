@@ -151,6 +151,14 @@ modules:
     layers: { domain: domain, app: app, adapters: adapters }
     layerOrder: [domain, app, adapters]
     owner: worker-c
+  - id: sporta-render
+    roots: [packages/sporta-render/src]
+    managed: true
+    requires: [sporta-contracts]
+    publicEntrypoints: [packages/sporta-render/src/contract.ts]
+    layers: { domain: domain, app: app, adapters: adapters }
+    layerOrder: [domain, app, adapters]
+    owner: tl-registration
 
 global:
   maxFileLines: 400

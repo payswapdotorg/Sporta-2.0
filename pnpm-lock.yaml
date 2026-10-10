@@ -1160,6 +1160,15 @@ importers:
         specifier: ^6.0.2
         version: 6.0.2
 
+  packages/sporta-render:
+    dependencies:
+      '@sporta/contracts':
+        specifier: workspace:*
+        version: link:../sporta-contracts
+      '@sporta/world':
+        specifier: workspace:*
+        version: link:../sporta-world
+
   packages/sporta-work:
     dependencies:
       '@sporta/contracts':
