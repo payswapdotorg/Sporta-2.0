@@ -1,6 +1,6 @@
 # Sporta 2.0 Project State
 
-Status: WAVE 3 IN FLIGHT — WORKER-B + WORKER-C LANES LANDED (read seams 1a/1b/1d + A17 FULL-REAL proven; 246/246 TL-measured @ 140a81e); W3A LANE (read seams 1c) IN FLIGHT
+Status: WAVE 3 LANDED — ALL THREE LANES (read seams 1a/1b/1c/1d + WorkGraph refs + A17 FULL-REAL proven; 269/269 TL-measured @ 89617b7); REMAINING TAIL: product UX host conversion (packages/web) + C6 rights remaining planes + the W2 a17-real-execution flake fix
 
 ## Repository identity
 
@@ -143,9 +143,9 @@ fixture; measured evidence must state how it was measured.
 
 ## Implementation status
 
-Status lines dated 2026-10-09 at the wave-3 worker-c merge head `140a81e`
-(see integration log W2 for the merge SHAs, per-worker branches and the
-TL-measured battery; battery re-verified after the pod recycle).
+Status lines dated 2026-10-10 at the wave-3 worker-a merge head `89617b7`
+(see integration logs W2/W3-B/W3-C/W3-A for the merge SHAs, per-worker
+branches and the TL-measured batteries).
 
 - Sporta semantic packages: 12 modules implemented (Wave 0 skeleton +
   Wave 1 domain/app/adapters + Wave 2 real-execution adapters + tests)
@@ -153,10 +153,15 @@ TL-measured battery; battery re-verified after the pod recycle).
   machine, takeover-first-class, AgentRuntime seam REAL since W2:
   packages/sporta-work/src/adapters/zcodeAgentRuntime.ts — real child
   process driving the zcode-cli headless interface; fixture adapter
-  retained and labeled)
+  retained and labeled; typed node REFS since W3-A: WorkGraphRefsPort +
+  escalateGap/recordArenaResult/commitArtifactRevision append refs at
+  the owned status transitions — append-only, idempotent per
+  (kind, refId), immutable ledger law)
 - Organization Lab: IMPLEMENTED (worker-a; population search, replay,
   deterministic explainable resolver, immutable promotion, per-user
-  personalization isolation)
+  personalization isolation; candidate READ SEAM since W3-A:
+  OrganizationCandidateReadPort in sporta-lab field-for-field over the
+  organizations promotion-history port, bounded queries, read-only)
 - Artifact Graph: IMPLEMENTED (worker-b; immutable revisions, lineage,
   content-addressed store with read-time integrity verification; REAL
   durable FS store since W2: FsArtifactBlobStore)
@@ -223,7 +228,10 @@ phases P3/P7/P8; wave-2 items 1-6 are landed, see integration log W2):
    @ 140a81e: LearningArtifactReadPort + product projection wiring with
    optional read-seam deps, graceful degradation law);
    (c) organization candidate/promotion read access
-   (organization-improvement stage) — w3a lane in flight;
+   (organization-improvement stage) — DONE (W3-A landed @ 89617b7:
+   OrganizationCandidateReadPort in sporta-lab field-for-field over the
+   additive OrganizationPromotionHistoryPort + WorkGraph refs at owned
+   status transitions; see integration log W3-A);
    (d) escalation/gap + expert-result refs reachable from a work graph
    (arena/result stages) — DONE (W3-C: EscalationReadPort in
    sporta-arena + entrypoint re-export of HttpArenaTransport — the W2
@@ -231,14 +239,21 @@ phases P3/P7/P8; wave-2 items 1-6 are landed, see integration log W2):
    contracts additions TL-serialized @ 14836c6, additive-only.
 2. Product UX host conversion (packages/web integration): the product
    shell UI host consuming the projection + learning-consent intake +
-   takeover UX (P3 human-takeover leg of the roadmap).
+   takeover UX (P3 human-takeover leg of the roadmap) — the wave-3 tail
+   frontier. Includes wiring OrganizationCandidateReadPort into the
+   product projection as an optional dep (w3a NEXT DEPENDENCIES note 2 —
+   absent seam ⇒ organization-improvement stage stays seam-pending).
 3. A17 full-real loop test — DONE (W3-C: a17-full-real.test.ts — real
    process + real FS store + real MLT XML round-trip + real HTTP arena in
    ONE lineage, every ProductLoopTrace stage done, per-leg evidence
    honestly labeled).
 4. C6 rights propagation end-to-end (invariant 22: PolicySet propagation
    across artifact/editor/arena planes, enforced and tested) — the
-   editor READ half is landed (W3-B); the remaining planes are open.
+   editor READ half is landed (W3-B); the artifact + remaining planes
+   are the wave-3 tail frontier. Plus the W2 a17-real-execution flake
+   stabilization (the pre-existing race in the W2 real-process
+   stand-in's terminal event — documented in integration log W3-C;
+   Worker-A lane, small).
 5. Arena entrypoint additive re-export of HttpArenaTransport — DONE
    (W3-C closed the W2 note).
 6. (Post-wave-3, roadmap P6/P7/P8) sports production perception/
