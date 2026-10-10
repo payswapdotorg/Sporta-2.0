@@ -1545,3 +1545,78 @@ DELIVERY: branch wave5/worker-b @ 6c45ea33e90645c8a67ba6ab956caac080e7c958 (code
 | tsx --test sporta-render                   | n/a (new package)   | 52 pass / 0 fail                       |
 | tsx --test packages/sporta-* (full suite)  | 318 pass / 0 fail   | 370 pass / 0 fail (318 + 52 new)       |
 | pnpm lint                                  | 0 errors / 70 warn  | 0 errors / 70 warnings (identical)     |
+
+## ADDENDUM (resume session) — the REAL-ingestion end-to-end lane
+
+A later resume session of this packet (fresh clone from the base SHA,
+no local branch state) rebuilt the work independently, then
+discovered this standing delivery already pushed on
+`wave5/worker-b`. Reconciliation, honestly recorded:
+
+- The standing delivery (7ab42c1 spec / 6c45ea3 code / 891d77e
+  report) was re-verified IN THIS SANDBOX with the full battery:
+  arch 0/0/0, surface OK, tsc clean, 370/370, lint 0/70 — all
+  claims reproduced genuinely (an initial 285/297 result was a
+  worktree-environment artifact: missing per-package node_modules
+  symlinks; with resolution restored, 370/370).
+- The independent re-implementation (48 tests, all gates green
+  locally — 366/366) was DISCARDED from the branch: the standing
+  delivery is authoritative; no force-push, no history rewrite.
+- ONE genuine gap in the standing delivery was identified and
+  closed ADDITIVELY on top of it (this commit): the packet's
+  evidence law wants the A13-prefix lane executed for real, and the
+  standing tests used hand-built "ingestion-shaped" snapshot
+  literals only — no real `WorldModelService` execution. New file
+  `packages/sporta-render/test/swmSourceEndToEnd.test.ts` (303
+  lines, 6 tests):
+  - REAL: authorized observations -> REAL `WorldModelService`
+    ingestion (the frozen B5 seam) + REAL sha-256 snapshot hashing
+    (node:crypto) -> BOTH realities from the SAME returned snapshot;
+    the header carries the real record facts verbatim (source,
+    provenance, rightsScope, evidence = the real uncertainty
+    subjects/confidences); entities/events carry NO invented
+    confidence (the real service's uncertainty subjects are
+    observation ids, which match no entity/event id — an honest
+    fact about the real seam, now pinned); every narrative phrase
+    anchored to its event id.
+  - REAL: the A13 materiality invariant re-proven on the REAL
+    snapshot (identical shared header; disjoint reality bodies —
+    tactical body is board/timeline geometry, play-by-play body is
+    records only).
+  - REAL: both serializers deterministic over the REAL snapshot and
+    traceable (every real entity/event id appears in both the SVG
+    document and the transcript; the SVG `<desc>` carries the real
+    snapshot hash + provenance).
+  - REAL: a second synthetic domain (`robotics-arena`, a NON-sport
+    domain) end-to-end through the real ingestion — the
+    domain-extension law proven on the real seam.
+  - REAL: the usage gate is fail-closed over a REAL restricted
+    snapshot (a policy of `usages: [edit]`, `prohibitions:
+    [render]` is not renderable under a render usage context; bare
+    and empty contexts never renderable; a caller declaring a
+    prohibited class is refused; an edit-only caller of that policy
+    IS renderable — the prohibition applies only to declared
+    classes).
+  - REAL: idempotent re-ingestion keeps both realities byte-stable.
+  - Evidence classes labeled in the file header (REAL functions;
+  FIXTURE-GRADE authorized observations — no real broadcast feed
+  exists in this sandbox; the upstream w5a perception stages are
+  out of scope).
+- Resolution note: `@sporta/world` resolves via the WO-C1
+  transitional gitignored symlink (as before); the TL's integration
+  note (NEXT DEPENDENCIES item 2) stands — the real install must
+  add the workspace edges or this one file fails to resolve at the
+  TL station (the other 52 render tests are self-contained).
+
+Gate table (re-measured at the addendum head, this sandbox):
+
+| Gate                                       | Base e919f81        | wave5/worker-b (with addendum)        |
+| ------------------------------------------ | ------------------- | ------------------------------------- |
+| pnpm architecture:check                    | 0 violations        | 0 violations / baseline 0 / new 0    |
+| sporta-surface-check                       | OK                  | OK (unregistered pkg not scanned)    |
+| tsc -b packages/sporta-render              | n/a (new package)   | clean (exit 0)                        |
+| tsx --test sporta-render                   | n/a (new package)   | 58 pass / 0 fail (52 + 6 e2e)        |
+| tsx --test packages/sporta-* (full suite)  | 318 pass / 0 fail   | 376 pass / 0 fail (318 + 58 new)     |
+| pnpm lint                                  | 0 errors / 70 warn  | 0 errors / 70 warnings (identical)   |
+
+DELIVERY: branch wave5/worker-b — standing delivery @ 891d77e (spec 7ab42c1, code 6c45ea3, report 891d77e); this addendum commit sits on top (fast-forward, no history rewrite)
