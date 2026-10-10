@@ -43,6 +43,17 @@ export class OrganizationPromotionError extends Error {
   }
 }
 
+/**
+ * Wave 4 — a rejection/rollback decision gate failed (evidence / policy /
+ * prior-promotion). The decision is refused; never a silent downgrade.
+ */
+export class OrganizationDecisionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "OrganizationDecisionError";
+  }
+}
+
 /** Resolution cannot select an organization (no promoted candidates). */
 export class OrganizationResolutionError extends Error {
   constructor(message: string) {

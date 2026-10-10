@@ -1,16 +1,23 @@
 /**
  * Candidate/promotion read-seam derivation — pure mapping of registry
- * catalog entries + promotion history to the Wave 3 read-seam summaries
- * (ADR: docs/architecture/adr-wave3-read-seams.md).
+ * catalog entries + promotion/decision history to the Wave 3 read-seam
+ * summaries (ADR: docs/architecture/adr-wave3-read-seams.md).
  *
  * HONEST STATE MAPPING (documented, never coerced):
- * - registry entry, unpromoted        → status "candidate"
- * - registry entry, promoted          → status "promoted"
- * - "rejected" / "rolled-back"        → NOT PRODUCIBLE by the current
- *   population: the v1 registry has no rejection or rollback decision
- *   path (worker-A wave-1 report, NEXT DEPENDENCIES; only decision
- *   "promoted" exists). Queries filtering for those statuses return an
- *   honest `[]` — no state is silently relabeled.
+ * - registry entry, no decision record        → status "candidate"
+ * - latest decision record "promoted"        → status "promoted"
+ * - latest decision record "rejected"        → status "rejected"
+ * - latest decision record "rolled-back"     → status "rolled-back"
+ *
+ * Since Wave 4 (ADR wave-4) all four states are PRODUCIBLE: the
+ * organizations registry gained the rejection/rollback decision path
+ * (rejectCandidate / rollbackPromotion), so the honest empty arrays the
+ * seam used to return for rejected/rolled-back queries became real
+ * data. The latest decision record per candidate is the CURRENT state
+ * (the registry returns records in grant order — promotion before its
+ * rollback — so the last record for a candidateId is the current one);
+ * the earlier promotion record of a rolled-back candidate stays
+ * visible in listPromotions as immutable history.
  *
  * Bounded-query law: filters apply first, the capped limit last; the
  * default limit is 50 and 50 is also the hard cap (a larger request is
@@ -54,24 +61,40 @@ export function organizationOfCandidateId(candidateId: SportaId): SportaId | nul
   return index <= 0 ? null : (candidateId.slice(0, index) as SportaId);
 }
 
-/** Candidate status of one catalog entry (honest two-state mapping, see file header). */
-export function candidateStatusOf(entry: OrganizationCatalogEntry): "candidate" | "promoted" {
+/** Candidate status carried by a decision record (contracts union). */
+export type CandidateStatus = OrganizationCandidateSummary["status"];
+
+/**
+ * Candidate status of one catalog entry given its LATEST decision record
+ * (see file header): the decision IS the current state; an entry without
+ * any decision record is an undecided draft ("candidate"). The promoted
+ * boolean is kept only as the registry-invariant guard in
+ * candidateSummaryOf (promoted ⇒ a promotion record exists).
+ */
+export function candidateStatusOf(
+  entry: OrganizationCatalogEntry,
+  decision?: PromotionRecord,
+): CandidateStatus {
+  if (decision !== undefined) return decision.decision;
   return entry.promoted ? "promoted" : "candidate";
 }
 
 /**
- * One candidate summary. `promotion` MUST be the promotion record of a
- * promoted entry (registry invariant: promoted ⇒ promotion record exists);
- * the guard is a typed refusal, not a silent fallback.
+ * One candidate summary. `decision` MUST be the LATEST decision record
+ * of the entry (registry invariant: promoted ⇒ promotion record exists —
+ * the guard is a typed refusal, not a silent fallback). Basis strings
+ * stay minimal-by-design and deterministic: the promotion path keeps the
+ * Wave 3 wording; the Wave 4 decision records reference their own record
+ * id.
  */
 export function candidateSummaryOf(
   entry: OrganizationCatalogEntry,
-  promotion?: PromotionRecord,
+  decision?: PromotionRecord,
 ): OrganizationCandidateSummary {
   const { record } = entry;
   const candidateId = candidateIdFor(record.organizationId, record.version);
-  if (entry.promoted) {
-    if (promotion === undefined) {
+  if (decision === undefined) {
+    if (entry.promoted) {
       throw new LabCandidateQueryError(
         `registry invariant violated: ${candidateId} is promoted but has no promotion record`,
       );
@@ -80,16 +103,20 @@ export function candidateSummaryOf(
       candidateId,
       organizationId: record.organizationId,
       version: record.version,
-      status: "promoted",
-      basis: `promotion record ${promotion.promotionId}`,
+      status: "candidate",
+      basis: "unpromoted registry draft",
     };
   }
+  const basis =
+    decision.decision === "promoted"
+      ? `promotion record ${decision.promotionId}`
+      : `decision record ${decision.promotionId}`;
   return {
     candidateId,
     organizationId: record.organizationId,
     version: record.version,
-    status: "candidate",
-    basis: "unpromoted registry draft",
+    status: decision.decision,
+    basis,
   };
 }
 
@@ -123,8 +150,8 @@ export function matchesCandidateQuery(
 /**
  * Does one promotion summary match the query's filters? The shared status
  * union maps onto decisions: promoted/rejected/rolled-back filter by
- * decision; "candidate" honestly matches nothing (a never-promoted
- * version has no promotion record at all).
+ * decision; "candidate" honestly matches nothing (a never-decided
+ * version has no decision record at all).
  */
 export function matchesPromotionQuery(
   summary: PromotionSummary,

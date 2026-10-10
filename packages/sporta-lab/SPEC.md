@@ -120,31 +120,37 @@ additive).
   `OrganizationCandidateSummary` fields (no extras, no missing):
   `candidateId` (canonical `<orgId>:<version>` via `candidateIdFor`),
   `organizationId`, `version`, `status`, `basis`.
-- **Honest status mapping**:
-  | registry entry | summary status | basis |
-  | --------------------- | -------------- | ------------------------------ |
-  | unpromoted draft | `candidate` | `unpromoted registry draft` |
-  | promoted | `promoted` | `promotion record <promotionId>` |
-  | rejected / rolled-back | NOT PRODUCIBLE | — |
-  The v1 registry has no rejection or rollback decision path (wave-1 NEXT
-  DEPENDENCIES; only decision `promoted` exists). Queries filtering for
-  `rejected`/`rolled-back` return an honest `[]` — no state is silently
-  relabeled. A promoted entry whose promotion record is missing is a typed
+- **Honest status mapping** (Wave 4: all four states are PRODUCIBLE — the
+  registry's decision path landed; before Wave 4 rejected/rolled-back
+  were honestly unproducible and returned `[]`):
+  | registry entry (latest decision record) | summary status | basis |
+  | --------------------------------------- | -------------- | ---------------------------------- |
+  | no decision record | `candidate` | `unpromoted registry draft` |
+  | decision `promoted` | `promoted` | `promotion record <promotionId>` |
+  | decision `rejected` | `rejected` | `decision record rejection:<id>` |
+  | decision `rolled-back` | `rolled-back` | `decision record rollback:<id>` |
+  The LATEST decision record per candidate is the current state (the
+  registry returns records in grant order — promotion before its
+  rollback — so the last record for a candidateId is the current one); a
+  rolled-back candidate therefore surfaces `rolled-back`, not `promoted`.
+  A promoted entry whose promotion record is missing is a typed
   `LabCandidateQueryError` (registry invariant violation), never a silent
   downgrade.
 - Filters: `organizationId`, `candidateId`, `status` (all optional, ANDed).
 
 ### listPromotions(query)
 
-- Population: the registry's immutable PromotionRecords, store order.
+- Population: the registry's immutable decision records (promotions,
+  rejections, rollbacks — the full per-candidate decision ledger), store
+  order (grant order per candidate: promotion before its rollback).
 - Summaries mirror the PromotionRecord identity fields field-for-field:
   `promotionId`, `candidateId`, `decision`, `decidedAt`.
 - Status filter mapping: `promoted`/`rejected`/`rolled-back` filter by
-  decision; `candidate` matches nothing (a never-promoted version has no
-  promotion record). `organizationId` filters via the inverse of the
+  decision; `candidate` matches nothing (a never-decided version has no
+  decision record). `organizationId` filters via the inverse of the
   candidateId convention (`candidateId.slice(0, lastIndexOf(":"))`).
-- Only decision `promoted` is producible by the current registry —
-  documented, never coerced.
+- All three decisions are producible since Wave 4; the earlier promotion
+  of a rolled-back candidate stays listed as immutable history.
 
 ### Bounded-query law
 

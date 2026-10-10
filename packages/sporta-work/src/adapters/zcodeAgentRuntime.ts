@@ -13,6 +13,26 @@
  * zcode-cli headless invocation (see apps/zcode-cli/packages/cli/src/
  * arguments.ts + run.ts): `zcode --prompt <task> --output-format
  * stream-json` — session events stream as JSON lines on stdout.
+ *
+ * W4A-1 terminal-event laws (the W3-C flake root cause, see
+ * docs/implementation/worker-a.md wave 4):
+ *   1. EXACTLY ONE terminal-type ("completed"/"failed") event per run,
+ *      synthesized ONLY from the real process lifecycle ('close' with the
+ *      real exit code, or a spawn 'error'). The finish() guard is the only
+ *      code path allowed to record a terminal-type event.
+ *   2. THE STREAM NEVER DECIDES THE VERDICT: stream-json lines whose CLI
+ *      type looks terminal ("completed"/"failed" session events) are
+ *      recorded as progress EVIDENCE with their message verbatim. The
+ *      run's verdict is a process fact, not a stream fact — so "last
+ *      observed event is terminal-type" and "the run terminated" are the
+ *      same fact for every observer (no observable interleaving window).
+ *   3. THE TERMINAL EVENT IS THE LAST EVENT EVER RECORDED: 'close' fires
+ *      only after the stdio streams drained, and nothing records after
+ *      finish() — observers that see a terminal event see the final list.
+ *   4. LINE-BUFFERED stdout parsing: a pipe is a byte stream with no
+ *      message framing, so a JSON line may split across chunks; partial
+ *      bytes are buffered until the newline arrives (parsing is
+ *      deterministic, independent of how the OS chunks the pipe).
  */
 import type { SportaId } from "@sporta/contracts/contract";
 import type {
@@ -116,12 +136,33 @@ export class ZCodeAgentRuntimeAdapter implements AgentRuntimeExecutionPort {
     record("started", `spawned zcode-cli for task: ${input.task}`, startedAt);
 
     // stdout: parse the CLI's stream-json lines into typed events.
+    // Line-buffered (law 4) + verdict-preserving (law 2): terminal-looking
+    // CLI lines are recorded as progress evidence, never as the run's
+    // terminal verdict.
+    const recordStdoutLine = (line: string): void => {
+      const parsed = this.parseEvent(line);
+      if (parsed === null) return;
+      const type: AgentRunEvent["type"] =
+        parsed.type === "completed" || parsed.type === "failed" ? "progress" : parsed.type;
+      record(type, parsed.detail, parsed.at);
+    };
+    let stdoutBuffer = "";
     child.stdout?.on("data", (chunk: Buffer) => {
-      for (const line of chunk.toString().split("\n")) {
+      stdoutBuffer += chunk.toString();
+      const lines = stdoutBuffer.split("\n");
+      // The last element is the (possibly empty) partial line — keep it
+      // buffered until its newline arrives.
+      stdoutBuffer = lines.pop() ?? "";
+      for (const line of lines) {
         if (line.trim() === "") continue;
-        const parsed = this.parseEvent(line);
-        if (parsed !== null) record(parsed.type, parsed.detail, parsed.at);
+        recordStdoutLine(line);
       }
+    });
+    // Stream drained: flush any trailing line that never got a newline
+    // (the CLI's last write may omit it); output is never dropped.
+    child.stdout?.on("end", () => {
+      if (stdoutBuffer.trim() !== "") recordStdoutLine(stdoutBuffer);
+      stdoutBuffer = "";
     });
 
     // stderr is REAL observation evidence, not a verdict: a CLI may warn

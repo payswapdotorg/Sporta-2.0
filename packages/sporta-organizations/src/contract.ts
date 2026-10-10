@@ -11,7 +11,8 @@
  * additions are additive (catalog, promotion, user preferences, service
  * and fixture adapters). Wave 3 adds the read-only promotion history
  * port + the canonical candidateId convention export (ADR wave-3 read
- * seams).
+ * seams). Wave 4 adds the rejection/rollback decision path (ADR
+ * wave-4) — additive only.
  */
 export type {
   AgentBodyRecord,
@@ -33,6 +34,9 @@ export type {
   PromoteOrganizationInput,
   OrganizationPromotionPort,
   OrganizationPromotionHistoryPort,
+  RejectCandidateInput,
+  RollbackPromotionInput,
+  OrganizationDecisionPort,
   OrganizationUserPreference,
   SetUserPreferenceInput,
   UserPreferencePort,
@@ -44,6 +48,7 @@ export {
   OrganizationVersionMonotonicError,
   OrganizationVersionNotFoundError,
   OrganizationPromotionError,
+  OrganizationDecisionError,
   OrganizationResolutionError,
 } from "./domain/errors.js";
 
