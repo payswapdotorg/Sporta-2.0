@@ -1,6 +1,8 @@
 /**
  * sporta-render — the renderer adapter boundary + two materially
- * different sports production realities (ADR wave-5, decisions 2 + 5).
+ * different sports production realities (ADR wave-5, decisions 2 + 5)
+ * + the playback engine surface (work-order W5C, ADR wave-5
+ * decisions 3 + 5; TL union of the two additive lanes).
  *
  * Renderers NEVER consume `SportsWorldModelRecord` directly (the SWM
  * invariant): they consume per-reality render models derived by the
@@ -10,11 +12,22 @@
  * spatial/structural (board + timeline), the play-by-play reality is
  * textual/sequential (event-anchored narrative records).
  *
+ * Playback consumes ONLY render-model timelines through the typed
+ * port below (the adapter invariant holds at playback: never the SWM
+ * directly). The engine is a deterministic state machine — seek /
+ * step / play over bounded buffers — producing per-tick frames for
+ * each declared reality kind with the provenance + rights-scope
+ * summaries carried forward read-only.
+ *
  * Single public entrypoint (the entrypoint-only convention): types and
  * rules live in the domain layer and are re-exported here; the
  * app-layer composition and the adapters-layer SVG serializer follow
  * the kdenliveXml.ts precedent (external document formats live in
- * adapters).
+ * adapters). The playback surface is strictly additive under
+ * `src/domain/playback/`; the render-model surface of the same
+ * package (work-order W5B) and the playback surface (work-order W5C)
+ * were merged by the TL at integration — conflict-free by
+ * construction.
  */
 export type {
   RealityKind,
@@ -63,3 +76,61 @@ export type { RealityProjection } from "./app/realityProjection.js";
 export { RealityProjectionService } from "./app/realityProjection.js";
 
 export { serializeTacticalSvg, TACTICAL_TIMELINE_STRIP_HEIGHT } from "./adapters/tacticalSvg.js";
+
+export type {
+  PlaybackRealityKind,
+  PlaybackSourceSummary,
+  PlaybackProvenanceSummary,
+  PlaybackRightsScopeSummary,
+  RenderTimelineEvent,
+  RenderTimelinePort,
+  PlaybackControllerOptions,
+} from "./domain/playback/ports.js";
+export { DEFAULT_TICK_MS, DEFAULT_FRAME_BUFFER_CAPACITY } from "./domain/playback/ports.js";
+
+export type {
+  IndexedTimelineEvent,
+  PlaybackTimelineIndex,
+  ResolvedPlaybackOptions,
+} from "./domain/playback/timeline.js";
+export {
+  PLAYBACK_REALITY_KINDS,
+  resolvePlaybackOptions,
+  buildPlaybackTimelineIndex,
+  destinationTickOf,
+  activeEventsAtTick,
+} from "./domain/playback/timeline.js";
+
+export type { PlaybackCarryForward } from "./domain/playback/carry.js";
+export { structurallyEqual } from "./domain/playback/carry.js";
+
+export type {
+  ActiveTimelineEvent,
+  TacticalFrameDelta,
+  TacticalRealityFrame,
+  PlayByPlaySegment,
+  PlayByPlayRealityFrame,
+  RealityFrame,
+  PlaybackFrame,
+} from "./domain/playback/frames.js";
+export { frameAtTick, deepFreezePlaybackValue } from "./domain/playback/frames.js";
+
+export type { PlaybackState } from "./domain/playback/controller.js";
+export { PlaybackController } from "./domain/playback/controller.js";
+
+export {
+  PlaybackError,
+  EmptyTimelineError,
+  MalformedTimelineEventError,
+  MalformedCarryForwardError,
+  UnknownRealityKindError,
+  DuplicateRealityKindError,
+  TimelineCarryMismatchError,
+  InvalidPlaybackOptionsError,
+  OutOfRangeSeekError,
+  OutOfRangeStepError,
+  InvalidRateError,
+  InvalidStepError,
+  PlaybackPausedError,
+  InvalidAdvanceError,
+} from "./domain/playback/errors.js";
