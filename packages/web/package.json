@@ -13,7 +13,16 @@
     "@zcode/shared": "workspace:*",
     "@zcode/ui": "workspace:*",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "@sporta/arena": "workspace:*",
+    "@sporta/artifacts": "workspace:*",
+    "@sporta/contracts": "workspace:*",
+    "@sporta/editors": "workspace:*",
+    "@sporta/evaluation": "workspace:*",
+    "@sporta/lab": "workspace:*",
+    "@sporta/organizations": "workspace:*",
+    "@sporta/product": "workspace:*",
+    "@sporta/work": "workspace:*"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.2",

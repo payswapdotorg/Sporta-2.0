@@ -1402,6 +1402,33 @@ importers:
 
   packages/web:
     dependencies:
+      '@sporta/arena':
+        specifier: workspace:*
+        version: link:../sporta-arena
+      '@sporta/artifacts':
+        specifier: workspace:*
+        version: link:../sporta-artifacts
+      '@sporta/contracts':
+        specifier: workspace:*
+        version: link:../sporta-contracts
+      '@sporta/editors':
+        specifier: workspace:*
+        version: link:../sporta-editors
+      '@sporta/evaluation':
+        specifier: workspace:*
+        version: link:../sporta-evaluation
+      '@sporta/lab':
+        specifier: workspace:*
+        version: link:../sporta-lab
+      '@sporta/organizations':
+        specifier: workspace:*
+        version: link:../sporta-organizations
+      '@sporta/product':
+        specifier: workspace:*
+        version: link:../sporta-product
+      '@sporta/work':
+        specifier: workspace:*
+        version: link:../sporta-work
       '@zcode/client':
         specifier: workspace:*
         version: link:../client
