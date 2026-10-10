@@ -48,6 +48,17 @@ export interface ArtifactGraphPort {
   commitRevision(input: CommitRevisionInput): Promise<ArtifactRevisionRecord>;
   readRevision(revisionId: SportaId): Promise<ArtifactRevisionRecord | null>;
   lineage(artifactId: SportaId): Promise<readonly ArtifactRevisionRecord[]>;
+  /**
+   * Additive (wave 4), OPTIONAL so every existing port implementation
+   * keeps compiling (the optional-deps law): the manifest read — the
+   * artifact record itself. The single state owner
+   * `ArtifactGraphService` provides it via its v1 additive accessor
+   * (sync; `await` handles both return grades). The rights-gated read
+   * seam (`ArtifactGatedReadPort`) consumes this capability; when a
+   * minimal implementation omits it, gated manifest reads are a typed
+   * `ArtifactReadUnavailableError`, never a silent pass.
+   */
+  readArtifact?(artifactId: SportaId): Promise<ArtifactRecord | null> | ArtifactRecord | null;
 }
 
 /** Hash of raw bytes (hex sha-256). Adapters provide the implementation. */

@@ -30,9 +30,32 @@ export {
   UnknownArtifactError,
   ArtifactIntegrityError,
   ArtifactBlobNotFoundError,
+  ArtifactRightsRefusalError,
+  ArtifactRetentionExpiredError,
+  ArtifactReadQueryError,
+  ArtifactReadUnavailableError,
 } from "./domain/errors.js";
+export type { ArtifactReadTarget, ArtifactReadCapability } from "./domain/errors.js";
+
+export type {
+  ArtifactReadUsageContext,
+  ReadRevisionInput,
+  ReadArtifactInput,
+  ReadLineageInput,
+  ReadRevisionContentInput,
+  ArtifactGatedReadPort,
+  ArtifactGatedReadDeps,
+} from "./domain/reads.js";
+export {
+  ARTIFACT_LINEAGE_DEFAULT_LIMIT,
+  ARTIFACT_LINEAGE_MAX_LIMIT,
+  resolveArtifactLineageLimit,
+  artifactVisibleToUsage,
+  artifactRetentionExpired,
+} from "./domain/reads.js";
 
 export { ArtifactGraphService } from "./app/ArtifactGraphService.js";
+export { ArtifactGatedReadService } from "./app/ArtifactGatedReadService.js";
 
 export { InMemoryArtifactBlobStore } from "./adapters/InMemoryArtifactBlobStore.js";
 export { FsArtifactBlobStore } from "./adapters/FsArtifactBlobStore.js";

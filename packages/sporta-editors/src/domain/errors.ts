@@ -31,6 +31,18 @@ export class EditorRightsRefusalError extends EditorError {
   }
 }
 
+/**
+ * The checkpoint revision's retention policy has become effective (a
+ * purge disposition past its date) — the write plane refuses to open an
+ * editing session on content the policy says to purge (wave-4 W4B-2,
+ * invariant 22 retention propagation).
+ */
+export class EditorRetentionRefusalError extends EditorError {
+  constructor(message: string, detail: string) {
+    super(message, `retention-refused:${detail}`);
+  }
+}
+
 /** The checkpoint revision does not exist in the artifact graph. */
 export class UnknownRevisionError extends EditorError {
   readonly revisionId: SportaId;

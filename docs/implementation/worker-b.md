@@ -668,3 +668,441 @@ DELIVERY: branch wave3/worker-b @ ea27d703f500c1a41a4eeffc3fbb7b80ca0aca4e (code
 | tsx --test artifacts+editors                     | 54 pass / 0 fail    | 77 pass / 0 fail (54 + 23 new)       |
 | tsx --test packages/sporta-* (full suite)        | 199 pass / 0 fail   | 222 pass / 0 fail (199 + 23 new)     |
 | pnpm lint                                        | 0 errors / 70 warn  | 0 errors / 70 warnings (identical)   |
+
+---
+
+# Wave 4 — Worker B: C6 rights propagation — the artifact plane (invariant 22)
+
+Status: WAVE 4 W4B-1 + W4B-2 IMPLEMENTED (branch wave4/worker-b, base
+e40efb0; code commit 795a7a3, this report commit on top — the W3-B
+documentation-commit pattern). The wave-1/wave-3 reports above are
+preserved unchanged; wave-2 history lives in the integration log
+(merge bec4d47).
+
+## WORK ITEMS
+
+- W4B-1 PURE RIGHTS GATE (artifact reads) — DONE (real, tested):
+  `packages/sporta-artifacts/src/domain/reads.ts` mirrors the ratified
+  W3-B `sessionVisibleToUsage` pattern: `ArtifactReadUsageContext`
+  (per-package duplication — the ratified wave-4 law, no new shared
+  contracts type), the fail-closed `artifactVisibleToUsage` gate (at
+  least one declared usage permitted AND none prohibited; bare/empty
+  context never visible), the bounded-lineage limit law (default 50,
+  cap 500, malformed limits a typed `ArtifactReadQueryError`), and the
+  input/port/deps shapes of the gated read seam.
+- W4B-1 RETENTION PROPAGATION — DONE (typed exactly by the
+  `@sporta/policy` vocabulary, never extended):
+  `artifactRetentionExpired(retention, now)` — retain/archive never
+  read-expire (the vocabulary types no read refusal for them); `purge`
+  becomes effective strictly AFTER `retainUntil`; FAIL-CLOSED on a
+  purge with no/unparseable deferral date (the seam must not resurrect
+  purged content on a technicality); `retainRuns` is carried verbatim
+  but NOT evaluated (this plane owns no run ledger — typed under NEXT
+  DEPENDENCIES).
+- W4B-1 GATED READ SEAM — DONE (real, tested): `ArtifactGatedReadService`
+  (app layer) over `{ graph, blobs?, clock }`:
+  - `readRevision` / `readArtifact` (the manifest read) /
+    `readRevisionContent` (the blob read) are DIRECT reads — typed
+    refusals (`ArtifactRightsRefusalError`,
+    `ArtifactRetentionExpiredError`) for prohibited/expired reads;
+    honest `null` reserved for genuinely unknown ids; the gate runs
+    BEFORE any storage touch (a prohibited content read never reaches
+    the blob store).
+  - `lineage` is the LISTING surface — honest absence (prohibited/
+    expired revisions simply not returned, never an error), bounded
+    head-anchored window (the W3-B page-vs-scan tradeoff mirrored: a
+    result may be shorter than the limit; the chain may show GAPS — a
+    returned `parentRevisionId` may reference an excluded revision).
+  - Gate order: rights first, then retention.
+  - The blob-read boundary law (documented in SPEC): content-addressed
+    blobs carry no PolicySet — the rights boundary for content is the
+    REVISION record referencing the content hash; raw store reads
+    remain internal storage plumbing. The frozen v1 port surfaces are
+    UNCHANGED (the additive law, proven by the identical baselines);
+    enforcement lands at the wave-4 read seam.
+  - Optional capabilities degrade gracefully with typed
+    `ArtifactReadUnavailableError`: no blob store ⇒ no content reads;
+    no manifest-read capability ⇒ no manifest reads — never a silent
+    pass.
+- W4B-2 EDITOR WRITE-PLANE GAP AUDIT — DONE (typed; small gaps CLOSED
+  with tests, structural gaps typed):
+  1. OPEN (closed): `openSession` previously verified only the
+     CALLER-SUPPLIED session policy ("edit" usage); the CHECKPOINT
+     REVISION's own PolicySet was never consulted — a session policy
+     could grant rights the artifact's revision does not carry.
+     CLOSED additively: the revision's rights must also permit "edit"
+     (typed `EditorRightsRefusalError` carrying the revision id and
+     its usages/prohibitions).
+  2. OPEN (closed): retention was ignored — a purge-expired revision
+     could still be edited. CLOSED additively: an effective purge
+     refuses the open (typed `EditorRetentionRefusalError`); a purge
+     NOT yet past its date still opens (the deferral is honored). The
+     retention law is CONSUMED from `@sporta/artifacts/contract`
+     (`artifactRetentionExpired` — declared dependency, public
+     entrypoint) so the artifact and editor planes share one
+     semantics.
+  3. APPEND (verified, no gap): understood reconciles propagate the
+     session policy VERBATIM to the new revision (asserted deep-equal;
+     previously implied by construction, now pinned by test).
+  4. COMMIT (verified, no gap): opaque imports carry the session
+     policy VERBATIM on BOTH the new artifact record and its first
+     revision (asserted deep-equal; newly pinned by test).
+  5. STRUCTURAL (typed, not implemented): `EditDeltaRecord` carries no
+     `policy` field (TL-owned contracts; evidence:
+     packages/sporta-contracts/src/records/artifacts.ts:27-36) — see
+     NEXT DEPENDENCIES. Policy COMPOSITION semantics (e.g. whether a
+     child revision's policy should intersect the parent's) do not
+     exist in `@sporta/policy`; the broker propagates verbatim and
+     never invents algebra.
+  6. `resolveEditor` licensing classification is availability-driven,
+     not PolicySet-driven — not an invariant-22 propagation gap (the
+     PolicySet gates at open/reconcile; documented in SPEC).
+  - sporta-arena untouched (worker-c's plane — the w4c escalation/
+    result read gate lane).
+
+## CHANGED FILES
+
+All inside the owned boundary (`packages/sporta-{artifacts,editors}` +
+this report file). No file outside ownership touched;
+pnpm-lock.yaml, root manifests, contracts and policy FROZEN
+(verified via `git status`/diff — zero new dependencies).
+
+New (5):
+- `packages/sporta-artifacts/src/domain/reads.ts` (202 — the pure
+  gate/retention/limit laws, the seam types: usage context, four read
+  inputs, `ArtifactGatedReadPort`, `ArtifactGatedReadDeps`)
+- `packages/sporta-artifacts/src/app/ArtifactGatedReadService.ts` (131)
+- `packages/sporta-artifacts/test/rightsGate.test.ts` (511 — test file)
+- `packages/sporta-artifacts/test/rightsReadGateFs.integration.test.ts`
+  (370 — the REAL FS lane + in-memory parity)
+- `packages/sporta-editors/test/writePlaneRights.test.ts` (273 — the
+  W4B-2 audit proofs)
+
+Modified (12, additive-only):
+- sporta-artifacts: `src/domain/errors.ts` (+4 error classes, +2 type
+  aliases), `src/domain/ports.ts` (+OPTIONAL `readArtifact?` on
+  `ArtifactGraphPort` — optional so worker-c's test fakes keep
+  compiling), `src/contract.ts` (+34 additive names re-exported),
+  `src/contract.example.ts` (compile-checked gated-read examples),
+  `src/module.ts` (provides += "artifact-gated-read-port"),
+  `SPEC.md` (Wave 4 section), `CONTRACT.md` (Wave 4 notes)
+- sporta-editors: `src/app/EditorBrokerService.ts` (+2 additive checks
+  in openSession after the checkpoint lookup, ~28 lines),
+  `src/domain/errors.ts` (+`EditorRetentionRefusalError`),
+  `src/contract.ts` (+1 export), `SPEC.md` (Wave 4 section),
+  `CONTRACT.md` (Wave 4 notes)
+- `docs/implementation/worker-b.md` (this section, appended)
+
+File-size law: every src file <= 242 lines. The 511-line
+rightsGate.test.ts is a test file — the repo's own oxlint override
+(`max-lines: off` for `**/*.test.ts`) and base precedent (the 507-line
+transport test at W2, the 414-line sessionHistory test at W3-B); the
+architecture checker (max-file-lines 400, walks src/ roots) reports 0
+violations.
+
+## TESTS
+
+Location: `packages/<pkg>/test/`; runner: `pnpm exec tsx --test`
+(node:test + node:assert/strict — no new test frameworks). 22 new
+tests:
+
+- `rightsGate.test.ts` (11) — the pure gate laws unit-tested
+  (`artifactVisibleToUsage` fail-closed/prohibition/mixed/empty-scope;
+  `artifactRetentionExpired` over the full vocabulary: retain/archive
+  never expire, purge past/future/boundary instants, fail-closed
+  no-date/unparseable, `retainRuns` pinned inert;
+  `resolveArtifactLineageLimit` defaults/cap/malformed) + the gated
+  surfaces over the in-memory graph (fixture state, real logic):
+  direct-read typed refusals with detail/target assertions; honest
+  null for unknown ids; manifest gating on the artifact record's own
+  policy; typed unavailability for unwired capabilities; lineage
+  honest absence with the chain-gap tradeoff pinned (a returned
+  parentRevisionId references an excluded revision); bounded lineage
+  (default 50 of 55, head-anchored window, window-then-gate
+  shortening); content-read gating; and the additive-law proof that
+  the frozen v1 port surfaces + blob store + sync manifest accessor
+  behave identically without any usage context.
+- `rightsReadGateFs.integration.test.ts` (6) — the REAL FS lane
+  (EVIDENCE CLASS REAL for the blob plane: real mkdtemp dirs, blob
+  files stat'ed and byte-compared against direct node:fs reads of the
+  sharded content addresses; EVIDENCE CLASS FIXTURE for the graph
+  state and FixedClock, labeled in the file header): (1) a permitted
+  caller reads content byte-identical from the durable store;
+  (2) a prohibited caller is refused TYPED while the blob provably
+  EXISTS on disk and the ungated plumbing CAN read it (the gate
+  precedes the storage touch — the refusal is the gate's, not the
+  store's); mixed context and bare context refuse; (3)
+  retention-expired content refuses typed for a permitted caller,
+  metadata included; (4) lineage honest absence on the real lane +
+  the PolicySet travels VERBATIM (the record's policy deep-equal to
+  the fields that gated the read; the purge decision fields verbatim);
+  (5) IN-MEMORY PARITY: the identical law over
+  `InMemoryArtifactBlobStore` (same errors, same details, same
+  bytes); (6) unknown ids honest null + restart-fresh FS store serves
+  the same gated results (the W2 restart law).
+- `writePlaneRights.test.ts` (5) — the W4B-2 audit proofs: OPEN
+  refuses typed when the revision policy lacks/prohibits edit while
+  the session policy grants it (the closed gap #1, detail asserted
+  exactly); OPEN refuses typed on a purge-expired checkpoint and
+  still opens before the date (closed gap #2); OPEN regression
+  (fully-permitted revision opens, session policy verbatim); APPEND
+  propagates the session policy verbatim to the child revision;
+  COMMIT propagates it verbatim to the opaque artifact + revision.
+
+## REAL EVIDENCE
+
+All commands run from /home/z/sporta-2.0 on branch wave4/worker-b at
+the delivered head 795a7a3 (numbers as printed by the tools — the TL
+re-measures at the integration station; baseline first, then the
+lane):
+
+Baseline (measured at base e40efb0 before any change):
+1. `pnpm architecture:check` → `architecture: OK / violations: 0 /
+   baseline: 0 / new: 0`.
+2. `node scripts/architecture/sporta-surface-check.mjs` → OK (frozen
+   surfaces intact: artifacts 6 frozen + 15 additive, editors 9 + 56).
+3. `pnpm exec tsc -b packages/sporta-artifacts
+   packages/sporta-editors packages/sporta-world
+   packages/sporta-compute` → exit 0 clean.
+4. `pnpm exec tsx --test packages/sporta-*/test/*.test.ts` →
+   `tests 269 / pass 269 / fail 0 / cancelled 0 / skipped 0`
+   (duration_ms 7075.6).
+5. `pnpm lint` → `Found 70 warnings and 0 errors`.
+
+Lane (measured at the delivered head 795a7a3):
+1. `pnpm architecture:check` → `architecture: OK / violations: 0 /
+   baseline: 0 / new: 0` (measured fresh after the full battery).
+2. `node scripts/architecture/sporta-surface-check.mjs` → OK —
+   additive-only growth (artifacts 6 frozen + 34 additive; editors
+   9 frozen + 57 additive; every other module unchanged).
+3. `pnpm exec tsc -b packages/sporta-artifacts
+   packages/sporta-editors packages/sporta-world
+   packages/sporta-compute` (fresh after dist + tsbuildinfo removal)
+   → exit 0, no output (clean).
+4. Scoped `pnpm exec tsx --test
+   packages/sporta-artifacts/test/*.test.ts
+   packages/sporta-editors/test/*.test.ts` → `tests 99 / pass 99 /
+   fail 0` (77 base + 22 new, duration_ms 2180.3).
+5. FULL battery `pnpm exec tsx --test packages/sporta-*/test/*.test.ts`
+   → `tests 291 / pass 291 / fail 0 / cancelled 0 / skipped 0`
+   (duration_ms 7289.7) — the count math holds exactly: 269 base
+   + 11 rightsGate + 6 FS integration + 5 writePlane. The documented
+   W2 a17-real-execution flake did not fire on this run (single clean
+   run recorded honestly; the flake stays typed in PROJECT-STATE).
+6. `pnpm lint` → `Found 70 warnings and 0 errors` — the exact
+   baseline (one transient warning — an unused import in my first
+   draft of the FS integration test — was found by the battery and
+   fixed before the code commit).
+7. Performance, measured via a one-off tsx script (not committed;
+   200 revisions with real content on a real mkdtemp FS store, then
+   200 gated reads): REAL FS lane — 200 puts+commits 96 ms; 200
+   permitted gated content reads 15 ms (0.075 ms avg, 7292 bytes
+   served); 200 typed rights refusals 2 ms (0.010 ms avg — the gate
+   fires before any storage touch); gated lineage (50 of 200, default
+   limit) < 1 ms. In-memory parity — 200 permitted reads 1 ms
+   (0.005 ms avg); refusals 1 ms. The same facts the tests assert
+   (real file existence, byte equality, typed refusal details) are
+   pinned in rightsReadGateFs.integration.test.ts via node:fs
+   stat/readFile on real temp directories.
+
+## FIXTURE EVIDENCE
+
+- The gate, retention, limit and listing logic is pure domain code
+  exercised by real tests (real assertions in a real process).
+- The artifact GRAPH state is fixture-grade by the W2 record
+  (in-memory single state owner); the BLOB plane is REAL (W2
+  FsArtifactBlobStore — real files on real disk). The FS integration
+  lane labels its evidence classes per file (REAL blob lane, FIXTURE
+  graph state + FixedClock).
+- FixedClock instances supply deterministic "now" values for
+  retention-boundary tests (past/future/at-the-instant) — the
+  retention LAW itself is date-arithmetic over the policy vocabulary,
+  which is real logic.
+- No real kdenlive process, network, or user data is involved in this
+  lane; the W3-B real kdenlive lane (rightsReadGate.integration) is
+  untouched and still passing in the full battery.
+- No fixture result is claimed as production capability anywhere
+  above.
+
+## CONTRACT CHANGES
+
+Additive-only, inside my two owned packages; sporta-contracts and
+sporta-policy FROZEN and untouched (the PolicySet vocabulary is
+consumed, never extended):
+
+- sporta-artifacts adds (34 additive names through the entrypoint):
+  types `ArtifactReadUsageContext`, `ReadRevisionInput`,
+  `ReadArtifactInput`, `ReadLineageInput`, `ReadRevisionContentInput`,
+  `ArtifactGatedReadPort`, `ArtifactGatedReadDeps`,
+  `ArtifactReadTarget`, `ArtifactReadCapability`; constants
+  `ARTIFACT_LINEAGE_DEFAULT_LIMIT` (50), `ARTIFACT_LINEAGE_MAX_LIMIT`
+  (500); pure functions `resolveArtifactLineageLimit`,
+  `artifactVisibleToUsage`, `artifactRetentionExpired`; errors
+  `ArtifactRightsRefusalError`, `ArtifactRetentionExpiredError`,
+  `ArtifactReadQueryError`, `ArtifactReadUnavailableError`; class
+  `ArtifactGatedReadService`.
+- `ArtifactGraphPort` gains the OPTIONAL method `readArtifact?` —
+  optional so every existing implementer keeps compiling
+  (worker-c's test fakes implement the port; verified by the
+  unchanged 291-test battery and the 12-package surface check).
+  The union return grade (`Promise<...> | ...`) lets the single
+  owner's v1 SYNC accessor satisfy it structurally — zero signature
+  changes anywhere.
+- sporta-editors adds: error `EditorRetentionRefusalError`; two
+  additive checks inside `openSession` (after the checkpoint
+  lookup — no signature or behavior change for permitted opens,
+  proven by the unchanged baselines).
+- `module.ts` provides grows additively (+artifact-gated-read-port).
+- Frozen v1 surfaces preserved (surface check green: artifacts
+  6 frozen + 34 additive; editors 9 frozen + 57 additive).
+
+## RIGHTS-PROVENANCE
+
+- The read gate is invariant 22's artifact-plane half: rights
+  PROPAGATE to every read boundary. Direct reads refuse typed on a
+  bare/empty/non-permitted/prohibited usage context; listings exclude
+  with honest absence; the gate precedes any storage touch.
+- Retention propagates exactly as `@sporta/policy` defines: a purge
+  past its date refuses direct reads and is excluded from listings;
+  retain/archive never read-refuse; fail-closed when the deferral
+  date cannot be affirmed; `retainRuns` carried, not invented.
+- The write-plane half (editors): the checkpoint revision's own
+  PolicySet now gates session opens (a caller-supplied session policy
+  cannot grant rights the revision does not carry) and effective
+  purge refusals block editing; APPEND/COMMIT propagation is pinned
+  verbatim by tests.
+- The retention law is a SINGLE pure function shared across the two
+  planes (editors consumes `artifactRetentionExpired` from the
+  artifacts entrypoint — a declared dependency) — no per-plane drift.
+- Policy data never leaks through decisions it did not authorize: a
+  rights refusal never reveals retention state (rights gate runs
+  first); an absence never explains itself.
+- Holders/privacy-visibility remain policy-domain concerns above
+  these seams (documented in both SPECs).
+
+## PERFORMANCE
+
+Measured, not guessed (method in REAL EVIDENCE #7): the gated content
+read adds 0.075 ms avg over the REAL FS store's own read cost on this
+machine (the pure in-memory gate path is 0.005 ms); typed refusals
+cost 0.010 ms avg (gate-before-storage). The full 291-test battery
+runs in ~7.3 s wall (269-test base was ~7.1 s). The lineage window is
+O(chain) in memory (the graph is the in-memory single owner; an
+indexed/graph-persistent store is the same seam swap as W2 documented
+for the blob plane).
+
+## SECURITY
+
+- No credentials, tokens or real user data appear in code, tests or
+  this report (nothing needed fragment-assembly — no fake secrets
+  exist in this lane; the git push URL token is never echoed in any
+  committed file).
+- No network. Filesystem IO lives ONLY in the adapters layer (the
+  architecture checker's domain-io rule: 0 violations); the domain
+  layers stay pure.
+- Fail-closed everywhere: bare usage refuses direct reads and empties
+  listings; prohibitions win over permissions in mixed contexts;
+  purge-without-affirmable-date is expired; unwired capabilities are
+  typed refusals; blob corruption stays the store's typed error.
+- The gate runs before storage: prohibited callers never touch blob
+  bytes (proven by the FS-lane test that stats the real blob file
+  while the gated seam refuses).
+- IDs remain opaque; FS paths derive from content hashes only (no
+  caller-controlled path components).
+
+## RISKS
+
+- The usage-context vocabulary is caller-declared (not
+  cryptographically authenticated); the seam enforces PROPAGATION of
+  the PolicySet gate, not caller identity (holders unevaluated — the
+  W3-B doctrine, unchanged).
+- `purge` with no `retainUntil` is treated as already-effective
+  (fail-closed). If the TL's policy intent is "no date ⇒ never
+  purge", that is a one-line semantic flip in the pure function —
+  flagged for ratification in NEXT DEPENDENCIES.
+- The lineage chain-gap law means a caller cannot distinguish "a
+  revision does not exist" from "a revision is hidden" mid-chain —
+  honest by design (absence is the only signal), but downstream
+  reconciliation logic must not assume returned chains are gapless.
+- The in-memory artifact graph remains fixture-grade (the W2 record);
+  durable graph persistence is a future seam behind the same ports
+  (the gated read service composes the port, so the swap is local).
+
+## BLOCKERS
+
+None. The frozen contracts shapes fit the implementation exactly; the
+wave-4 ADR's per-package duplication law meant no contracts change
+was needed at all.
+
+## DEVIATIONS
+
+- The gated read seam is a NEW service (`ArtifactGatedReadService`)
+  rather than signature changes on the frozen `ArtifactGraphPort`
+  methods: the fail-closed law cannot apply to the frozen port
+  without changing every existing caller's behavior (the packet's
+  own additive law requires identical behavior for callers that pass
+  no usage context — proven by the identical 291/291, 0/70, 0/0
+  baselines). The wave-4 ADR's "read seam gains an optional usage-
+  context input" is implemented as the new seam's input objects,
+  exactly as W3-B's new service carried its additive input.
+- `ArtifactGraphPort` gained an OPTIONAL method (`readArtifact?`)
+  with a union return grade so the existing SYNC accessor on
+  `ArtifactGraphService` satisfies it structurally — zero signature
+  changes; optional so external implementers (worker-c's test fakes)
+  keep compiling.
+- The manifest read surfaces as `readArtifact` on the gated seam (the
+  artifact-record read). The export-manifest surface from
+  docs/contracts/artifact-edit-roundtrip.md ("every export has a
+  manifest") does not exist in the package yet — when it lands, it
+  gates at this same seam law (documented in SPEC).
+- Test-file line counts exceed 400 in one new test file (511) —
+  within the repo's explicit test exemption and base precedent; all
+  PRODUCTION files are <= 242 lines.
+- oxfmt applied to the new files + the files I modified (all pass
+  `oxfmt --check`); pre-existing format failures elsewhere are left
+  untouched (a repo-wide pass is a TL decision — the W3-B precedent).
+
+## NEXT DEPENDENCIES
+
+1. TL note (policy semantics, purge-without-date): the fail-closed
+   reading of `purge` with no `retainUntil` (treated as already
+   effective) needs TL ratification — `@sporta/policy` defines the
+   field as "date after which the disposition applies" but not the
+   absent-date case. One-line flip in `artifactRetentionExpired` if
+   the intent differs. (Same for unparseable dates.)
+2. TL note (contracts, EditDeltaRecord policy field): the editor
+   write-plane audit found `EditDeltaRecord` carries no `policy`
+   field (packages/sporta-contracts/src/records/artifacts.ts:27-36) —
+   the delta's policy context is the session/revision it belongs to.
+   An additive optional `policy?: PolicySet` would let deltas carry
+   it explicitly; frozen contracts are TL-owned, so typed, not
+   implemented.
+3. TL note (policy semantics, retainRuns): run-count retention needs
+   a run ledger this plane does not own (the work plane counts runs).
+   If `@sporta/policy` defines the run-count source, the read gate
+   can consume it at the same seam.
+4. TL note (policy composition): no merge/intersection semantics
+   exist for derived revisions (session policy vs parent revision
+   policy). The broker propagates the session policy verbatim; if
+   policy composition is wanted, it belongs in `@sporta/policy`.
+5. TL note (product projection wiring): the artifact read seam is
+   ready to wire — `ArtifactGatedReadService` from
+   `@sporta/artifacts/contract` with the caller's usage context
+   (artifact-revision refs on work-graph nodes can now be read with
+   rights enforcement). The bare input fails closed by design.
+6. Future seam: a durable artifact GRAPH store (the blob plane is
+   real since W2; the graph is the in-memory single owner) — the
+   gated read service composes the frozen port, so the swap is local.
+
+DELIVERY: branch wave4/worker-b @ 795a7a32c69d6be765ffb6c95193a1d87c496944 (code-complete; this report commit sits on top — the W3-B documentation-commit pattern)
+
+## Gate table (measured at the delivered head)
+
+| Gate                                             | Base e40efb0        | wave4/worker-b                        |
+| ------------------------------------------------ | ------------------- | ------------------------------------- |
+| pnpm architecture:check                          | 0 violations        | 0 violations / baseline 0 / new 0    |
+| sporta-surface-check                             | OK                  | OK (artifacts 6+34, editors 9+57)    |
+| tsc -b (artifacts/editors/world/compute)         | clean               | clean (exit 0, fresh build)          |
+| tsx --test artifacts+editors                     | 77 pass / 0 fail    | 99 pass / 0 fail (77 + 22 new)       |
+| tsx --test packages/sporta-* (full suite)        | 269 pass / 0 fail   | 291 pass / 0 fail (269 + 22 new)     |
+| pnpm lint                                        | 0 errors / 70 warn  | 0 errors / 70 warnings (identical)   |

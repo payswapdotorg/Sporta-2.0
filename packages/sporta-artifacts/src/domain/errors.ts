@@ -55,3 +55,65 @@ export class ArtifactBlobNotFoundError extends ArtifactError {
     super(message, `blob-not-found:${contentHash}`);
   }
 }
+
+/** What kind of gated read surface refused (invariant 22, wave 4). */
+export type ArtifactReadTarget = "artifact" | "revision";
+
+/**
+ * A rights-gated DIRECT read was refused (invariant 22 — rights
+ * propagate through the artifact plane; this is the wave-4 read gate).
+ * Listings never throw this — they exclude prohibited records with
+ * honest absence instead. A bare, empty, non-permitted or prohibited
+ * usage context fails closed into this refusal.
+ */
+export class ArtifactRightsRefusalError extends ArtifactError {
+  readonly target: ArtifactReadTarget;
+  readonly targetId: SportaId;
+
+  constructor(message: string, target: string, targetId: string) {
+    super(message, `rights-refused:${target}:${targetId}`);
+    this.target = target as ArtifactReadTarget;
+    this.targetId = targetId;
+  }
+}
+
+/**
+ * A gated read was refused because the record's retention policy has
+ * become effective: a `purge` disposition past its `retainUntil` (or
+ * with no affirmable deferral date). The read boundary never resurrects
+ * content the policy says to purge.
+ */
+export class ArtifactRetentionExpiredError extends ArtifactError {
+  readonly target: ArtifactReadTarget;
+  readonly targetId: SportaId;
+
+  constructor(message: string, target: string, targetId: string) {
+    super(message, `retention-expired:${target}:${targetId}`);
+    this.target = target as ArtifactReadTarget;
+    this.targetId = targetId;
+  }
+}
+
+/** A gated lineage query is malformed (e.g. a non-positive limit). */
+export class ArtifactReadQueryError extends ArtifactError {
+  constructor(message: string, detail: string) {
+    super(message, `read-query:${detail}`);
+  }
+}
+
+/** Which gated read capability was not wired into the seam. */
+export type ArtifactReadCapability = "manifest" | "content";
+
+/**
+ * A gated read was refused because the capability it needs is not
+ * wired (no blob store for content reads, no manifest-read capability
+ * on the graph). Typed and honest — never a silent pass.
+ */
+export class ArtifactReadUnavailableError extends ArtifactError {
+  readonly capability: ArtifactReadCapability;
+
+  constructor(message: string, capability: string) {
+    super(message, `read-unavailable:${capability}`);
+    this.capability = capability as ArtifactReadCapability;
+  }
+}
