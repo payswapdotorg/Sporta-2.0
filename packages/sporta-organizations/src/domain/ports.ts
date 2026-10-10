@@ -103,6 +103,36 @@ export interface OrganizationPromotionHistoryPort {
   listPromotionRecords(): Promise<readonly PromotionRecord[]>;
 }
 
+/** Input for rejecting a candidate version (decision "rejected"). */
+export interface RejectCandidateInput {
+  organizationId: SportaId;
+  version: number;
+  /** Evidence justifying the rejection; falls back to the record's evidence. */
+  evidence?: readonly SportaId[];
+}
+
+/** Input for rolling back a granted promotion (decision "rolled-back"). */
+export interface RollbackPromotionInput {
+  organizationId: SportaId;
+  version: number;
+  /** Evidence justifying the rollback; falls back to the record's evidence. */
+  evidence?: readonly SportaId[];
+}
+
+/**
+ * Wave 4 additive — the organization rejection/rollback decision path
+ * (ADR wave-4): append-only typed decision records mirroring the
+ * promotion gates. Decisions are immutable once granted and idempotent
+ * per (candidate, decision) for identical effective evidence; rejection
+ * is evidence/policy gated like promotion; rollback is gated on a prior
+ * promotion of the same candidate (the granted promotion record is kept
+ * as append-only history while the version's promoted flag is retracted).
+ */
+export interface OrganizationDecisionPort {
+  rejectCandidate(input: RejectCandidateInput): Promise<PromotionRecord>;
+  rollbackPromotion(input: RollbackPromotionInput): Promise<PromotionRecord>;
+}
+
 /** Per-user preference record (personalization boundary, A5). */
 export interface OrganizationUserPreference {
   userRef: SportaId;

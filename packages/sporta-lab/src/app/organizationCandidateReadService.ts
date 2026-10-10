@@ -54,33 +54,41 @@ export class OrganizationCandidateReadService implements OrganizationCandidateRe
    * Bounded candidate listing. Field-for-field per the contracts law
    * (exactly the five OrganizationCandidateSummary fields). Deterministic
    * order: (organizationId asc, version asc) — the registry store order.
-   * Honest status mapping: candidate | promoted (see
-   * domain/candidateReads.ts for the rejected/rolled-back note).
+   * Honest status mapping from the LATEST decision record per candidate:
+   * candidate | promoted | rejected | rolled-back (see
+   * domain/candidateReads.ts — all four states are producible since the
+   * Wave 4 registry decision path).
    */
   async listOrganizationCandidates(
     query: OrganizationCandidateQuery,
   ): Promise<readonly OrganizationCandidateSummary[]> {
-    const [entries, promotions] = await Promise.all([
+    const [entries, decisions] = await Promise.all([
       this.catalog.listVersions(),
       this.catalog.listPromotionRecords(),
     ]);
-    const promotionByCandidate = new Map<SportaId, PromotionRecord>(
-      promotions.map((promotion) => [promotion.candidateId, promotion] as const),
+    // Latest decision per candidate: listPromotionRecords returns grant
+    // order (store order; within one entry promotion before its
+    // rollback), so a later record for the same candidateId overwrites
+    // earlier ones — the map holds the CURRENT decision per candidate.
+    const decisionByCandidate = new Map<SportaId, PromotionRecord>(
+      decisions.map((decision) => [decision.candidateId, decision] as const),
     );
     const summaries = entries.map((entry) =>
       candidateSummaryOf(
         entry,
-        promotionByCandidate.get(candidateIdFor(entry.record.organizationId, entry.record.version)),
+        decisionByCandidate.get(candidateIdFor(entry.record.organizationId, entry.record.version)),
       ),
     );
     return boundResults(summaries, matchesCandidateQuery, query);
   }
 
   /**
-   * Bounded promotion listing. Mirrors the PromotionRecord identity fields
-   * (promotionId, candidateId, decision, decidedAt). Deterministic order:
-   * registry store order. Only decision "promoted" is producible today —
-   * documented, never coerced.
+   * Bounded promotion listing. Mirrors the decision records' identity
+   * fields (promotionId, candidateId, decision, decidedAt). Deterministic
+   * order: registry store order (grant order per candidate). All three
+   * decisions are producible since Wave 4: promoted, rejected,
+   * rolled-back — the earlier promotion of a rolled-back candidate stays
+   * listed as immutable history.
    */
   async listPromotions(query: OrganizationCandidateQuery): Promise<readonly PromotionSummary[]> {
     const promotions = await this.catalog.listPromotionRecords();

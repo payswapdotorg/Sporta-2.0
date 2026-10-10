@@ -30,3 +30,23 @@ Wave 3 additions (see SPEC.md "Wave 3 — promotion history read port"):
 - `candidateIdFor` is the canonical `<orgId>:<version>` candidate id
   convention, exported for the Lab/evaluation read seams (no second
   convention).
+
+Wave 4 additions (see SPEC.md "Wave 4 — rejection/rollback decision
+path"):
+
+- `rejectCandidate` / `rollbackPromotion` (declared on
+  `OrganizationDecisionPort`) are the rejection/rollback decision path:
+  append-only typed decision records (PromotionRecord, decisions
+  "rejected"/"rolled-back") gated exactly like promotion
+  (evidence-present, policy-defined) plus prior-promotion for rollback.
+- Decision records are immutable once granted; retries are idempotent per
+  candidate+decision for identical effective evidence and typed
+  immutability refusals otherwise; promote-after-reject and
+  promote-after-rollback are typed refusals (register a new version).
+- A rollback RETRACTS the entry's promoted flag (the version leaves the
+  resolver's candidate set) while keeping the granted promotion record
+  (append-only history; `listPromotionRecords` surfaces the full decision
+  ledger in grant order).
+- Refusal errors are typed: `OrganizationDecisionError` (failed decision
+  gates) and the existing immutability/not-found errors. No silent
+  fallbacks, no downgrades.

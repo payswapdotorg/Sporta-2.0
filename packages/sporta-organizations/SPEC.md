@@ -145,3 +145,60 @@ Spec-before-code record for the Wave 3 read-seams lane (ADR:
   read seam and evaluation derive identical ids (no second convention).
 - `OrganizationPromotionHistoryPort` declares the method; the service
   implements it alongside the registry/catalog/promotion ports.
+
+## Wave 4 — rejection/rollback decision path
+
+Spec-before-code record for the Wave 4 lane (ADR:
+`docs/architecture/adr-wave4-c6-host.md`, decision 3). Additive methods
+on `OrganizationRegistryService` (declared on the new
+`OrganizationDecisionPort`): `rejectCandidate(input)` and
+`rollbackPromotion(input)` — append-only typed decision records
+(PromotionRecord with decision "rejected" / "rolled-back") mirroring the
+promotion-gates pattern.
+
+- `rejectCandidate({ organizationId, version, evidence? })`:
+  - unknown version → `OrganizationVersionNotFoundError`;
+  - already rejected + identical effective evidence (input ∪ record
+    evidence, deduped, input first) → the same record (idempotent);
+  - already rejected + different effective evidence →
+    `OrganizationImmutableError`;
+  - candidate carries any promotion decision (promoted, or promoted and
+    rolled back) → `OrganizationImmutableError` (rollback is the
+    retraction path, never rejection);
+  - gates (all must pass, else `OrganizationDecisionError` carrying the
+    failed gate names): `version-registered`, `evidence-present`,
+    `policy-defined` — exactly the promotion gates;
+  - on success: a `PromotionRecord` (decision `rejected`, deterministic
+    `promotionId` = `rejection:<orgId>:<version>`, `candidateId` =
+    `<orgId>:<version>`, `decidedAt` = injected clock) stored as the
+    entry's `rejection` record — the candidate is terminal (promote
+    after reject is a typed immutability refusal; register a new version
+    to try again).
+- `rollbackPromotion({ organizationId, version, evidence? })`:
+  - unknown version → `OrganizationVersionNotFoundError`;
+  - already rolled back + identical effective evidence → the same record
+    (idempotent); different → `OrganizationImmutableError`;
+  - gates (else `OrganizationDecisionError`): `version-registered`,
+    `prior-promotion` (a granted, non-retracted promotion of the SAME
+    candidate — drafts and rejected candidates fail this gate),
+    `evidence-present`, `policy-defined`;
+  - on success: a `PromotionRecord` (decision `rolled-back`,
+    deterministic `promotionId` = `rollback:<orgId>:<version>`) stored as
+    the entry's `rollback` record, and the entry's `promoted` flag is
+    RETRACTED — the version leaves the resolver's candidate set (only
+    promoted versions are resolution candidates). The granted promotion
+    record is kept: append-only history, never rewritten.
+- Per-candidate decision ledger law: at most one rejection on a
+  never-promoted draft, or one promotion followed by at most one
+  rollback; decision records are immutable once granted; promote after
+  reject or after rollback is a typed refusal (the escape hatch is the
+  append-only registry itself: register a new version).
+- `listPromotionRecords()` (Wave 3, additive behavior evolution): lists
+  ALL decision records the registry has granted — promotions, rejections
+  and rollbacks — in store order ((organizationId asc, version asc),
+  grant order within one entry: promotion before its rollback);
+  undecided drafts contribute nothing. The read-only and
+  deterministic-order laws are unchanged.
+- Decided drafts keep the registerDraft draft-conflict semantics for
+  content changes (change content by registering a NEW version); the
+  decision records themselves are immutable.

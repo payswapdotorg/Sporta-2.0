@@ -140,7 +140,7 @@ test("listOrganizationCandidates filters by status: candidate and promoted", asy
   );
 });
 
-test("status filters for rejected/rolled-back return an honest empty array (unreachable states)", async () => {
+test("status filters for rejected/rolled-back return empty when no candidate carries those decisions (this fixture)", async () => {
   const fixture = makeReadFixture();
   await seedPopulation(fixture);
   assert.deepEqual(await fixture.read.listOrganizationCandidates({ status: "rejected" }), []);
@@ -238,3 +238,6 @@ test("the seam is read-only: only the two port methods exist on the surface", as
   assert.equal(typeof port.listOrganizationCandidates, "function");
   assert.equal(typeof port.listPromotions, "function");
 });
+
+// Wave 4 (rejected/rolled-back surfacing) tests live in
+// candidateReadsDecisions.test.ts — split to honor the file-size law.

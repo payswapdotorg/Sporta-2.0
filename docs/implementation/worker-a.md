@@ -498,3 +498,345 @@ file touched):
    field-for-field law allows supersets.
 
 DELIVERY: branch wave3/worker-a @ d421db688d99a940a43aa7d65d9cb0011afda3cc (work commit on top of base 14836c6)
+
+---
+
+# Worker A Wave 4 Report (w4a)
+
+Status: WAVE 4 LANDED (branch wave4/worker-a, base e40efb0)
+
+Scope executed: the TL-serialized wave-4 worker-A lane (ADR:
+docs/architecture/adr-wave4-c6-host.md) — W4A-1 (stabilize the W2
+a17-real-execution flake) + W4A-2 (the organization
+rejection/rollback decision path, P5 rollback leg).
+
+## Ownership
+
+W4A-1: the W2 lane-A authored artifacts
+(packages/sporta-product/test/a17-real-execution.test.ts,
+test/fixtures/zcode-cli-standin.mjs) + the W2 adapter
+(packages/sporta-work/src/adapters/zcodeAgentRuntime.ts) + a new
+sporta-work adapter-law test file. W4A-2: packages/sporta-organizations
++ packages/sporta-lab. Zero touches to contracts/policy/arena/editors/
+artifacts/product-src/root manifests/lockfile.
+
+## WORK ITEMS
+
+- **W4A-1 — the W2 flake, root-caused first-hand.** The intermittent
+  failure "the terminal event carries the real exit code: stand-in
+  session completed" is a race between the ADAPTER's two
+  terminal-ish event sources: (a) the stdout stream parser mapped the
+  CLI's own `completed` session line to a TERMINAL-TYPE AgentRunEvent
+  through the unguarded record() path, and (b) the child 'close'
+  handler synthesized the REAL terminal event from the exit code
+  ("zcode-cli exited with code 0") after stdio drained. An observer
+  polling at 25ms could sample the run as terminal between (a) and (b)
+  — the sampled "terminal" carried the stream message, not the exit
+  code. Reproduced deterministically with a 1ms-poll harness against
+  the REAL adapter + REAL stand-in: 60/60 race hits pre-fix (event
+  list at break time: 1:started 2:started 3:progress 4:completed —
+  the stream line masquerading as terminal), and a 25ms-poll
+  histogram showing TWO terminal-type events per run (the structural
+  duplication). Post-fix: 0/60 race hits, exactly ONE terminal-type
+  event per run.
+- **W4A-1 — the fix (owned code only; zero assertion weakening).**
+  Three layers:
+  1. Adapter (sporta-work/src/adapters/zcodeAgentRuntime.ts) — four
+     documented W4A-1 laws: (1) exactly one terminal-type event per
+     run, synthesized ONLY from the real process lifecycle (the
+     finish() guard is the only path that records terminal-type
+     events); (2) THE STREAM NEVER DECIDES THE VERDICT — terminal-
+     looking stream lines record as progress evidence with their
+     message verbatim; (3) the terminal event is the last event ever
+     recorded; (4) line-buffered stdout parsing (a JSON line split
+     across pipe chunks parses as ONE event, never raw fragments; a
+     trailing newline-less line is flushed at stream end). This makes
+     "last observed event is terminal-type" and "the run terminated"
+     the same fact for every observer — the interleaving window no
+     longer exists. This also stabilizes worker-c's a17-full-real
+     test, which shares the stand-in and the same polling pattern.
+  2. Stand-in fixture (zcode-cli-standin.mjs) — flush determinism:
+     stream lines are awaited through stdout write-completion
+     callbacks and the success path exits NATURALLY with
+     process.exitCode = 0 (process.exit(0) can truncate pending
+     async pipe writes); the usage path exits 1 with stderr flushed
+     (verified: usage/no-args/bad-format all exit 1). The process,
+     pipes, wall time and exit codes stay REAL.
+  3. Test (a17-real-execution.test.ts) — the polling loop is now
+     sound; assertions were STRENGTHENED: exactly one terminal-type
+     event exists, and a settle-and-re-observe after the terminal
+     must return the byte-identical final event list (the
+     terminal-is-last law observed, not assumed). No assertion
+     deleted or loosened; every original assertion still present.
+- **W4A-1 — regression protection.** New
+  sporta-work/test/zcodeAgentRuntime.test.ts (7 tests): the four
+  adapter laws pinned against REAL child processes (executable
+  wrapper scripts in a temp dir speaking the headless interface):
+  terminal-looking stream lines stay progress evidence; exit code 3
+  is the ONLY failed-verdict source; split-line parsing; ENOENT spawn
+  failure is the single failed terminal; dispose kills a live child
+  (observed via the child's stopped heartbeat) and discards run
+  state; unknown-run observation never fabricates; startRun
+  idempotency never re-spawns.
+- **W4A-2 — the decision path (sporta-organizations).** Additive to
+  OrganizationRegistryService, declared on the new
+  OrganizationDecisionPort: rejectCandidate (decision "rejected",
+  deterministic promotionId `rejection:<orgId>:<version>`, gates
+  exactly the promotion gates: version-registered, evidence-present,
+  policy-defined) and rollbackPromotion (decision "rolled-back",
+  deterministic promotionId `rollback:<orgId>:<version>`, gates:
+  version-registered, prior-promotion [a granted non-retracted
+  promotion of the SAME candidate], evidence-present, policy-defined).
+  Decision records are immutable PromotionRecords (the contracts
+  union, no fork); idempotent per candidate+decision for identical
+  effective evidence (input ∪ record evidence, deduped, input first);
+  typed refusals otherwise: OrganizationDecisionError (failed gates,
+  NEW typed error), OrganizationImmutableError (conflicting decisions:
+  reject-after-promote, promote-after-reject, promote-after-rollback,
+  rollback-after-reject/draft via the prior-promotion gate). Rollback
+  RETRACTS the entry's promoted flag (the version leaves the
+  resolver's candidate set) while KEEPING the granted promotion record
+  (append-only history). Per-candidate ledger law: at most one
+  rejection on a never-promoted draft, or one promotion followed by
+  at most one rollback; the escape hatch for every refusal is the
+  append-only registry itself (register a new version).
+  listPromotionRecords (Wave 3 port, additive behavior evolution) now
+  surfaces the full decision ledger in grant order.
+- **W4A-2 — the read seam surfacing (sporta-lab).**
+  candidateReads.ts: the honest empty arrays for rejected/rolled-back
+  became REAL data — status derives from the LATEST decision record
+  per candidate (listPromotionRecords returns grant order, so the
+  last record per candidateId is the current state; a rolled-back
+  candidate surfaces "rolled-back", not "promoted"); basis
+  `decision record rejection:<id>` / `decision record rollback:<id>`
+  (the promoted path keeps the Wave 3 wording byte-identical).
+  organizationCandidateReadService.ts: the promotion join became the
+  latest-decision join. listPromotions surfaces all three decisions
+  field-for-field (the earlier promotion of a rolled-back candidate
+  stays listed as history). The read-only surface is unchanged.
+
+## CHANGED FILES
+
+- packages/sporta-work/src/adapters/zcodeAgentRuntime.ts (MODIFIED —
+  W4A-1 laws 1-4: stream-verdict downgrade + line-buffered stdout +
+  stream-end flush; 270 lines)
+- packages/sporta-work/test/zcodeAgentRuntime.test.ts (NEW, 309 —
+  the adapter-law regression tests, real child processes)
+- packages/sporta-product/test/a17-real-execution.test.ts (MODIFIED —
+  strengthened assertions + stabilized-observation note; 240)
+- packages/sporta-product/test/fixtures/zcode-cli-standin.mjs
+  (MODIFIED — flush-deterministic writes + natural exit; 90)
+- packages/sporta-organizations/src/domain/ports.ts (MODIFIED —
+  additive: RejectCandidateInput, RollbackPromotionInput,
+  OrganizationDecisionPort; 159)
+- packages/sporta-organizations/src/domain/registry.ts (MODIFIED —
+  StoredOrganizationVersion additive rejection/rollback records;
+  promote refusal extensions; rejectStoredCandidate +
+  rollbackStoredPromotion pure transitions; 292)
+- packages/sporta-organizations/src/domain/errors.ts (MODIFIED —
+  additive OrganizationDecisionError; 63)
+- packages/sporta-organizations/src/app/organizationRegistryService.ts
+  (MODIFIED — additive rejectCandidate/rollbackPromotion; the
+  OrganizationDecisionPort implements clause; listPromotionRecords
+  surfaces the decision ledger; 163)
+- packages/sporta-organizations/src/contract.ts (MODIFIED — additive
+  re-exports of the new types + error; 75)
+- packages/sporta-organizations/test/organizationDecisions.test.ts
+  (NEW, 395 — 14 decision-path tests)
+- packages/sporta-lab/src/domain/candidateReads.ts (MODIFIED —
+  latest-decision status mapping + decided basis strings; 182)
+- packages/sporta-lab/src/app/organizationCandidateReadService.ts
+  (MODIFIED — latest-decision join; 98)
+- packages/sporta-lab/test/candidateReads.test.ts (MODIFIED — stale
+  "unreachable states" test renamed honestly; split note; 243)
+- packages/sporta-lab/test/candidateReadsDecisions.test.ts (NEW, 244 —
+  6 decided-state surfacing tests)
+- packages/sporta-organizations/SPEC.md + CONTRACT.md,
+  packages/sporta-lab/SPEC.md (MODIFIED — Wave 4 sections)
+- docs/implementation/worker-a.md (this section, append-only)
+
+File-size law: every touched/created file ≤ 395 lines (wc -l;
+organizationDecisions.test.ts 395 is the largest — the two lab test
+files were split at 403 to stay under the law).
+
+## TESTS
+
+- NEW: 27 tests — 7 (sporta-work adapter laws) + 14
+  (sporta-organizations decision path: gates, idempotency,
+  immutability, rollback-requires-prior-promotion incl. cross-
+  candidate, promote-after-reject/rollback refusals, decided-content
+  draft-conflict semantics, ledger ordering, resolver retraction) +
+  6 (sporta-lab decided-state surfacing: field-for-field, filters,
+  latest-decision-wins, full decision ledger, determinism,
+  bounded-read over decided populations).
+- MODIFIED: 1 test renamed honestly (the lab rejected/rolled-back
+  empty-array test — same assertions, honest name: "no candidate
+  carries those decisions in this fixture"); the a17-real-execution
+  assertions strengthened (exactly-one-terminal + event-list-final).
+- Counts: scoped Worker-A battery 97/97 (70 base + 27 new — math
+  exact); FULL battery 296/296 (269 base + 27 new — math exact),
+  0 skipped.
+- Flake gate: a17-real-execution 20/20 consecutive green runs, 17s
+  wall (measured twice: pre-W4A-2 tree and final tree). a17-full-real
+  (worker-c's, same stand-in + same poll pattern) 10/10.
+
+## REAL EVIDENCE
+
+All numbers below were measured first-hand on this machine (pnpm
+10.33.2, node v24.21.0, pnpm exec tsx --test):
+
+- pnpm architecture:check → OK, violations 0, baseline 0, new 0.
+- node scripts/architecture/sporta-surface-check.mjs → OK, frozen
+  surfaces intact, additive-only (organizations +31 additive [was +27
+  at W3-A: +4 new names], work +32 [unchanged — no new exports], lab
+  +15 [unchanged — internal mapping only], evaluation +2
+  [unchanged]).
+- pnpm exec tsc -b packages/sporta-work packages/sporta-organizations
+  packages/sporta-lab packages/sporta-evaluation → exit 0 clean.
+- Scoped battery (work+organizations+lab+evaluation) → 97 pass / 0
+  fail / 0 skipped (duration ~2.2s).
+- FULL battery pnpm exec tsx --test packages/sporta-*/test/*.test.ts →
+  296 pass / 0 fail / 0 skipped, ~8.1s duration, 8s wall (run twice
+  on the final tree: 296/296 both).
+- pnpm lint → 0 errors, 70 warnings — identical to the wave-0/1/2/3
+  baseline (all pre-existing).
+- Flake reproduction harness (diagnostic, not committed): the exact
+  a17 polling pattern at 1ms against the REAL adapter + REAL
+  stand-in, 60 runs: 60/60 race hits pre-fix (terminal detail
+  "stand-in session completed" — the W3-C-recorded failure
+  reproduced), 2 terminal-type events per run; 0/60 post-fix, 1
+  terminal-type event per run.
+- a17-real-execution.test.ts: 20/20 consecutive green, 17s wall (the
+  gate command from the packet, run verbatim; also 10 runs green
+  before the fix era ended at 0/10 — the race is timing-dependent,
+  which is why the 1ms harness is the deterministic proof).
+- a17-full-real.test.ts: 10/10 green (stabilized by the adapter law
+  fix without touching worker-c's file).
+- Stand-in usage paths verified by direct invocation: wrong-flag /
+  no-args / bad-format all exit 1 with the usage line on stderr.
+
+## FIXTURE EVIDENCE
+
+The adapter-law regression tests spawn REAL child processes whose
+executable is a fixture wrapper script (temp dir, chmod 755, headless
+interface); the process lifecycle observations (spawn, pipes, exit
+codes, kill via heartbeat) are real, the script content is fixture.
+The organizations/lab decision tests run on InMemoryOrganizationStore
+with a fixed clock — fixture-grade by design (they prove the decision
+LAWS, never durability). The a17-real-execution evidence classes are
+unchanged from W2 (REAL execution leg + fixture stores + executable
+stand-in, honestly labeled in the test header).
+
+## CONTRACT CHANGES
+
+None to @sporta/contracts (frozen; the PromotionRecord decision union
+already carried rejected/rolled-back — implemented, not forked; no
+contracts shape mismatch appeared). Additive-only growth of my owned
+entrypoints:
+
+- sporta-work: no new exports (adapter-internal laws; the 4 W4A-1
+  laws live in code + tests).
+- sporta-organizations: + types RejectCandidateInput,
+  RollbackPromotionInput, OrganizationDecisionPort; + error
+  OrganizationDecisionError.
+- sporta-lab: no new exports (the read seam surface is unchanged;
+  the latest-decision mapping is internal).
+
+## RIGHTS-PROVENANCE
+
+W4A-2 decision records carry the record's own evidence + policy
+gates (promotion parity — no policy weakening: rejection and rollback
+are REFUSED when policy is undefined). The lab summaries carry no
+policy fields to strip (field-for-field law); the registry store
+clones on read so callers never alias policy-bearing records. W4A-1
+adds no data flow (process lifecycle evidence only). No hidden
+chain-of-thought is stored (decision records carry gate names +
+evidence ids).
+
+## PERFORMANCE
+
+All in-memory for W4A-2 (O(store) reads, map-join reads at the seam,
+bounded by the 50-row cap; promote/reject/rollback are O(1) store
+reads + one write). W4A-1 adds one string buffer per run (amortized
+O(bytes)); the full battery runs in ~8s wall (unchanged order vs the
+269-test baseline). The 20× flake gate: 17s wall (≈0.85s per run,
+tsx startup included). No performance claims beyond fixture scale.
+
+## SECURITY
+
+No secrets or credentials in code/tests/report (the delivery token
+appears only in the push URL, never committed or echoed). Fake
+evidence ids in tests are literal fixture strings (no credential
+fragments to assemble). Typed refusals everywhere: OrganizationDecisionError
+carries failed gate names; immutability refusals carry the honest
+escape hatch; invalid limits remain typed LabCandidateQueryError. The
+stand-in validates its args and exits non-zero on usage errors (a
+real CLI's contract). No new dependencies.
+
+## RISKS
+
+- The promote-after-rollback / promote-after-reject refusals make
+  decided candidates TERMINAL by design (the escape hatch is a new
+  version). If the TL later wants re-promotion after rollback (a
+  "re-promote" decision), that is a new ADR — the per-candidate
+  ledger law would need a third transition.
+- The latest-decision join relies on listPromotionRecords' grant
+  order (promotion before its rollback within one entry). The order
+  is structural (the flatMap order is fixed) and pinned by tests,
+  but a future store that reorders records must preserve it (or the
+  join must switch to an explicit timestamp/sequence comparison —
+  decidedAt is wall-clock and non-monotonic under a fixed clock, so
+  it cannot be the ordering key today).
+- The a17 polling loop is sound given the adapter laws; a future
+  adapter that re-introduces stream-sourced terminal events would
+  re-open the race — the zcodeAgentRuntime.test.ts regression tests
+  pin the laws structurally.
+- The basis strings for decided candidates ("decision record
+  rejection:<id>") follow the Wave 3 minimal-by-design convention;
+  richer basis content for the wave-4 UX remains a projection-layer
+  decision (NEXT DEPENDENCIES note 3 from W3-A carries forward).
+
+## BLOCKERS
+
+None. The contracts shapes worked as declared (the decision union
+was already frozen); no type was forked. The real zcode-cli bundle
+remains unbuildable in this sandbox (the carried W2 BLOCKER — the
+stand-in speaks the same headless interface; real zcode-cli execution
+stays unmeasured here).
+
+## DEVIATIONS
+
+- The new organizations decision-path tests live in
+  organizationDecisions.test.ts (NOT appended into
+  organization.test.ts): the packet said "new decision-path tests in
+  packages/sporta-organizations/test/organization.test.ts", but
+  organization.test.ts is 372 lines and the file-size law (400) would
+  be violated. Same deviation applied to the lab extension
+  (candidateReadsDecisions.test.ts) — candidateReads.test.ts hit 403
+  lines mid-edit and was split back under the law.
+- The stale W3-A test name "status filters for rejected/rolled-back
+  return an honest empty array (unreachable states)" was renamed to
+  "...when no candidate carries those decisions (this fixture)" —
+  same assertions, honest name (the states ARE reachable now; the
+  fixture simply has none). Documented here as a test-name change.
+- listPromotionRecords' behavior evolved additively (it now surfaces
+  rejection/rollback records too): required by the packet's
+  "extend only additively" for the promotion-history port — the
+  signature, ordering law and read-only law are unchanged; the W3-A
+  consumers see identical output when no decisions exist (all W3-A
+  tests pass unchanged).
+
+## NEXT DEPENDENCIES
+
+None required by this lane (no new dependencies; pnpm-lock.yaml
+untouched). Work-order notes for the TL:
+
+1. The carried wave-1 note is CLOSED: rejected/rolled-back candidate
+   statuses and promotion decisions are now producible end-to-end
+   (registry decision path + lab read seam surfacing).
+2. Worker-c's product projection can now surface real
+   rejected/rolled-back rows through OrganizationCandidateReadPort
+   (the organization-improvement stage detail may want to count
+   decided states separately — a projection-layer choice).
+3. If a re-promotion-after-rollback lifecycle is ever wanted, it
+   needs a TL-serialized ADR (see RISKS).

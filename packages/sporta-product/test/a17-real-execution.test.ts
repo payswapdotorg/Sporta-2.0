@@ -17,6 +17,20 @@
  *     test/fixtures/zcode-cli-standin.mjs is a REAL process-level
  *     stand-in speaking the same headless interface (see BLOCKERS in the
  *     work report: real zcode-cli execution is unmeasured here).
+ *
+ * W4A-1 STABILIZED OBSERVATION (the W3-C flake fix): the adapter now
+ * guarantees exactly ONE terminal-type event per run, synthesized only
+ *     from the real process lifecycle (the exit code / spawn error) and
+ *     always recorded LAST — stream-json lines that look terminal are
+ *     progress evidence, never verdicts. The polling loop below
+ *     therefore breaks exactly when the run has truly terminated; the
+ *     exit-code assertion is deterministic (previously the poll could
+ *     sample the stand-in's stream "completed" line before the adapter
+ *     synthesized the exit-code terminal — the recorded intermittent
+ *     failure "the terminal event carries the real exit code: stand-in
+ *     session completed"). No assertion was weakened; the observation
+ *     was made deterministic (see zcodeAgentRuntime.ts W4A-1 laws +
+ *     sporta-work/test/zcodeAgentRuntime.test.ts).
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -125,6 +139,25 @@ test("A17 real execution: the REAL adapter runs a real process and the seeded lo
   assert.ok(
     !events.some((event) => event.type === "failed"),
     "a run that exits 0 has no failed events (verdict comes from the exit code, not stderr)",
+  );
+
+  // W4A-1 stabilized observation — STRENGTHENED, never weakened: exactly
+  // one terminal-type event exists (the adapter's exit-code synthesis is
+  // the only terminal source; the stream's own "completed" line is
+  // progress evidence, so no observer can sample a pseudo-terminal).
+  assert.strictEqual(
+    events.filter((event) => event.type === "completed" || event.type === "failed").length,
+    1,
+    "exactly one terminal-type event exists (the exit-code synthesis)",
+  );
+  // W4A-1: the terminal event is FINAL — after it is observed, no further
+  // events can ever arrive (the process closed and the stdio drained),
+  // so a settle-and-re-observe must return the byte-identical history.
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  assert.deepEqual(
+    await runtime.observeRun(handle.runId),
+    events,
+    "the event list is final once the terminal event is observed",
   );
 
   // Adapter-owned monotonic seq: 1..N in observation order.

@@ -8,15 +8,20 @@ import type { OrganizationVersionRecord } from "@sporta/contracts/contract";
 import type {
   OrganizationCatalogEntry,
   OrganizationCatalogPort,
+  OrganizationDecisionPort,
   OrganizationPromotionHistoryPort,
   OrganizationPromotionPort,
   OrganizationRegistryPort,
   PromoteOrganizationInput,
+  RejectCandidateInput,
   RegisterOrganizationInput,
+  RollbackPromotionInput,
 } from "../domain/ports.js";
 import {
   promoteStoredVersion,
+  rejectStoredCandidate,
   registerDraftInState,
+  rollbackStoredPromotion,
   type StoredOrganizationVersion,
 } from "../domain/registry.js";
 import { OrganizationVersionNotFoundError } from "../domain/errors.js";
@@ -43,7 +48,8 @@ export class OrganizationRegistryService
     OrganizationRegistryPort,
     OrganizationCatalogPort,
     OrganizationPromotionPort,
-    OrganizationPromotionHistoryPort
+    OrganizationPromotionHistoryPort,
+    OrganizationDecisionPort
 {
   private readonly store: OrganizationStorePort;
   private readonly now: () => string;
@@ -98,13 +104,60 @@ export class OrganizationRegistryService
   }
 
   /**
-   * Wave 3 additive — read-only promotion history: the immutable
-   * PromotionRecords granted so far, in store order ((organizationId asc,
-   * version asc) — deterministic). Unpromoted drafts contribute nothing.
-   * The store clones on read, so callers never alias registry state.
+   * Wave 4 additive — reject one candidate version (decision
+   * "rejected"): evidence + policy gated like promotion, immutable after
+   * decision, idempotent per candidate+decision for identical effective
+   * evidence. Typed refusals otherwise (see domain/registry.ts).
+   */
+  async rejectCandidate(input: RejectCandidateInput): Promise<PromotionRecord> {
+    const entry = await this.store.read(input.organizationId, input.version);
+    if (entry === null) {
+      throw new OrganizationVersionNotFoundError(
+        `organization ${input.organizationId} version ${input.version} is not registered`,
+      );
+    }
+    const decidedAt: Iso8601 = this.now();
+    const result = rejectStoredCandidate(entry, input, decidedAt);
+    if (result.entry !== entry) await this.store.write(result.entry);
+    return result.decision;
+  }
+
+  /**
+   * Wave 4 additive — roll back a granted promotion (decision
+   * "rolled-back"): gated on a prior promotion of the same candidate,
+   * immutable after decision, idempotent per candidate+decision for
+   * identical effective evidence. The granted promotion record is kept
+   * (append-only history) while the promoted flag is retracted.
+   */
+  async rollbackPromotion(input: RollbackPromotionInput): Promise<PromotionRecord> {
+    const entry = await this.store.read(input.organizationId, input.version);
+    if (entry === null) {
+      throw new OrganizationVersionNotFoundError(
+        `organization ${input.organizationId} version ${input.version} is not registered`,
+      );
+    }
+    const decidedAt: Iso8601 = this.now();
+    const result = rollbackStoredPromotion(entry, input, decidedAt);
+    if (result.entry !== entry) await this.store.write(result.entry);
+    return result.decision;
+  }
+
+  /**
+   * Wave 3 additive — read-only promotion/decision history: the immutable
+   * lifecycle decision records granted so far — promotions, rejections
+   * and rollbacks (Wave 4) — in store order ((organizationId asc,
+   * version asc), grant order within one entry: promotion then
+   * rollback). Undecided drafts contribute nothing. The store clones on
+   * read, so callers never alias registry state.
    */
   async listPromotionRecords(): Promise<readonly PromotionRecord[]> {
     const entries = await this.store.list();
-    return entries.flatMap((entry) => (entry.promotion === undefined ? [] : [entry.promotion]));
+    return entries.flatMap((entry) => {
+      const decisions: PromotionRecord[] = [];
+      if (entry.promotion !== undefined) decisions.push(entry.promotion);
+      if (entry.rejection !== undefined) decisions.push(entry.rejection);
+      if (entry.rollback !== undefined) decisions.push(entry.rollback);
+      return decisions;
+    });
   }
 }
