@@ -58,7 +58,7 @@ declared in this package (`RenderTimelinePort`, `src/domain/playback/ports.ts`):
 
 - The timeline anchor is t = 0. For a declared event `e`:
   `atMs(e) >= 0` (finite); `durationMs(e) = e.durationMs ??
-  defaultEventDurationMs` (finite, > 0).
+defaultEventDurationMs` (finite, > 0).
 - Tick grid: `tickMs` (default 1000 ms). Tick `t` covers the
   half-open interval `[t * tickMs, (t + 1) * tickMs)`.
 - An event is ACTIVE at tick `t` iff its half-open interval
@@ -168,21 +168,21 @@ events).
 
 ## Failure semantics
 
-| Failure                                                                  | Typed error                    |
-| ------------------------------------------------------------------------ | ------------------------------ |
-| No timelines at all, or a timeline with zero events                      | `EmptyTimelineError`           |
-| Malformed event (empty id; non-finite/negative `atMs`; non-finite/non-positive `durationMs`; non-string/empty payload refs; duplicate `eventId` within one timeline) | `MalformedTimelineEventError`  |
-| Malformed carry-forward header (missing/empty fields; confidence outside [0, 1]) | `MalformedCarryForwardError`   |
-| Timeline kind outside the v1 vocabulary                                  | `UnknownRealityKindError`      |
-| The same reality kind declared by two timelines                          | `DuplicateRealityKindError`    |
-| Carry-forward headers disagree across timelines                          | `TimelineCarryMismatchError`   |
-| Invalid options (`tickMs`, `frameBufferCapacity`, `defaultEventDurationMs`) | `InvalidPlaybackOptionsError`  |
-| `seek`/`frameAt` outside `[0, durationMs]`                               | `OutOfRangeSeekError`          |
-| `step` destination outside the tick range                                | `OutOfRangeStepError`          |
-| `play(rate)` with rate not finite > 0                                    | `InvalidRateError`             |
-| `step` with a non-integer / non-finite delta                             | `InvalidStepError`             |
-| `advance` while paused                                                   | `PlaybackPausedError`          |
-| `advance` with non-finite or negative `dtMs`                             | `InvalidAdvanceError`          |
+| Failure                                                                                                                                                              | Typed error                   |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| No timelines at all, or a timeline with zero events                                                                                                                  | `EmptyTimelineError`          |
+| Malformed event (empty id; non-finite/negative `atMs`; non-finite/non-positive `durationMs`; non-string/empty payload refs; duplicate `eventId` within one timeline) | `MalformedTimelineEventError` |
+| Malformed carry-forward header (missing/empty fields; confidence outside [0, 1])                                                                                     | `MalformedCarryForwardError`  |
+| Timeline kind outside the v1 vocabulary                                                                                                                              | `UnknownRealityKindError`     |
+| The same reality kind declared by two timelines                                                                                                                      | `DuplicateRealityKindError`   |
+| Carry-forward headers disagree across timelines                                                                                                                      | `TimelineCarryMismatchError`  |
+| Invalid options (`tickMs`, `frameBufferCapacity`, `defaultEventDurationMs`)                                                                                          | `InvalidPlaybackOptionsError` |
+| `seek`/`frameAt` outside `[0, durationMs]`                                                                                                                           | `OutOfRangeSeekError`         |
+| `step` destination outside the tick range                                                                                                                            | `OutOfRangeStepError`         |
+| `play(rate)` with rate not finite > 0                                                                                                                                | `InvalidRateError`            |
+| `step` with a non-integer / non-finite delta                                                                                                                         | `InvalidStepError`            |
+| `advance` while paused                                                                                                                                               | `PlaybackPausedError`         |
+| `advance` with non-finite or negative `dtMs`                                                                                                                         | `InvalidAdvanceError`         |
 
 All errors extend `PlaybackError` with a machine-readable `detail`
 prefix. Validation precedes mutation: a refused construction or call
