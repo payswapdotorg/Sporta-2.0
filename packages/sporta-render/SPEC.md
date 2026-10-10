@@ -84,8 +84,7 @@ mirrored). Empty `entities`/`events` are honest empties, never errors.
 structural:
 
 - `board`: renderer-owned geometry constants
-  (`TACTICAL_BOARD_WIDTH` = 1000, `TACTICAL_BOARD_HEIGHT` = 640, margin
-  40) + `coordinateSystem: "derived-layout"` + one record per entity
+  (`TACTICAL_BOARD_WIDTH` = 1000, `TACTICAL_BOARD_HEIGHT` = 640, margin 40) + `coordinateSystem: "derived-layout"` + one record per entity
   (`entityId`, derived layout `x`/`y`, optional attached confidence).
 - Derived layout (deterministic, documented as RENDERER-OWNED geometry,
   never a claim about real-world positions): entities are placed on a
@@ -137,13 +136,24 @@ terms, so a new sport or non-sport event domain renders unchanged
 (domain extension law). Rules (evaluated in order, all pure):
 
 1. `event-sequence` (always):
-   `Event <id> recorded at sequence <n> of <total> in domain <domain>.`
+
+   ```text
+   Event <id> recorded at sequence <n> of <total> in domain <domain>.
+   ```
+
 2. `event-anchor` (always):
-   `Event <id> is anchored to the snapshot capture time <capturedAt>
+
+   ```text
+   Event <id> is anchored to the snapshot capture time <capturedAt>
    (snapshot provenance; per-event timestamps are not carried by the
-   world model).`
+   world model).
+   ```
+
 3. `event-confidence` (only when the confidence attach rule fired):
-   `Event <id> carries recorded confidence <confidence>.`
+
+   ```text
+   Event <id> carries recorded confidence <confidence>.
+   ```
 
 `playByPlayTranscript(model) -> string`: deterministic transcript join
 (one line per record: the record's phrases joined by a single space) —
