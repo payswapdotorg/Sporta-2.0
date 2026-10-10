@@ -43,3 +43,79 @@ export { WorldModelService } from "./app/WorldModelService.js";
 
 export { sha256WorldHash } from "./adapters/hash.js";
 export { FixedClock, SystemClock } from "./adapters/clock.js";
+
+// Wave 5 (w5a) — perception pipeline stages (ADDITIVE; the Wave 1
+// ingestion seam above is unchanged). Pure domain functions; the
+// perception stage is an honest typed transform (NO ML — see SPEC).
+export type {
+  AcquisitionChain,
+  PerceptionFactKind,
+  PerceivedPosition,
+} from "./domain/pipeline/provenance.js";
+export { canonicalJson, narrowConfidence } from "./domain/pipeline/provenance.js";
+
+export type {
+  MediaRef,
+  AcquisitionManifest,
+  AcquisitionRecord,
+} from "./domain/pipeline/acquisition.js";
+export { acquireSources } from "./domain/pipeline/acquisition.js";
+
+export type {
+  RawObservation,
+  NormalizedObservation,
+  NormalizationSeams,
+} from "./domain/pipeline/normalization.js";
+export { normalizeObservations } from "./domain/pipeline/normalization.js";
+
+export type {
+  EntityStateRule,
+  BallStateRule,
+  PerceptionRule,
+  PerceivedFact,
+} from "./domain/pipeline/perception.js";
+export { perceiveObservations } from "./domain/pipeline/perception.js";
+
+export type {
+  TrackingParams,
+  TrackedState,
+  TrackGap,
+  EntityTrack,
+} from "./domain/pipeline/tracking.js";
+export { trackEntities } from "./domain/pipeline/tracking.js";
+
+export type {
+  TimingCalibration,
+  CameraAxisTransform,
+  CameraMediaTransform,
+  CameraCalibration,
+  CalibrationParams,
+  CalibratedState,
+  CalibratedTrack,
+} from "./domain/pipeline/calibration.js";
+export { calibrateTracks } from "./domain/pipeline/calibration.js";
+
+export type {
+  ZoneBounds,
+  ZoneEntryRule,
+  PossessionChangeRule,
+  EventReconstructionRule,
+  ZoneEntryDetail,
+  PossessionChangeDetail,
+  ReconstructedEvent,
+} from "./domain/pipeline/eventReconstruction.js";
+export { reconstructEvents } from "./domain/pipeline/eventReconstruction.js";
+
+export type { PipelinePlan, PipelineSeams, PipelineResult } from "./domain/pipeline/composition.js";
+export { planPipelineObservations, runPipeline } from "./domain/pipeline/composition.js";
+
+export {
+  AcquisitionProvenanceError,
+  AcquisitionRightsError,
+  NormalizationError,
+  PerceptionError,
+  TrackingError,
+  CalibrationError,
+  EventReconstructionError,
+  PipelineCompositionError,
+} from "./domain/pipeline/errors.js";

@@ -307,7 +307,7 @@ exactly this and nothing stronger.
   confidences. Violations are typed `CalibrationError`s.
 - Corrections are exact deterministic arithmetic: corrected timestamp
   = source timestamp + the state's media offset (re-serialized
-  ISO-8601); corrected position = position * scale + translation per
+  ISO-8601); corrected position = position \* scale + translation per
   axis (z only when declared/present). Gap records carry with their
   bounding states' corrected timestamps and the gap duration is
   recomputed from the corrected endpoints (the gap PAIRING was
@@ -407,16 +407,16 @@ end-to-end at fixture grade.
 
 ## Failure semantics (pipeline additions)
 
-| Failure                                            | Typed error                  |
-| -------------------------------------------------- | ---------------------------- |
+| Failure                                             | Typed error                  |
+| --------------------------------------------------- | ---------------------------- |
 | Non-authorized acquisition source kind / seed       | `AcquisitionProvenanceError` |
-| Missing or empty rights scope                      | `AcquisitionRightsError`     |
+| Missing or empty rights scope                       | `AcquisitionRightsError`     |
 | Bad raw observation (unknown media, bad timestamp…) | `NormalizationError`         |
 | Declared rule misconfiguration / mistyped field     | `PerceptionError`            |
-| Bad tracking params (maxGapMs…)                    | `TrackingError`              |
-| Undeclared media / malformed calibration params    | `CalibrationError`           |
-| Bad event rules (zone bounds, entities…)           | `EventReconstructionError`   |
-| Composition caller errors (empty raws…)            | `PipelineCompositionError`   |
+| Bad tracking params (maxGapMs…)                     | `TrackingError`              |
+| Undeclared media / malformed calibration params     | `CalibrationError`           |
+| Bad event rules (zone bounds, entities…)            | `EventReconstructionError`   |
+| Composition caller errors (empty raws…)             | `PipelineCompositionError`   |
 
 All extend `WorldModelError` with machine-readable `detail`; all are
 exported additively from the single public entrypoint
