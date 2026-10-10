@@ -1,6 +1,6 @@
 # Sporta 2.0 Project State
 
-Status: WAVE 5 COMPLETE — LANES A + B + C LANDED (w5a perception pipeline 379/379; w5b renderer adapter boundary + tactical + play-by-play realities + REAL-ingestion e2e addendum; w5c playback engine deterministic seek/step/play + per-tick frames; TL union of the parallel @sporta/render surfaces + registration; 112/112 render + 379/379 battery + 2/2 web host TL-measured); post-wave-5: roadmap P7 (editor ecosystem) / P8 (production hardening)
+Status: WAVE 6 IN PROGRESS — P7 LANE A LANDED (w6a: live/shared editor session core, integration level 3 — shared-session domain + presence + delta coordination + reconcile-on-close + REAL round-trip lane; 93/93 editors + 414/414 battery + 114/114 render+web TL-measured @ 8834642); REMAINING P7: round-trip expansions; then P8 (production hardening)
 
 ## Repository identity
 

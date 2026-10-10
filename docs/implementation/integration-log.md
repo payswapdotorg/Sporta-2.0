@@ -162,3 +162,10 @@ Never record a merge as green from worker self-report alone.
 - TL-measured gates on the union: architecture 0/0/0 · surface OK (frozen intact, additive-only) · tsc -b sporta-render exit 0 · render tests **112/112** (58 render-lane + 54 playback-lane) · full battery **379/379** + 2/2 web host · lint 0 errors / 70 warnings (baseline held)
 - acceptance: both 14-section reports reviewed; w5b BLOCKERS none (addendum closed the one resolution caveat — REAL WorldModelService e2e); w5c BLOCKERS none, DEVIATIONS none material; integration risks documented (composition adapter `atMs` derivation until SWM carries per-event timestamps; host wiring in packages/web = future TL work)
 - WAVE 5 (P6 sports production) COMPLETE: A + B + C landed; 10 zombies + 2 phantom-slot chats abandoned server-side (harmless); next per roadmap: P7 editor ecosystem / P8 production hardening
+
+## W6-A — 2026-10-10 — TL wave-6 first lane integration (P7 live/shared editor session, level 3)
+
+- merged: `wave6/worker-a` `320acbe` (SPEC e81c27f → work 1053126 → report 320acbe) → main `8834642` (`--no-ff`, base cfc37bf, zero conflicts)
+- landed per lane: `packages/sporta-editors` — `src/domain/sharedSession/` (NEW: session/presence/coordination/errors — typed transitions, admission derived from the same rights gates as session opens, deterministic total-order delta broadcast with base-revision conflict refusal, fail-closed empty-usage admits no one) + `src/app/SharedEditorSessionService.ts` (open/join/broadcast/reconcile-on-close over optional additive ports — W4-B pattern) + 4 test files incl. the REAL round-trip lane (real FS, real revision hash chain, real MLT XML via KdenliveAdapter)
+- TL-measured gates: architecture 0/0/0 · surface OK (editors frozen intact) · tsc -b editors exit 0 · editors **93/93** · full battery **414/414** (379 + 35 new) · render+web host **114/114** · lint 0 errors / 70 warnings (baseline held)
+- acceptance: report 14 sections reviewed; worker reports BLOCKERS none; P7 integration-level-3 core now landed (level 2 round-trip precedent: Kdenlive since W2; remaining P7: round-trip expansions per editor-integration initial ecosystem)
