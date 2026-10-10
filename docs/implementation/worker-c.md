@@ -282,3 +282,130 @@ Gate table (real, measured on this sandbox, final pre-commit run):
 | Lint | pnpm lint | 70 warnings, 0 errors (baseline identical) |
 | Format (my files) | pnpm exec oxfmt --check <15 new/modified files> | all correct |
 | A17 full-real | pnpm exec tsx --test packages/sporta-product/test/a17-full-real.test.ts | pass — every stage done, real evidence per leg |
+
+# Wave 5 — Worker C (w5c)
+
+Status: WAVE 5 IMPLEMENTED (branch wave5/worker-c; commits dd01381 spec → e84dafb implementation → 4ae4b7c fmt → this report as the branch HEAD commit).
+
+Scope: the playback engine over renderer render-model timelines (ADR wave-5, decisions 3 + 5): deterministic seek/step/play over bounded buffers, typed playback errors, per-tick reality frames (tactical board delta; play-by-play narrative segments) with read-only provenance/rights carry-forward. The packages/web host wiring is TL integration work (deliberately absent). The render-model surface of `sporta-render` is w5b's parallel lane; my code compiles against MY OWN port declarations (additive duplication law) and lives strictly under `src/domain/playback/` + `test/playback*.test.ts` + the package scaffolding.
+
+## WORK ITEMS
+
+- W5C-1 playback controller: `PlaybackController` over the merged, validated timeline index — `seek(t)` (range-validated, tick-destination clamped), `step(delta)` (tick-quantized, validated), `play(rate)`/`pause()`, `advance(dtMs)` (rate-scaled, sub-tick playhead accumulation so slow-motion works, end-of-timeline is a normal stop), `frameAt(t)` (pure, idempotent per t), `recentFrames()` (frozen copy of the bounded buffer), `state` (frozen snapshot). Deterministic state machine: no wall-clock, no RNG — time is always a declarative argument.
+- W5C-1 typed playback errors: 14 classes over `PlaybackError` (machine-readable `detail`, validation precedes mutation): empty timeline, malformed event, malformed carry-forward, unknown/duplicate reality kind, carry mismatch, invalid options, out-of-range seek, out-of-range step, invalid rate, invalid step delta, paused advance, invalid advance dt.
+- W5C-1 bounded buffers (three laws, SPEC-documented): (1) retained frame history is capacity-bounded (default 64, FIFO eviction); (2) `advance` returns caller-owned transients while the controller retains only the bounded tail; (3) the merged event index is built once and is input-sized — the controller's entire retained state is one playhead time, one rate, the bounded buffer and the index. No frame memoization (would be an unbounded cache).
+- W5C-2 per-tick reality frames: `frameAtTick` pure projection — the tick's ACTIVE events (half-open interval intersection law; canonical order atMs → kind declaration order → eventId) project per declared reality kind: tactical → board delta (sorted-unique declared event ids + affected entities; zero geometry invention), play-by-play → narrative segments (event anchors with declared sequence + payload refs; zero phrasing invention). Every frame carries the carry-forward header (source + provenance + rights scope) verbatim and is deeply frozen.
+- W5C-2 zero SWM consumption: the package declares ZERO dependencies; the port types are declared locally; a source-scan test machine-checks that no `@sporta/*` import and no `SportsWorldModelRecord` token appear anywhere under `src/` (the adapter invariant holds at playback).
+- W5C-3 headless composition root + honest examples: `contract.example.ts` (fixture-grade timelines + `examplePlaybackSession`, which runs for real) and the node:test suite below, covering the domain-extension law (a second synthetic domain end-to-end), the bounded-buffer laws, determinism (double-run deep-equal) and all error paths.
+- Module infrastructure: `packages/sporta-render` created per the WO-C1 law — SPEC.md + CONTRACT.md committed FIRST (dd01381, spec-before-code), then package.json (`@sporta/render`, zero dependencies, zero devDependencies — TypeScript/tsx/oxlint resolve from the workspace root, keeping pnpm-lock.yaml untouched), tsconfig with references, module.ts manifest, contract.ts (single public entrypoint), contract.example.ts.
+
+## CHANGED FILES
+
+All inside the owned boundary `packages/sporta-render/` (plus this report). No TL-owned files, no root manifests, no pnpm-lock.yaml, no other workers' files.
+
+- packages/sporta-render/SPEC.md (new; committed first — playback SPEC: time model, controller semantics, buffer laws, failure table, honest evidence)
+- packages/sporta-render/CONTRACT.md (new; committed first — playback invariants + the parallel-lane note + TL integration steps)
+- packages/sporta-render/package.json (new; `@sporta/render`, type module, exports ./contract, zero deps)
+- packages/sporta-render/tsconfig.json (new; extends tsconfig.base.json, composite, references [])
+- packages/sporta-render/src/module.ts (new; manifest: id sporta-render, requires [], provides ["playback-engine"], publicEntrypoints ["contract.ts"])
+- packages/sporta-render/src/contract.ts (new; the public playback surface re-exports)
+- packages/sporta-render/src/contract.example.ts (new; fixture-grade timelines + the honest composition example)
+- packages/sporta-render/src/domain/playback/ports.ts (new; RenderTimelinePort + event/options types + carry-forward summaries + defaults)
+- packages/sporta-render/src/domain/playback/errors.ts (new; 14 typed errors)
+- packages/sporta-render/src/domain/playback/carry.ts (new; carry-forward validation/copy/structural equality — the file-size-law split of the original 416-line timeline.ts)
+- packages/sporta-render/src/domain/playback/timeline.ts (new; options resolution, event validation, merged index build, binary-searched active-window query)
+- packages/sporta-render/src/domain/playback/frames.ts (new; per-tick reality frame projections + deep freeze)
+- packages/sporta-render/src/domain/playback/controller.ts (new; PlaybackController)
+- packages/sporta-render/test/playback.{timeline,controller,frames,buffer,composition}.test.ts (new; 54 tests)
+- docs/implementation/worker-c.md (this section)
+
+## TESTS
+
+Runner: `pnpm exec tsx --test` (node:test + node:assert/strict, zero new dependencies — the repo law). 54 new tests, all passing, deterministic, no network, no host.
+
+- playback.timeline.test.ts (14): empty timelines; malformed events (10 variants incl. duplicate ids within one timeline); unknown kind; duplicate kind; carry mismatch; malformed carry (5 variants incl. confidence bounds); invalid options (7 variants) + defaults; duration/totalTicks/destination-tick clamping; half-open interval law; canonical merged order + declared sequence preservation; default duration; structural equality semantics.
+- playback.controller.test.ts (14): construction state + opening frame; seek semantics; out-of-range seek leaves no trace; seek-at-end; frameAt purity/idempotence; step forward/backward/zero; step refusals (range + non-integer); play/pause rate validation + persistence; paused/invalid advance refusals; advance emission law (one frame per crossed tick); slow-motion accumulation (rate 0.5); end-of-timeline normal stop; determinism (double-run deep-equal); frozen state/buffer copies detached from later mutation.
+- playback.frames.test.ts (11): one record per declared kind in declaration order; tactical board delta (sorted-unique ids/entities, no geometry); play-by-play segments (anchors only, zero phrasing); honest empties; zero invention (every frame id is declared); the same event in both realities at the same tick; kind-tagged canonical activeEvents; verbatim carry-forward on every frame; deep freeze (machine-checked, incl. mutation TypeError); pure-pipeline determinism; segment order by declared sequence.
+- playback.buffer.test.ts (7): capacity-bounded FIFO eviction; frozen detached copies; caller-owned transients; single opening frame; no unbounded accumulation over 150 seek/step ops (buffer ≤ capacity; state keys exactly the 11 documented fields); determinism after eviction; large batch = caller's choice.
+- playback.composition.test.ts (8): the machine-checked adapter-boundary law (source scan: zero `@sporta/`, zero SWM-record tokens, empty dependencies); end-to-end both-realities replay with zero-invention + zero-loss coverage (union of active events over all ticks == declared set); second synthetic domain end-to-end (domain-extension law); error paths leaving the session intact; bounded buffer under composition; cross-session determinism; the honest example session; 3200 real frame projections with double-run deep-equal.
+
+## REAL EVIDENCE
+
+How measured (all on this sandbox, final pre-report runs):
+
+- `pnpm architecture:check` → `architecture: OK / violations: 0 / baseline: 0 / new: 0` (exit 0). The new package is outside the registered set as designed (WO-C1; TL registers it at integration).
+- `node scripts/architecture/sporta-surface-check.mjs` → `sporta-surface-check: OK — frozen surfaces intact, growth is additive-only` (all 13 registered modules ok; `sporta-render` is not in the frozen map yet — nothing frozen was touched).
+- `pnpm exec tsc -b packages/sporta-render` → clean, exit 0, no output (also verified with the full scoped sporta set: exit 0).
+- `pnpm exec tsx --test packages/sporta-render/test/*.test.ts` → `tests 54 / pass 54 / fail 0 / cancelled 0`, runner-measured real wall-time ~0.9 s (880–957 ms across runs).
+- `pnpm exec tsx --test packages/sporta-*/test/*.test.ts` → `tests 372 / pass 372 / fail 0 / cancelled 0`, ~9.5 s real wall-time (baseline 318 + 54 new; the pre-work baseline re-measured 318/318 before any code was written).
+- `pnpm lint` → `Found 70 warnings and 0 errors` — identical to the pre-existing baseline; my 14 new files add zero warnings/errors (2795 → 2809 linted files).
+- `pnpm exec oxfmt --check packages/sporta-render/src packages/sporta-render/test packages/sporta-render/SPEC.md packages/sporta-render/CONTRACT.md` → all files use the correct format (matching w5b's oxfmt-clean scaffolding practice).
+- Pure functions run for real: the controller/frames/index functions execute in the tests above (real wall-time as measured by node:test); `examplePlaybackSession()` measured 1.218 ms real wall-time via `performance.now()` in a real tsx run (frames retained: 7; playheadMs: 4000; atEnd: false).
+- Determinism is asserted, not assumed: every determinism test drives two independent controller instances with identical inputs and deep-equals the full outputs.
+
+## FIXTURE EVIDENCE
+
+All timeline inputs across tests and examples are FIXTURE-GRADE (labeled in test headers and in contract.example.ts): synthetic football event ids ("event:kickoff", "event:pass-3", ...), synthetic snapshot hashes ("ab".repeat(32)), synthetic provenance ("camera:fixture-1"), synthetic rights holders, a synthetic second domain ("esports-sc2") for the domain-extension law, and a synthetic 40-event bulk timeline for the real-execution test. No production evidence is claimed; no ML model is loaded or executed; no perception happens here (that is w5a's lane). The fixtures satisfy the port shape that the real render models expose (w5b's branch was read for exact type names only — my code compiles against my own declarations).
+
+## CONTRACT CHANGES
+
+- None to any frozen surface (surface check OK; growth is additive-only).
+- The new package's own SPEC.md/CONTRACT.md define the playback contract: the input port (`RenderTimelinePort`), the time model (half-open tick intersection), the controller semantics, the three buffer laws, the carry-forward read-only law, and the 14-error failure table. The v1 reality-kind vocabulary is closed ("tactical" | "play-by-play"); extension is additive (new port tag + new frame record, no controller redesign).
+- No shared contract types were added across planes (per-package duplication law; zero `@sporta/*` dependencies).
+
+## RIGHTS-PROVENANCE
+
+- Every frame carries the timelines' carry-forward header verbatim: source summary (swmId/snapshotHash/domain), provenance summary (sourceKind/sourceRef/capturedAt/confidence) and rights-scope summary (holders/usages/prohibitions) — read-only, deeply frozen, never widened, never dropped (ADR wave-5, decision 5).
+- One playback session = one snapshot's realities: timelines with disagreeing carry-forward headers are refused (`TimelineCarryMismatchError`) — playback never merges rights.
+- Fail-closed carry validation mirrors the world module's law: confidence outside [0, 1] is a typed refusal; renderers/playback never invent confidence.
+- Playback makes no rights decisions and no policy calls: it consumes the C6 vocabulary read-only and adds no usage contexts.
+
+## PERFORMANCE
+
+- Measured: 54 playback tests in ~0.9 s real wall-time; full 372-test battery in ~9.5 s; the composition test performs 3200 frame projections + 40 seeks deterministically well under that; `examplePlaybackSession()` 1.218 ms.
+- Complexity (documented in SPEC alongside the memory law): index build O(E log E) (one sort); per-tick projection O(log E) binary search + bounded prefix scan, O(E) worst case, allocating only the active-event window; memory: input-sized index + capacity-bounded frame buffer (default 64) + one playhead + one rate — nothing else.
+
+## SECURITY
+
+- No IO, no network, no timers, no eval, no dynamic imports anywhere under `src/` (pure domain layer); all outputs deeply frozen (mutation attempts throw); all inputs validated fail-closed before any state change; no secrets, no credentials, no environment reads. The git remote URL used for push is not written into any committed file.
+
+## RISKS
+
+- The shared scaffolding files (package.json, tsconfig.json, module.ts, contract.ts, contract.example.ts, SPEC.md, CONTRACT.md) were created in parallel by w5b and w5c from the same base per the packet's orders; the TL must union them at integration (code paths themselves are strictly disjoint — mine under `src/domain/playback/` + `test/playback*.test.ts`). Resolution notes are in NEXT DEPENDENCIES.
+- The timeline port REQUIRES per-event timestamps (`atMs`), while the v1 render models expose the record's own event order + a single capture anchor (timestamp honesty law). The integration-time composition adapter must derive `atMs` deterministically — the documented default is `sequence * tickMs`. This is a wiring decision, not an engine gap.
+- `sporta-render` is unregistered in architecture-policy.yaml until the TL registers it; I self-complied with the managed-module laws (max 400 lines/file — largest is 296; contract.ts 75 lines; entrypoint-only surface; zero dependencies; no cycles; domain layering) so registration should be mechanical.
+- Oxlint's `max-lines` counts non-blank/non-comment lines, but I held the stricter raw 400-line law (timeline.ts was split at 416 raw lines).
+
+## BLOCKERS
+
+None.
+
+## DEVIATIONS
+
+- timeline.ts initially landed at 416 raw lines; per the file-size law it was split into carry.ts (137) + timeline.ts (296) before delivery.
+- oxfmt IS applied to SPEC.md/CONTRACT.md (matching w5b's oxfmt-clean scaffolding), while the repo's global docs are not oxfmt-clean (verified: docs/architecture/adr-wave5-p6-sports-production.md fails `oxfmt --check`) — package-local files follow the wave-5 package practice.
+- The spec commit was amended once (dd01381) to add the `InvalidStepError` row to the failure table BEFORE any implementation commit existed (spec-before-code law preserved: the spec commit still precedes all code).
+- `pnpm typecheck` (full-repo) remains OOM-killed on this 4 GB sandbox — the environment limitation recorded by the TL at Wave 0; the scoped `tsc -b` protocol is the agreed local verification (as in waves 1–4).
+
+## NEXT DEPENDENCIES (work-order notes to the TL)
+
+1. REGISTER sporta-render in architecture-policy.yaml (TL-owned): id `sporta-render`, roots `[packages/sporta-render/src]`, managed true, requires `[sporta-contracts]` (w5b's render-model surface consumes the frozen contracts; my playback surface itself requires none), publicEntrypoints `[packages/sporta-render/src/contract.ts]`, layers domain/app/adapters, layerOrder domain/app/adapters, owner worker-b (render models) with the playback surface noted as worker-c's. Then run a real `pnpm install` and re-run all gates.
+2. MERGE w5b + w5c additive surfaces (both branches from e919f81): union `contract.ts` re-exports (w5b's render-model exports + my playback exports — no name collisions: their names are RealityKind/TacticalRenderModel/..., mine are Playback*/RenderTimeline*); union `module.ts` provides (add `"playback-engine"`); merge SPEC.md/CONTRACT.md sections; keep w5b's `@sporta/contracts` dependency + tsconfig reference; keep both test sets (disjoint filenames); union package.json scripts (identical).
+3. COMPOSITION ADAPTER (the integration-time wiring the ADR assigns to the TL): project the real render models into `RenderTimelinePort` — tactical: kind "tactical", events from `TacticalRenderModel.timeline.events` with `atMs` derived per the documented default (`sequence * tickMs`) until the SWM carries per-event timestamps, `payloadRefs` from the board's entity associations; play-by-play: kind "play-by-play", events from `PlayByPlayRenderModel.records`; carry-forward from the models' shared header (already deep-equal across realities per w5b's two-realities materiality test, so my `TimelineCarryMismatchError` will not fire).
+4. HOST WIRING: surface the playback frames inside the packages/web sporta shell behind the w4c host-conversion surface (transitional-symlink law; TL serialization).
+5. OPTIONAL follow-ups: per-event timestamps in the SWM contract would make the composition adapter a pure pass-through (an ADR-level change); a clock-port adapter (app layer) could drive `advance` from real wall-time for live playback — deliberately NOT built now (the engine stays declarative-deterministic).
+
+DELIVERY: branch wave5/worker-c @ e84dafb (implementation HEAD; the fmt commit 4ae4b7c and this report follow as branch HEAD — `git log wave5/worker-c -4`)
+
+Gate table (real, measured on this sandbox, final pre-report run):
+
+| Gate | Command | Result |
+|---|---|---|
+| Architecture | pnpm architecture:check | OK — violations 0, baseline 0, new 0 |
+| Surface | node scripts/architecture/sporta-surface-check.mjs | OK — frozen surfaces intact, additive-only |
+| Typecheck | pnpm exec tsc -b packages/sporta-render | clean, exit 0 (full scoped sporta set also exit 0) |
+| Tests (render/playback) | pnpm exec tsx --test packages/sporta-render/test/*.test.ts | 54 pass / 0 fail / 0 cancelled |
+| Tests (full sporta battery) | pnpm exec tsx --test packages/sporta-*/test/*.test.ts | 372 pass / 0 fail / 0 cancelled (baseline 318 + 54 new) |
+| Lint | pnpm lint | 70 warnings, 0 errors (baseline identical; 14 new files add zero) |
+| Format | pnpm exec oxfmt --check packages/sporta-render/{src,test,SPEC.md,CONTRACT.md} | all correct |
+| File-size law | raw line counts | largest src file 296 lines (timeline.ts); all ≤ 400 |
