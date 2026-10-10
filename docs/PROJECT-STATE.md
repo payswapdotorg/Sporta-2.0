@@ -1,6 +1,6 @@
 # Sporta 2.0 Project State
 
-Status: WAVE 3 LANDED — ALL THREE LANES (read seams 1a/1b/1c/1d + WorkGraph refs + A17 FULL-REAL proven; 269/269 TL-measured @ 89617b7); REMAINING TAIL: product UX host conversion (packages/web) + C6 rights remaining planes + the W2 a17-real-execution flake fix
+Status: WAVE 4 IN PROGRESS — LANES A + B LANDED (W2 flake fix 20/20 TL-measured + organization rejection/rollback decision path; C6 artifact-plane rights gate invariant-22 + editor write-plane audit; 318/318 TL-measured @ d6e9aec); REMAINING TAIL: w4c lane (projection candidate-read wiring + C6 arena read gate + packages/web host conversion) IN FLIGHT; post-wave-4: roadmap P6/P7/P8
 
 ## Repository identity
 
@@ -239,21 +239,23 @@ phases P3/P7/P8; wave-2 items 1-6 are landed, see integration log W2):
    contracts additions TL-serialized @ 14836c6, additive-only.
 2. Product UX host conversion (packages/web integration): the product
    shell UI host consuming the projection + learning-consent intake +
-   takeover UX (P3 human-takeover leg of the roadmap) — the wave-3 tail
-   frontier. Includes wiring OrganizationCandidateReadPort into the
+   takeover UX (P3 human-takeover leg of the roadmap) — w4c lane IN
+   FLIGHT. Includes wiring OrganizationCandidateReadPort into the
    product projection as an optional dep (w3a NEXT DEPENDENCIES note 2 —
-   absent seam ⇒ organization-improvement stage stays seam-pending).
+   the decided-state surfacing it consumes is now landed in W4-A).
 3. A17 full-real loop test — DONE (W3-C: a17-full-real.test.ts — real
    process + real FS store + real MLT XML round-trip + real HTTP arena in
    ONE lineage, every ProductLoopTrace stage done, per-leg evidence
    honestly labeled).
 4. C6 rights propagation end-to-end (invariant 22: PolicySet propagation
    across artifact/editor/arena planes, enforced and tested) — the
-   editor READ half is landed (W3-B); the artifact + remaining planes
-   are the wave-3 tail frontier. Plus the W2 a17-real-execution flake
-   stabilization (the pre-existing race in the W2 real-process
-   stand-in's terminal event — documented in integration log W3-C;
-   Worker-A lane, small).
+   editor READ half landed (W3-B); the artifact READ plane landed
+   (W4-B @ d6e9aec: ArtifactGatedReadService + pure invariant-22 gate +
+   REAL FS lane evidence; editor WRITE plane gated in openSession +
+   audit typed); the ARENA read gate is w4c's (IN FLIGHT). The W2
+   a17-real-execution flake is FIXED (W4-A @ 26ea019: adapter terminal-
+   event laws + 20/20 TL-measured consecutive green — the W3-C-typed
+   race is closed).
 5. Arena entrypoint additive re-export of HttpArenaTransport — DONE
    (W3-C closed the W2 note).
 6. (Post-wave-3, roadmap P6/P7/P8) sports production perception/
