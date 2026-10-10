@@ -16,6 +16,7 @@ import type {
   PolicySet,
   SportaId,
 } from "@sporta/contracts/contract";
+import type { ArenaReadUsageContext } from "./escalationReadSeam.js";
 
 /** Input for producing a typed capability gap. `gapId` provides idempotency. */
 export interface RecordCapabilityGapInput {
@@ -52,10 +53,19 @@ export interface ValidationVerdict {
   checks: readonly { check: string; passed: boolean }[];
 }
 
-/** The Arena client boundary port. Escalation is idempotent per idempotencyKey. */
+/**
+ * The Arena client boundary port. Escalation is idempotent per idempotencyKey.
+ *
+ * Wave-4 W4C-2 additive (invariant 22): `readResult` accepts an optional
+ * caller usage context; a prohibited direct read is a typed
+ * `ArenaReadRefusalError`. Absent usage ⇒ the pre-wave-4 behavior.
+ */
 export interface ArenaClientPort {
   recordGap(input: RecordCapabilityGapInput): Promise<CapabilityGapRecord>;
   escalate(input: EscalateInput): Promise<ArenaEscalationRecord>;
-  readResult(escalationId: SportaId): Promise<ArenaResultRecord | null>;
+  readResult(
+    escalationId: SportaId,
+    usage?: ArenaReadUsageContext,
+  ): Promise<ArenaResultRecord | null>;
   validateResult(result: ArenaResultRecord): Promise<ValidationVerdict>;
 }

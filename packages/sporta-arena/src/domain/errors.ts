@@ -66,3 +66,23 @@ export class IllegalEscalationTransitionError extends ArenaError {
     super(`illegal Arena escalation lifecycle transition: ${from} -> ${to}`);
   }
 }
+
+/**
+ * W4C-2 (invariant 22 — C6 rights propagation on the read plane): a
+ * DIRECT read was refused because the caller's declared usage context is
+ * not permitted by the target record's PolicySet. Typed refusal, never a
+ * silent null — a refusal must be distinguishable from "no result yet".
+ * Listings never throw this; they exclude prohibited records instead
+ * (honest absence — the W3-B listing tradeoff, documented per surface in
+ * escalationReadSeam.ts and the package spec).
+ */
+export class ArenaReadRefusalError extends ArenaError {
+  constructor(
+    readonly escalationId: string,
+    readonly usages: readonly string[],
+  ) {
+    super(
+      `arena read refused: usage [${usages.join(", ")}] is not permitted for escalation ${escalationId} (invariant 22)`,
+    );
+  }
+}

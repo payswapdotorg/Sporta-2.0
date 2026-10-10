@@ -30,6 +30,11 @@ import {
 } from "./share/conversationShareRoute.js";
 import type { IPlatformService, RemoteTarget, ServerRemoteInfo } from "@zcode/shared";
 import { WEB_DEFAULT_THEME, resolveWebInitialTheme } from "./webThemeSeed.js";
+// W4C-3 host conversion (SPEC.md "Wave-4 host conversion"): the /sporta
+// route mounts the Sporta host panel; all host code lives in ./sporta/.
+import { SportaPanel } from "./sporta/SportaPanel.js";
+import { createBrowserFixtureHost } from "./sporta/browserFixtureHost.js";
+import { isSportaPath } from "./sporta/sportaRoute.js";
 
 function resolveWebThemePreference(defaultTheme: Theme = WEB_DEFAULT_THEME): Theme {
   const saved = localStorage.getItem("zcode-theme");
@@ -426,6 +431,16 @@ async function bootstrapWebApp() {
   const params = new URLSearchParams(window.location.search);
   if (isWebOAuthCallback(params)) {
     renderWebAuthCallbackPage();
+    return;
+  }
+
+  // W4C-3: the Sporta host surface — read-only projection rendering + the
+  // two write paths, over the labeled browser fixture host (the Node-only
+  // composition legs cannot execute in a browser bundle; the real host is
+  // the headless composition, tested under node:test + tsx).
+  if (isSportaPath(window.location.pathname)) {
+    document.title = "Sporta — Product Loop";
+    root.render(<SportaPanel host={createBrowserFixtureHost()} />);
     return;
   }
 

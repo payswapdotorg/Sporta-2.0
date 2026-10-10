@@ -27,9 +27,7 @@ import type {
   ArenaResultRecord,
   CapabilityGapRecord,
   EscalationReadPort,
-  EscalationResultQuery,
   EscalationResultSummary,
-  EscalationQuery,
   EscalationSummary,
   SportaId,
 } from "@sporta/contracts/contract";
@@ -37,6 +35,7 @@ import { escalationLifecyclePath } from "../domain/escalation.js";
 import { transitionGapStatus } from "../domain/gap.js";
 import { stableStringify } from "../domain/fingerprint.js";
 import {
+  ArenaReadRefusalError,
   EscalationConflictError,
   EscalationPolicyError,
   GapConflictError,
@@ -44,9 +43,15 @@ import {
 } from "../domain/errors.js";
 import { validateArenaResultChecks } from "../domain/resultValidation.js";
 import {
+  arenaPolicyPermitsUsage,
   escalationReadLimit,
   escalationSummaryOf,
   resultSummaryOf,
+} from "../domain/escalationReadSeam.js";
+import type {
+  ArenaReadUsageContext,
+  EscalationListInput,
+  EscalationResultListInput,
 } from "../domain/escalationReadSeam.js";
 import type { ArenaTransportPort } from "./arenaTransport.js";
 
@@ -196,10 +201,25 @@ export class ArenaClientService implements ArenaClientPort, EscalationReadPort {
     return record;
   }
 
-  async readResult(escalationId: SportaId): Promise<ArenaResultRecord | null> {
+  /**
+   * Direct result read. Wave-4 W4C-2 additive: an optional caller usage
+   * context (invariant 22). Absent ⇒ the pre-wave-4 behavior exactly
+   * (unchanged baselines prove it). Present ⇒ the C6 gate runs FIRST,
+   * against the escalation's PolicySet (a result carries no policy of its
+   * own — its escalation's governs): a caller whose declared usage is not
+   * permitted gets a TYPED `ArenaReadRefusalError`, never a silent null —
+   * a refusal must stay distinguishable from "no result yet".
+   */
+  async readResult(
+    escalationId: SportaId,
+    usage?: ArenaReadUsageContext,
+  ): Promise<ArenaResultRecord | null> {
     const entry = this.#escalations.get(escalationId);
     if (entry === undefined) {
       return null;
+    }
+    if (usage !== undefined && !arenaPolicyPermitsUsage(entry.record.policy, usage)) {
+      throw new ArenaReadRefusalError(escalationId, usage.usages);
     }
     const status = await this.#deps.transport.status(escalationId);
     if (status === null) {
@@ -228,13 +248,23 @@ export class ArenaClientService implements ArenaClientPort, EscalationReadPort {
    * Wave-3 read seam: bounded escalation list over the client's own
    * store. Filters are optional; the default limit is capped
    * (bounded-query law). Order is escalation creation order.
+   *
+   * Wave-4 W4C-2 (invariant 22) additive: an optional caller usage
+   * context. Absent ⇒ the pre-wave-4 behavior (every record listed).
+   * Present ⇒ prohibited records are EXCLUDED — honest absence, never an
+   * error (the W3-B listing tradeoff: a listing cannot enumerate what the
+   * caller may not see, so exclusion is the only honest signal).
    */
-  async listEscalations(query: EscalationQuery): Promise<readonly EscalationSummary[]> {
+  async listEscalations(query: EscalationListInput): Promise<readonly EscalationSummary[]> {
     const limit = escalationReadLimit(query.limit);
+    const gate = query.usage;
     const summaries: EscalationSummary[] = [];
     for (const entry of this.#escalations.values()) {
       if (summaries.length >= limit) break;
       const record = entry.record;
+      if (gate !== undefined && !arenaPolicyPermitsUsage(record.policy, gate)) {
+        continue;
+      }
       if (query.escalationId !== undefined && record.escalationId !== query.escalationId) {
         continue;
       }
@@ -255,14 +285,29 @@ export class ArenaClientService implements ArenaClientPort, EscalationReadPort {
    * per escalation — bounded by the limit); summaries mirror
    * ArenaResultRecord field-for-field. Read-only: verdicts and records
    * are never mutated by listing.
+   *
+   * Wave-4 W4C-2 (invariant 22) additive: an optional caller usage
+   * context, gated against each escalation's PolicySet (a result carries
+   * no policy of its own). Absent ⇒ pre-wave-4 behavior. Present ⇒
+   * results of prohibited escalations are EXCLUDED from the listing —
+   * honest absence, never an error (the listing never throws a refusal;
+   * only direct `readResult` calls refuse with the typed error).
    */
-  async listResults(query: EscalationResultQuery): Promise<readonly EscalationResultSummary[]> {
+  async listResults(
+    query: EscalationResultListInput,
+  ): Promise<readonly EscalationResultSummary[]> {
     const limit = escalationReadLimit(query.limit);
+    const gate = query.usage;
     const escalationIds: readonly SportaId[] =
       query.escalationId !== undefined ? [query.escalationId] : [...this.#escalations.keys()];
     const summaries: EscalationResultSummary[] = [];
     for (const escalationId of escalationIds) {
       if (summaries.length >= limit) break;
+      if (gate !== undefined) {
+        const entry = this.#escalations.get(escalationId);
+        if (entry === undefined) continue; // unknown escalation: no result anyway
+        if (!arenaPolicyPermitsUsage(entry.record.policy, gate)) continue;
+      }
       const result = await this.readResult(escalationId);
       if (result === null) continue;
       if (query.resultId !== undefined && result.resultId !== query.resultId) continue;

@@ -6,7 +6,7 @@
  * consent's scopes against the work graph's learning policy. No IO, no store.
  */
 import type { LearningArtifactRecord, LearningPolicyRef } from "@sporta/contracts/contract";
-import type { LearningConsentInput } from "../contract.js";
+import type { LearningConsentInput } from "./learningPorts.js";
 import { LearningScopeError } from "./errors.js";
 
 /** Scope values a learning policy may permit. */

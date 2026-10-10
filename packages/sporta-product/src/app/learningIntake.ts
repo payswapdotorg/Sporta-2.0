@@ -17,8 +17,7 @@
  * reports candidates; a promoted status surfaces through a seam
  * implementation that can see promotion state.
  */
-import type { LearningIntakePort } from "../contract.js";
-import type { LearningConsentInput } from "../contract.js";
+import type { LearningIntakePort, LearningConsentInput } from "../domain/learningPorts.js";
 import type {
   LearningArtifactQuery,
   LearningArtifactReadPort,

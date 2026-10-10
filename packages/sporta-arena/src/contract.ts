@@ -27,6 +27,7 @@ export {
   EscalationPolicyError,
   IllegalGapTransitionError,
   IllegalEscalationTransitionError,
+  ArenaReadRefusalError,
 } from "./domain/errors.js";
 
 /** Capability-gap lifecycle state (open -> escalated -> resolved/closed). */
@@ -63,6 +64,22 @@ export type {
   EscalationQuery,
   EscalationResultQuery,
 } from "@sporta/contracts/contract";
+
+// Wave-4 W4C-2 additive (ADR: docs/architecture/adr-wave4-c6-host.md,
+// invariant 22 — C6 rights propagation on the read plane): the caller
+// usage context, the pure visibility gate (mirroring the W3-B editors'
+// `sessionVisibleToUsage`), and the additive list-input extensions the
+// gated seam reads accept. A bare contracts query remains valid input —
+// absent usage context ⇒ the pre-wave-4 behavior (additive-only law).
+export type {
+  ArenaReadUsageContext,
+  EscalationListInput,
+  EscalationResultListInput,
+} from "./domain/escalationReadSeam.js";
+export {
+  arenaRecordVisibleToUsage,
+  arenaPolicyPermitsUsage,
+} from "./domain/escalationReadSeam.js";
 
 // Wave-3 additive (the W2 note): the REAL HTTP Arena transport re-exported
 // through the public entrypoint — it was deep-importable only. Wire it into

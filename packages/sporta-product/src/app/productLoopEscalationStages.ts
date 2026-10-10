@@ -28,7 +28,7 @@
  *   leg outranks past promotions); a promotion with decision "promoted"
  *   is DONE.
  */
-import type { ProductLoopStage } from "../contract.js";
+import type { ProductLoopStage } from "../domain/loopPorts.js";
 import type {
   EscalationReadPort,
   EscalationSummary,
