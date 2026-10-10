@@ -1106,3 +1106,442 @@ DELIVERY: branch wave4/worker-b @ 795a7a32c69d6be765ffb6c95193a1d87c496944 (code
 | tsx --test artifacts+editors                     | 77 pass / 0 fail    | 99 pass / 0 fail (77 + 22 new)       |
 | tsx --test packages/sporta-* (full suite)        | 269 pass / 0 fail   | 291 pass / 0 fail (269 + 22 new)     |
 | pnpm lint                                        | 0 errors / 70 warn  | 0 errors / 70 warnings (identical)   |
+
+# Wave 5 — Worker B (w5b)
+
+Status: W5B-1 + W5B-2 + W5B-3 + W5B-4 IMPLEMENTED (branch
+wave5/worker-b, base e919f81; spec commit 7ab42c1, code commit
+6c45ea3, this report commit on top — the W3-B documentation-commit
+pattern). All earlier reports above are preserved unchanged.
+
+## WORK ITEMS
+
+- W5B-1 NEW PACKAGE `packages/sporta-render` (WO-C1 law) — DONE:
+  `SPEC.md` + `CONTRACT.md` written and committed FIRST (own commit
+  7ab42c1, spec-before-code), then `package.json` (name
+  `@sporta/render`, ZERO dependencies, zero devDependencies — see
+  DEVIATIONS), `tsconfig.json` (references `../sporta-contracts`),
+  `src/module.ts` (manifest mirroring the future TL registration:
+  requires `[sporta-contracts]`, provides
+  `[renderer-adapter-boundary, tactical-board-reality,
+  play-by-play-reality]`, publicEntrypoints `[contract.ts]`),
+  `src/contract.ts` (single public entrypoint, 72 lines),
+  `src/contract.example.ts` (compile-checked by `tsc -b`). Root
+  manifests / pnpm-lock.yaml / architecture-policy.yaml UNTOUCHED;
+  package resolvability during worker development rides the WO-C1
+  transitional law: a gitignored
+  `packages/sporta-render/node_modules/@sporta/contracts ->
+  ../../../sporta-contracts` symlink (verified: `git check-ignore`
+  matches `.gitignore:1:node_modules/`; `git status` stays clean).
+- W5B-2 RENDERER ADAPTER BOUNDARY — DONE (pure, tested): the SWM
+  invariant "renderers consume SWM through adapters, never directly"
+  is implemented as per-reality PURE projection functions
+  `SportsWorldModelRecord -> <RealityKind>RenderModel`:
+  `tacticalRenderModel(snapshot)` and
+  `playByPlayRenderModel(snapshot)` (domain layer). Both models share
+  one read-only carry-forward header (ADR decision 5): `source`
+  (swmId/snapshotHash/domain), `provenance` (verbatim
+  `ProvenanceDescriptor` copy), `rightsScope` (verbatim
+  holders/usages/prohibitions copy of `PolicySet.rights`),
+  `evidence` (verbatim `{observationId, confidence}` from
+  `snapshot.uncertainty`). Models are DEEPLY FROZEN at construction
+  (recursive `Object.freeze` — the read-only law is machine-checked;
+  mutation throws in strict mode, asserted by tests). Deterministic
+  derivation, zero invented facts: every board entity / timeline
+  event / narrative record carries the source entity/event id it
+  derives from; the confidence attach rule fires ONLY when an
+  uncertainty `subject === id` (first match wins); event order is the
+  record's own order carried as-given (no re-sort, no dedup). Fail-
+  closed validation: every consumed confidence
+  (`uncertainty[].confidence`, `provenance.confidence`) outside [0,1]
+  is a typed `RenderInputError` (the world module's
+  `isValidConfidence` law, mirrored). The C6 usage-context vocabulary
+  is consumed, never invented: `RenderUsageContext` (per-package
+  duplication of the ratified W3-B/W4-B pattern) +
+  `swmRenderableUnder(rights, usage)` mirroring
+  `artifactVisibleToUsage` byte-for-byte in law (at least one
+  declared usage permitted AND none prohibited; absent/empty usage
+  NEVER passes). App layer: `RealityProjectionService.project`
+  (ungated pure both-realities composition — the plumbing/gated-seam
+  split, like the artifact plane) and `.projectGated(snapshot,
+  usage)` (typed `RenderRightsRefusalError` on refusal).
+- W5B-3 TACTICAL BOARD REALITY — DONE (real, tested): the
+  spatial/structural projection. `TacticalRenderModel` = the
+  structured board record: `board` (renderer-owned geometry constants
+  1000x640, margin 40, `coordinateSystem: "derived-layout"`, one
+  record per entity with derived layout x/y + optional attached
+  confidence) + `timeline` (the capture anchor + one record per event
+  with eventId/sequence/capturedAt + `capturedAtSource:
+  "snapshot-provenance"` + optional confidence). Derived layout =
+  deterministic near-square grid from the entity's index
+  (`boardColumns` = ceil(sqrt(n)); a sole entity is centered);
+  labeled renderer-owned geometry, never a real-world position claim.
+  `serializeTacticalSvg(model)` (adapters layer — the kdenliveXml.ts
+  precedent, external document format): deterministic SVG 1.1
+  document string via HAND-WRITTEN string building only — no DOM, no
+  XML library, no IO, no ambient state (runs in plain node, proven by
+  the node:test battery executing it). Fixed element/attribute order,
+  one 2-decimal rounding rule for coordinates, all interpolated text
+  XML-escaped (`& < > " '`); marker/tick counts equal the model's
+  entity/event counts; `<title>`/`<desc>` carry the snapshot
+  reference + provenance + rights summary INSIDE the document; the
+  canvas appends a renderer-owned 120-unit timeline strip
+  (scaffolding geometry, documented as not-a-world-fact). Honest
+  about not being pixels: no rasterization/browser claim anywhere.
+- W5B-4 PLAY-BY-PLAY REALITY — DONE (real, tested): the
+  textual/sequential projection. `PlayByPlayRenderModel` = sequential
+  narrative `records`, one per event in the record's own order, each
+  with eventId/sequence/capturedAt(+source)/optional confidence and
+  `phrases`. The phrasing engine (`domain/narrative.ts`) is
+  RULE-BASED and DOMAIN-AGNOSTIC: three fixed ordered rules
+  (`event-sequence`, `event-anchor`, `event-confidence`) over generic
+  vocabulary only — NO ML claims (no model loaded or executed,
+  nothing learned; documented in SPEC before code). Every phrase
+  carries `text`, `templateId`, `anchoredEventId` (traceability to
+  the event id) and `derivedFields` (the snapshot fields the text was
+  built from). The `event-anchor` phrase states the timestamp honesty
+  law in the text itself ("per-event timestamps are not carried by
+  the world model"). `playByPlayTranscript(model)` is a deterministic
+  join read (never a second source of truth).
+- A13 MATERIALITY PROOF — DONE (invariant test): the
+  `adapterBoundary.test.ts` battery asserts the two render models
+  share the SAME snapshot (identical header bytes) yet produce
+  STRUCTURALLY DISJOINT reality bodies: full key-path sets are
+  collected recursively; after subtracting the shared-by-law header
+  paths, the tactical body (`board.*` + `timeline.*`, 14 paths) and
+  the play-by-play body (`records.*`, 10 paths) share ZERO paths, and
+  a characteristic-field regex law proves neither body carries the
+  other reality's fields (no narrative fields in tactical; no spatial
+  fields in play-by-play). The boundary itself is machine-checked: a
+  REAL filesystem read scans the serializer source for
+  `@sporta/contracts` imports and SWM record tokens (none may
+  appear — the serializer sees render models only), and the
+  serializer is executed from the model value alone.
+
+## CHANGED FILES
+
+All inside the owned boundary `packages/sporta-render` (new package,
+WO-C1) plus this report. NOTHING outside ownership was touched
+(verified: `git status` clean on everything else; no root manifest,
+no pnpm-lock.yaml, no architecture-policy.yaml, no frozen contract
+type — `SportsWorldModelRecord` consumed read-only via type-only
+imports, erased at runtime by `verbatimModuleSyntax`).
+
+- `SPEC.md` + `CONTRACT.md` (spec-before-code, commit 7ab42c1)
+- `package.json` (name `@sporta/render`, zero dependencies)
+- `tsconfig.json` (extends base, references sporta-contracts)
+- `src/module.ts` (manifest, mirrors the future TL registration)
+- `src/domain/renderModel.ts` — shared base types (source, rights
+  summary, evidence), carry-forward, confidence attach/validate,
+  deep-freeze
+- `src/domain/errors.ts` — `RenderModelError`, `RenderInputError`,
+  `RenderRightsRefusalError`
+- `src/domain/usage.ts` — `RenderUsageContext` +
+  `swmRenderableUnder` (the C6 mirror)
+- `src/domain/board.ts` — geometry constants + `boardColumns` +
+  `derivedBoardPosition`
+- `src/domain/tactical.ts` — `TacticalRenderModel` +
+  `tacticalRenderModel` adapter
+- `src/domain/narrative.ts` — the rule-based phrasing engine (3
+  ordered templates)
+- `src/domain/playByPlay.ts` — `PlayByPlayRenderModel` +
+  `playByPlayRenderModel` adapter + `playByPlayTranscript`
+- `src/app/realityProjection.ts` — `RealityProjectionService`
+  (`project` / `projectGated`)
+- `src/adapters/tacticalSvg.ts` — `serializeTacticalSvg` +
+  `TACTICAL_TIMELINE_STRIP_HEIGHT` (hand-written string building)
+- `src/contract.ts` (single public entrypoint) +
+  `src/contract.example.ts`
+- `test/fixtures.ts` + `test/adapterBoundary.test.ts` +
+  `test/tacticalBoard.test.ts` + `test/playByPlay.test.ts` +
+  `test/tacticalSvg.test.ts` + `test/usageGate.test.ts`
+- `docs/implementation/worker-b.md` (this report)
+
+Largest source file: `src/domain/renderModel.ts` at 151 lines (the
+file-size law is 400; enforced also by the root oxlint `max-lines`
+rule — 0 errors).
+
+## TESTS
+
+52 new node:test tests (node:assert/strict, tsx — the repo law), all
+passing; full repo battery 370/370 (318 baseline + 52 new, 0 fail):
+
+- `adapterBoundary.test.ts` (10): shared-header identity across the
+  two realities; A13 structural disjointness (key-path sets +
+  characteristic-field regex law); input purity (deep-frozen snapshot
+  survives both adapters + serializer + transcript — strict-mode
+  mutation would throw); determinism (byte-identical models across
+  runs and across equal snapshot instances); zero-invented-facts
+  (ids ⊆ snapshot's own, verbatim provenance/rights/evidence);
+  order-as-given (duplicates + unsorted order preserved); honest
+  empties; deep-frozen outputs (asserted frozen at every level);
+  serializer source scan (REAL fs read: no contracts import, no SWM
+  record token).
+- `tacticalBoard.test.ts` (11): boardColumns math; sole-entity
+  centering; 4-entity corner positions with exact deterministic
+  values; same-(index,total) stability for totals 1..12; margin-box
+  containment for totals 1..16; RangeError on out-of-range indexes;
+  adapter order/constants/positions; confidence attach (entity and
+  event subjects; absent otherwise, `"confidence" in rec === false`);
+  ingestion-shaped uncertainty never fires attach; timeline order +
+  anchor + source label; typed `RenderInputError` on bad confidences
+  (uncertainty and provenance) with exact detail string; second
+  synthetic domain (`factory-line`) projects identically in shape.
+- `playByPlay.test.ts` (12): one record per event in order; every
+  phrase `anchoredEventId === record.eventId`; exact ordered template
+  set per record (`event-sequence`, `event-anchor`, +
+  `event-confidence` only when attached); exact phrase texts (all
+  three templates, byte-exact expectations); the honesty note present
+  in every anchor phrase; no confidence phrases on
+  ingestion-shaped uncertainty; byte-identical determinism (model +
+  transcript); transcript = one line per record, phrases joined by a
+  space; domain-agnostic phrasing (football vs city-marathon differ
+  ONLY in the domain token); honest empty narrative; typed refusal on
+  bad confidence; frozen output.
+- `tacticalSvg.test.ts` (10): document shell (xmlns, viewBox =
+  board+strip, closing tag, trailing newline); title/desc carry the
+  snapshot reference + provenance + rights forward (byte-exact
+  includes); marker faithfulness (circle count = entities + events;
+  every entity/event id + sequence label + anchor line present);
+  byte-identical determinism; XML escaping of `& < > " '` in ids
+  (escaped forms present, raw forms absent); confidence annotations
+  rendered only when attached; coordinates within canvas and ≤2
+  decimals; empty board still renders frame + baseline + anchor;
+  plain-node execution proof (runs under node:test with no DOM).
+- `usageGate.test.ts` (9): fail-closed matrix for
+  `swmRenderableUnder` (absent/empty never passes; at least one
+  permitted; unknown usage fails; empty rights.usages fails;
+  prohibited blocks the whole context; mixed contexts);
+  `RealityProjectionService`: both realities from the same snapshot
+  with identical headers; gated pass on permitted usage; typed
+  `RenderRightsRefusalError` (instanceof chain + detail prefix +
+  swm id) on prohibited and on undeclared usage; ungated plumbing law
+  (a prohibited snapshot still projects through `project`, rights
+  carried forward read-only); determinism.
+
+## REAL EVIDENCE
+
+All gate numbers below are REAL, measured on this machine by running
+the exact commands from the packet (outputs quoted verbatim from the
+runs; the battery was re-run after the final code edit):
+
+- `pnpm architecture:check` → "architecture: OK / violations: 0 /
+  baseline: 0 / new: 0" (exit 0).
+- `node scripts/architecture/sporta-surface-check.mjs` →
+  "sporta-surface-check: OK — frozen surfaces intact, growth is
+  additive-only" (exit 0; sporta-render is unregistered → not
+  scanned, exactly like wave-1 sporta-product before its TL
+  registration).
+- `pnpm exec tsc -b packages/sporta-render` → exit 0, clean (fresh
+  build through the `../sporta-contracts` reference).
+- `pnpm exec tsx --test packages/sporta-render/test/*.test.ts` →
+  "tests 52 / pass 52 / fail 0" (duration ~0.4s).
+- `pnpm exec tsx --test packages/sporta-*/test/*.test.ts` →
+  "tests 370 / pass 370 / fail 0 / cancelled 0 / skipped 0"
+  (duration_ms ≈ 9.2s; baseline was 318/318).
+- `pnpm lint` → "Found 70 warnings and 0 errors. Finished in 0.5s on
+  2813 files" — identical to the pre-existing baseline (one warning
+  introduced during development — an unused variable — was found by
+  lint and fixed before commit; final count is exactly 70).
+- `pnpm exec oxfmt --check` on every new file (md + src + test) →
+  "All matched files use the correct format" (dist/ and
+  node_modules/ are gitignored build/link artifacts, not committed).
+- The serializer's plain-node, no-DOM execution is REAL (the
+  node:test battery executes it; no jsdom, no browser).
+- The serializer source-scan boundary check performs a REAL
+  filesystem read (`node:fs.readFileSync`) at test time.
+- Byte-level verification of the `<desc>` provenance/rights line was
+  done by char-code inspection (a console display artifact initially
+  hid the `[h` of "holders [holder:fixture]"; the actual bytes 91
+  104 111 … are correct — the assertion tests compare inside node
+  and genuinely pass).
+
+## FIXTURE EVIDENCE
+
+- All snapshot inputs in `test/fixtures.ts` are FIXTURE-GRADE,
+  labeled as such in the file header and in every test file header
+  ("EVIDENCE LABEL: FIXTURE inputs; the projections run FOR REAL").
+  They are hand-built to mirror real `WorldModelService.
+  ingestObservations` output shapes (sorted unique ids,
+  observation-id uncertainty subjects, the last observation's
+  provenance, an explicit PolicySet).
+- The fixture uncertainty includes one entity-keyed and one
+  event-keyed entry beyond the ingestion-typical observation-keyed
+  entries: the frozen contract type permits any subject id, and the
+  confidence attach rule must exercise both paths. This is labeled
+  fixture variation, not production evidence.
+- `src/contract.example.ts` uses a labeled FIXTURE snapshot.
+- No claim anywhere is made that these fixtures are authorized
+  production media; the A13 authorized-source leg is fixture-grade
+  and honestly labeled (the ADR itself says "fixture-grade authorized
+  manifest, honestly labeled").
+
+## CONTRACT CHANGES
+
+None. `@sporta/contracts` (including `SportsWorldModelRecord`) is
+consumed READ-ONLY via type-only imports; no frozen type was edited,
+extended or re-exported as a value; the surface check stays OK. No
+new shared contracts type was created — the `RenderUsageContext`
+duplication follows the ratified per-package duplication law
+(W3-B/W4-B precedent). The package's public surface is new (additive
+only): `@sporta/render/contract`.
+
+## RIGHTS-PROVENANCE
+
+- Invariant 22 carry-through (ADR decision 5): both render models
+  carry `provenance` (verbatim descriptor), `rightsScope` (verbatim
+  holders/usages/prohibitions) and `evidence` (verbatim observation
+  confidences) forward READ-ONLY; the models are deeply frozen so
+  downstream consumers cannot widen rights by mutation (machine-
+  checked).
+- Renderers never widen rights: the fail-closed `swmRenderableUnder`
+  gate consumes the `RightsScope.usages`/`prohibitions` vocabulary
+  verbatim (C6 law, consumed — never invented; mirrors
+  `artifactVisibleToUsage` including the absent/empty-never-passes
+  law and the "holders are a policy-domain concern above this seam"
+  scope).
+- `RealityProjectionService.projectGated` refuses with a typed
+  `RenderRightsRefusalError` when the snapshot's rights do not
+  affirmatively permit a declared usage; the ungated `project` is the
+  pure read-model composition (the artifact plane's plumbing/
+  gated-seam split — a data projection exercises no usage; hosts
+  gate at the surfacing boundary, and the models carry the rights
+  forward so every downstream plane re-checks).
+- The SVG document carries the provenance + rights summary INSIDE
+  itself (`<desc>`) so the serialized artifact remains
+  rights-attributable downstream.
+- Privacy/retention are NOT re-evaluated at this seam (the frozen
+  v1 render models carry the rights scope; retention vocabulary
+  evaluation belongs to planes that own clocks — the render package
+  has NO clock by law; typed under NEXT DEPENDENCIES).
+
+## PERFORMANCE
+
+- The full battery (all sporta packages, 370 tests) runs in ~9.2s
+  wall-clock (measured by node:test's duration_ms on this machine);
+  the 52 sporta-render tests run in ~0.4s. All projections are
+  single-pass O(entities + events + uncertainty) with an
+  O(uncertainty) attach lookup per subject (first match; linear scan
+  — bounded by record size; no unbounded loops; no recursion beyond
+  the frozen-model depth).
+- The SVG serializer is a single string-array join; output size is
+  linear in entities + events (the fixture document for 4 entities +
+  3 events is ~1.9KB). No IO, no allocation growth beyond the line
+  array.
+- Memory: render models are frozen once and shared safely; no
+  caches, no ambient state, no clock — the module is deterministic
+  by construction, which is the cheap path for the w5c playback
+  engine's per-tick frames.
+
+## SECURITY
+
+- The serializer XML-escapes ALL interpolated text (`& < > " '`) —
+  entity/event ids are opaque strings from the record and cannot
+  inject markup (asserted by the escaping test with adversarial ids
+  like `ent<&>"'x`).
+- No `eval`, no dynamic imports, no network, no filesystem access in
+  src (the only fs access is the TEST reading the serializer's own
+  source for the boundary machine-check). Zero runtime dependencies —
+  the supply-chain surface of this package is exactly zero packages.
+- Fail-closed input validation: out-of-range confidences are typed
+  refusals, never silently clamped or carried.
+- The deep-freeze law prevents cross-plane tampering with carried
+  rights/provenance once a model is built.
+- No secrets, tokens or credentials appear in the committed code
+  (the push URL in the packet uses a token that is never echoed into
+  any file or log in this repo).
+
+## RISKS
+
+- The timestamp honesty law is the honest reading of the frozen v1
+  record (one capture anchor, sequence as the per-event ordering
+  fact); if the SWM contract later gains per-event timestamps, the
+  adapters and both realities need a additive revision (typed under
+  NEXT DEPENDENCIES). The label `capturedAtSource:
+  "snapshot-provenance"` makes the current semantics auditable in
+  every model, phrase and SVG label.
+- The derived-layout board coordinates are renderer-owned geometry
+  (labeled `coordinateSystem: "derived-layout"` and stated in the
+  SVG `<desc>`); a future perception/tracking stage carrying real
+  positions would replace the layout rule additively behind the same
+  adapter seam.
+- `pnpm exec tsx --test packages/sporta-*/test/*.test.ts` picks up
+  the new package's tests through the existing glob — the TL's
+  integration battery therefore grows automatically (intended, but
+  worth knowing at the integration station).
+- The unregistered-package invisibility of arch/surface checks is
+  transitional (WO-C1): until TL registration, the layer laws are
+  enforced by convention + this report, not by architecture:check.
+
+## BLOCKERS
+
+None. (One transient lint warning — an unused variable in a test —
+was introduced and fixed during development before any commit; the
+final gate is exactly the 0-errors/70-warnings baseline.)
+
+## DEVIATIONS
+
+- `package.json` declares ZERO dependencies AND zero devDependencies
+  (the packet's letter: "zero dependencies"). The consumed
+  `@sporta/contracts/contract` surface is TYPE-ONLY (erased at
+  runtime), so there is no runtime dependency; but tsc needs the
+  package resolvable, which during worker development rides the WO-C1
+  gitignored node_modules symlink. Consequence: at integration the
+  TL must add ONE line — `"@sporta/contracts": "workspace:*"` to
+  `dependencies` (or devDependencies, per the type-only nature) in
+  `packages/sporta-render/package.json` — before the real
+  `pnpm install` links the workspace edge (typed under NEXT
+  DEPENDENCIES with the exact suggested registration entry in
+  CONTRACT.md). The `typescript` devDependency convention of the
+  sibling packages was likewise omitted (tsc/tsx/oxlint resolve from
+  the workspace root; the root `typecheck` script's package list is
+  TL-owned and was not touched).
+- Two commits precede the packet's single delivery commit (the
+  packet itself orders "SPEC.md + CONTRACT.md written and committed
+  FIRST (its own commit)"), so the branch carries: 7ab42c1 (spec),
+  6c45ea3 (code, exact packet message), and this report commit on
+  top — the W3-B documentation-commit pattern used by every prior
+  wave.
+
+## NEXT DEPENDENCIES
+
+1. TL REGISTRATION (integration): append to architecture-policy.yaml:
+   `id: sporta-render`, roots `[packages/sporta-render/src]`,
+   `managed: true`, `requires: [sporta-contracts]`,
+   `publicEntrypoints: [packages/sporta-render/src/contract.ts]`,
+   `layers: { domain: domain, app: app, adapters: adapters }`,
+   `layerOrder: [domain, app, adapters]`, `owner: worker-b`; add the
+   `"@sporta/contracts": "workspace:*"` edge to the package.json;
+   run a real `pnpm install` (the WO-C1 symlink is local-only and
+   gitignored); re-run all gates (the full battery should read
+   370/370 at the integration station).
+2. W5C (playback): the playback engine consumes ONLY render models
+   (the adapter invariant holds at playback); `RealityProjection`
+   and the frozen models are the intended seams; per-tick frames
+   should carry the same read-only header forward (decision 5).
+3. W5A (perception pipeline): if a future stage lands per-event
+   timestamps or measured positions, the adapters need an additive
+   revision — the `capturedAtSource` label and the
+   `coordinateSystem: "derived-layout"` label are the auditable
+   seams where the upgrade lands.
+4. Product host wiring (w4c host-conversion surface): the realities
+   surface inside the packages/web sporta shell at INTEGRATION time
+   behind the TL-owned host conversion (ADR decision 3); honest
+   typing of what ran (build-verified vs browser-tested) follows the
+   wave-4 UI honesty law.
+5. Retention/privacy evaluation at the render plane would need a
+   clock-owning seam above this package (typed future; this package
+   owns no clock by law).
+
+DELIVERY: branch wave5/worker-b @ 6c45ea33e90645c8a67ba6ab956caac080e7c958 (code-complete; this report commit sits on top — the W3-B documentation-commit pattern)
+
+## Gate table (measured at the delivered head)
+
+| Gate                                       | Base e919f81        | wave5/worker-b                          |
+| ------------------------------------------ | ------------------- | --------------------------------------- |
+| pnpm architecture:check                    | 0 violations        | 0 violations / baseline 0 / new 0      |
+| sporta-surface-check                       | OK                  | OK (unregistered pkg not scanned)      |
+| tsc -b packages/sporta-render              | n/a (new package)   | clean (exit 0, fresh build)            |
+| tsx --test sporta-render                   | n/a (new package)   | 52 pass / 0 fail                       |
+| tsx --test packages/sporta-* (full suite)  | 318 pass / 0 fail   | 370 pass / 0 fail (318 + 52 new)       |
+| pnpm lint                                  | 0 errors / 70 warn  | 0 errors / 70 warnings (identical)     |
