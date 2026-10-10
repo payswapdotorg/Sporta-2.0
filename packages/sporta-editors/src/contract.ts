@@ -69,6 +69,7 @@ export {
   EditorError,
   EditorResolutionError,
   EditorRightsRefusalError,
+  EditorRetentionRefusalError,
   UnknownEditorError,
   UnknownRevisionError,
   UnknownEditorSessionError,

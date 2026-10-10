@@ -226,3 +226,56 @@ are implemented EXACTLY — `EditorSessionHistoryReadPort`,
 
 Rights refusal at the READ boundary is deliberately NOT in this table:
 it is not an error, it is honest absence.
+
+## Wave 4 — write-plane rights/retention propagation (W4B-2)
+
+Status: SPEC — written with the implementation (ADR:
+docs/architecture/adr-wave4-c6-host.md; the READ half of invariant 22
+landed in Wave 3 above — this section is the write-plane half of the
+audit's outcome).
+
+### openSession (the OPEN operation)
+
+- The caller-supplied SESSION policy is verified as in Wave 1: its
+  rights must permit "edit".
+- NEW (the audit's closed gap #1): the CHECKPOINT REVISION's own
+  PolicySet must ALSO permit "edit" — a caller-supplied session policy
+  can never grant rights the artifact's revision does not carry
+  (typed `EditorRightsRefusalError`, detail carrying the revision id
+  and the revision's usages/prohibitions).
+- NEW (the audit's closed gap #2): the checkpoint revision's retention
+  must not be an effective purge disposition (`purge` past its
+  `retainUntil`, or with no affirmable deferral date — the artifact
+  plane's `artifactRetentionExpired` law, CONSUMED from
+  `@sporta/artifacts/contract` so both planes share one semantics).
+  Typed `EditorRetentionRefusalError`. A purge NOT yet past its date
+  still opens (the deferral is honored).
+- A refused open leaves no trace: no session record, no history
+  append, no revision.
+- The idempotent re-open path (first write wins) returns the existing
+  record without re-verification, exactly as before.
+
+### reconcileSession (the APPEND/COMMIT operations)
+
+- Understood path: the new revision carries the session's PolicySet
+  VERBATIM (asserted deep-equal in tests) — the propagation chain is
+  openSession policy → revision policy, with no layer dropping or
+  inventing rights.
+- Opaque path: the new imported artifact record AND its first revision
+  both carry the session's PolicySet verbatim.
+- Structural gap (typed under NEXT DEPENDENCIES, not implemented):
+  `EditDeltaRecord` carries no `policy` field — the delta's policy
+  context is the session/revision it belongs to; adding a field to
+  frozen contracts is a TL serialization decision.
+- Policy COMPOSITION (e.g. intersecting a session policy with the
+  parent revision's) is deliberately NOT invented here: the policy
+  module defines no merge semantics; the broker propagates the session
+  policy verbatim.
+
+### Wave 4 failure semantics
+
+| Failure                                                     | Typed error                    |
+| ----------------------------------------------------------- | ------------------------------ |
+| Session policy rights lack "edit" (Wave 1, unchanged)       | `EditorRightsRefusalError`     |
+| Checkpoint revision rights do not permit "edit" (NEW)       | `EditorRightsRefusalError`     |
+| Checkpoint revision retention is an effective purge (NEW)    | `EditorRetentionRefusalError`  |

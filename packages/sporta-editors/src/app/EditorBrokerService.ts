@@ -4,8 +4,10 @@ import type {
   ProvenanceDescriptor,
   SportaId,
 } from "@sporta/contracts/contract";
+import { artifactRetentionExpired } from "@sporta/artifacts/contract";
 import {
   EditorRightsRefusalError,
+  EditorRetentionRefusalError,
   UnknownEditorError,
   UnknownEditorSessionError,
   UnknownRevisionError,
@@ -70,6 +72,32 @@ export class EditorBrokerService implements EditorBrokerPort {
       throw new UnknownRevisionError(
         `cannot open a session on unknown revision ${input.revisionId}`,
         input.revisionId,
+      );
+    }
+    // W4B-2 (invariant 22 write-plane propagation): the checkpoint
+    // revision's OWN PolicySet must also permit the edit usage — a
+    // caller-supplied session policy can never grant rights the
+    // artifact's revision does not carry.
+    const checkpointRights = checkpoint.policy.rights;
+    if (
+      !checkpointRights.usages.includes("edit") ||
+      checkpointRights.prohibitions.includes("edit")
+    ) {
+      throw new EditorRightsRefusalError(
+        "the checkpoint revision's policy rights do not permit editing this artifact",
+        `revision=${input.revisionId} usages=[${checkpointRights.usages.join(
+          ", ",
+        )}] prohibitions=[${checkpointRights.prohibitions.join(", ")}]`,
+      );
+    }
+    // W4B-2 (invariant 22 retention propagation): a revision whose
+    // purge disposition has become effective is not editable — the
+    // write plane never resurrects purged content either.
+    if (artifactRetentionExpired(checkpoint.policy.retention, this.deps.clock.now())) {
+      const retainUntil = checkpoint.policy.retention.retainUntil ?? "<no deferral date>";
+      throw new EditorRetentionRefusalError(
+        "the checkpoint revision's retention policy has become effective (purge past its date)",
+        `revision=${input.revisionId} retainUntil=${retainUntil}`,
       );
     }
     const adapter = this.adapterFor(input.editorId);

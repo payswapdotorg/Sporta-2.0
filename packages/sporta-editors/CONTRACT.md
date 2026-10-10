@@ -54,3 +54,25 @@ Invariants that types cannot express:
 - `EditorBrokerDeps.sessionHistory?` is OPTIONAL additive wiring: when
   present, opened sessions are appended to the durable history (the
   idempotent re-open re-appends, self-healing a missed projection).
+
+## Wave 4 implementation notes (W4B-2 — invariant 22 write-plane propagation)
+
+- `openSession` now verifies the CHECKPOINT REVISION's own PolicySet
+  in addition to the caller-supplied session policy: the revision's
+  rights must permit the "edit" usage (a session policy can never
+  grant rights the artifact's revision does not carry) and the
+  revision's retention must not be an effective purge (typed
+  `EditorRightsRefusalError` / `EditorRetentionRefusalError`). A
+  failed open leaves no trace (no session record, no history append).
+- The retention law is CONSUMED from `@sporta/artifacts/contract`
+  (`artifactRetentionExpired` — a declared dependency, public
+  entrypoint) so the artifact and editor planes share one retention
+  semantics (no per-plane drift).
+- APPEND (reconcile understood) and COMMIT (reconcile opaque)
+  propagate the session's PolicySet VERBATIM to the new revision (and
+  the opaque artifact record) — asserted deep-equal in
+  test/writePlaneRights.test.ts.
+- Structural gap (typed, not implemented): `EditDeltaRecord` carries
+  no `policy` field (TL-owned contracts,
+  packages/sporta-contracts/src/records/artifacts.ts:27-36) — the
+  delta's policy context is the session/revision it belongs to.

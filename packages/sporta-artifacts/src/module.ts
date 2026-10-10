@@ -5,6 +5,6 @@
 export const sportaArtifactsModule = {
   id: "sporta-artifacts",
   requires: ["sporta-contracts"],
-  provides: ["artifact-graph-port"],
+  provides: ["artifact-graph-port", "artifact-gated-read-port"],
   publicEntrypoints: ["contract.ts"],
 } as const;
