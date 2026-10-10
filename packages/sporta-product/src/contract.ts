@@ -9,63 +9,21 @@
  * candidates it creates are scope "user", status "candidate" only —
  * promotion belongs to the organizations/lab/evaluation modules.
  */
-import type { LearningPolicyRef, SportaId } from "@sporta/contracts/contract";
-import type { LearningArtifactRecord } from "@sporta/contracts/contract";
-
-/** The 12 canonical UX stages of the Sporta product loop. */
-export type ProductLoopStageKind =
-  | "intent"
-  | "organization"
-  | "execution"
-  | "progress"
-  | "artifact"
-  | "takeover"
-  | "editor"
-  | "learning"
-  | "capability-gap"
-  | "arena"
-  | "result"
-  | "organization-improvement";
-
-/** One stage of the product loop trace. */
-export interface ProductLoopStage {
-  stage: ProductLoopStageKind;
-  /** Reference to the underlying record when derivable (e.g. the organization version). */
-  ref?: string;
-  state: "pending" | "active" | "done" | "blocked" | "refused";
-  detail?: string;
-}
-
-/** The full product loop trace for one WorkGraph. */
-export interface ProductLoopTrace {
-  workGraphId: string;
-  stages: readonly ProductLoopStage[];
-}
-
-/** Projects a WorkGraph into the 12-stage product loop trace. */
-export interface ProductLoopProjectionPort {
-  trace(workGraphId: string): Promise<ProductLoopTrace>;
-}
-
-/** Input for recording one explicit learning-consent decision. */
-export interface LearningConsentInput {
-  workGraphId: SportaId;
-  userId: SportaId;
-  /** Learning scopes the consent covers (values from LearningPolicyRef.scopes). */
-  scopes: LearningPolicyRef["scopes"];
-  decision: "granted" | "denied";
-}
-
-/**
- * The learning-consent intake port. Granted consent produces a candidate
- * LearningArtifactRecord (scope "user"); denied consent creates NO
- * artifact and throws `LearningConsentRefusedError` (design decision:
- * the port is a pure success type, refusals are typed errors — see
- * CONTRACT.md). Idempotent per (workGraphId, userId, scopes).
- */
-export interface LearningIntakePort {
-  recordConsent(input: LearningConsentInput): Promise<LearningArtifactRecord>;
-}
+// Wave-4 W4C-3 restructure: the trace/port type definitions moved to
+// src/domain (loopPorts.ts, learningPorts.ts) — the repo pattern for
+// every sibling package — and are re-exported here unchanged, so the
+// public surface is the identical set of names (verified by
+// sporta-surface-check). The app layer now imports them from the domain
+// files, never from this entrypoint (which value-exports the wave-4
+// composition roots below); that app->contract edge was the only one of
+// its kind in the repo and became an import cycle.
+export type {
+  ProductLoopStageKind,
+  ProductLoopStage,
+  ProductLoopTrace,
+  ProductLoopProjectionPort,
+} from "./domain/loopPorts.js";
+export type { LearningConsentInput, LearningIntakePort } from "./domain/learningPorts.js";
 
 /** Typed error taxonomy of this module. */
 export {
@@ -86,3 +44,14 @@ export type {
   LearningArtifactSummary,
   LearningArtifactQuery,
 } from "@sporta/contracts/contract";
+
+// Wave-4 W4C-3 additive (ADR: docs/architecture/adr-wave4-c6-host.md —
+// the host-conversion lane): the composition roots re-exported through
+// the public entrypoint so the packages/web host (and any future shell)
+// constructs them through the package boundary exactly like every
+// sibling module's service exports. Surface change is additive-only
+// (frozen names unchanged; verified by sporta-surface-check).
+export { ProductLoopProjection } from "./app/productLoopProjection.js";
+export type { ProductLoopProjectionDeps } from "./app/productLoopDeps.js";
+export { LearningIntakeService } from "./app/learningIntake.js";
+export type { LearningIntakeServiceDeps } from "./app/learningIntake.js";

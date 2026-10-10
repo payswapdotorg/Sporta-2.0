@@ -24,7 +24,7 @@
  *   organization version's learnedPreferences) is DONE; a candidate is
  *   ACTIVE.
  */
-import type { ProductLoopStage } from "../contract.js";
+import type { ProductLoopStage } from "../domain/loopPorts.js";
 import type {
   ArtifactRevisionRecord,
   EditorSessionSummary,

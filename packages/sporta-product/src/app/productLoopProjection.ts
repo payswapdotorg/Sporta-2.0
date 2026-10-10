@@ -16,7 +16,7 @@
  * Regression law: v1-shaped inputs with no seams injected produce
  * byte-identical traces (the a17-seeded-loop test stays green unchanged).
  */
-import type { ProductLoopProjectionPort, ProductLoopStage, ProductLoopTrace } from "../contract.js";
+import type { ProductLoopProjectionPort, ProductLoopStage, ProductLoopTrace } from "../domain/loopPorts.js";
 import type {
   ArtifactRevisionRecord,
   OrganizationVersionRecord,

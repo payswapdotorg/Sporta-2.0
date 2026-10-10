@@ -1,0 +1,21 @@
+# Wave-4 W4C-3 transitional bridge (WO-C1 symlink law — ADR:
+# docs/architecture/adr-wave4-c6-host.md). @zcode/web does not yet
+# declare @sporta/* workspace dependencies (root manifests and
+# pnpm-lock.yaml are TL-owned). Until the TL registers them, the sporta
+# host composition resolves @sporta/* through these GITIGNORED symlinks:
+#
+#   packages/web/node_modules/@sporta/product       -> ../../../sporta-product
+#   packages/web/node_modules/@sporta/contracts     -> ../../../sporta-contracts
+#   packages/web/node_modules/@sporta/work          -> ../../../sporta-work
+#   packages/web/node_modules/@sporta/organizations -> ../../../sporta-organizations
+#   packages/web/node_modules/@sporta/artifacts     -> ../../../sporta-artifacts
+#   packages/web/node_modules/@sporta/editors       -> ../../../sporta-editors
+#   packages/web/node_modules/@sporta/arena         -> ../../../sporta-arena
+#   packages/web/node_modules/@sporta/lab           -> ../../../sporta-lab
+#   packages/web/node_modules/@sporta/evaluation    -> ../../../sporta-evaluation
+#
+# NEVER commit these symlinks, never run `pnpm install` at the workspace
+# root after editing a manifest, and never commit pnpm-lock.yaml or the
+# root package.json. The definitive registration is recorded in the
+# worker-c wave-4 report under NEXT DEPENDENCIES.
+node_modules/

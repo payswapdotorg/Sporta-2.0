@@ -282,3 +282,135 @@ Gate table (real, measured on this sandbox, final pre-commit run):
 | Lint | pnpm lint | 70 warnings, 0 errors (baseline identical) |
 | Format (my files) | pnpm exec oxfmt --check <15 new/modified files> | all correct |
 | A17 full-real | pnpm exec tsx --test packages/sporta-product/test/a17-full-real.test.ts | pass — every stage done, real evidence per leg |
+
+---
+
+# Wave 4 — Worker C (W4C): arena C6 read gate + product organization seam + packages/web host conversion
+
+Status: WAVE 4 IMPLEMENTED (branch wave4/worker-c, work commit ccbe8de + this report as the branch HEAD rider; pushed to origin/wave4/worker-c).
+
+Base: e40efb0 (adr(w4): TL-serialized wave-4 decisions), detached-HEAD law respected — no newer commits used.
+
+## WORK ITEMS
+
+- W4C-1 (product organization seam, integration proof): wired the REAL Worker-A seam — real `OrganizationRegistryService` + real `OrganizationCandidateReadService` (over the fixture in-memory organization store, labeled) — into `ProductLoopProjection` as the optional `organizationCandidates` dep; integration test proves promoted ⇒ done / live candidate ⇒ active / none ⇒ pending / seam absent ⇒ the wave-3 parity detail. The optional dep + stage consumption + fake-based tests pre-existed from W3-C; W4C-1 is the real-seam integration proof (5/5).
+- W4C-2 (arena read plane, C6 rights propagation, invariant 22): the W3-B `sessionVisibleToUsage` pattern mirrored onto ARENA reads. Caller-declared usage context vs the escalation record's `policy: PolicySet`, as a fail-closed pure gate (`arenaRecordVisibleToUsage` / `arenaPolicyPermitsUsage`: visible iff ≥1 declared usage permitted AND none prohibited; empty context affirms nothing). Applied additively at three read boundaries in `ArenaClientService`: direct `readResult` refuses with the typed `ArenaReadRefusalError` BEFORE any transport call (zero HTTP leaves the client — proven by request counting); `listEscalations`/`listResults` EXCLUDE prohibited records (honest absence, the W3-B listing tradeoff, documented). Absent usage ⇒ the pre-wave-4 behavior unchanged (additive-only law).
+- W4C-3 (packages/web host conversion, SPEC FIRST): appended the wave-4 host-conversion section to `packages/sporta-product/SPEC.md` (append-only) BEFORE any host code; then, additively in `packages/web/src/sporta/`: the live ProductLoopTrace render surface (`SportaPanel.tsx` + css + route), the learning-consent intake write path, the takeover-entry write path (real MLT round-trip + broker reconcile + user append through the work-graph admission seam, A17 leg), the headless composition root (`composition.ts`, per a17-full-real: real process/storage/editor/arena/read-seam legs, fixture stores labeled), the labeled browser fixture host (`browserFixtureHost.ts` — the Node legs cannot execute in a browser bundle; the UI badge says FIXTURE), and the WO-C1 transitional gitignored `@sporta` symlink bridge (9 packages) with the definitive registration recorded under NEXT DEPENDENCIES.
+
+## CHANGED FILES
+
+Work commit ccbe8de (all under base e40efb0):
+
+- packages/sporta-arena/src/domain/escalationReadSeam.ts (M) — ArenaReadUsageContext, arenaRecordVisibleToUsage, arenaPolicyPermitsUsage (fail-closed pure gate).
+- packages/sporta-arena/src/domain/errors.ts (M) — ArenaReadRefusalError (typed refusal).
+- packages/sporta-arena/src/domain/clientPorts.ts (M) — ArenaClientPort.readResult gains optional `usage` param (additive).
+- packages/sporta-arena/src/app/arenaClient.ts (M) — three read boundaries gated; unused import cleanup.
+- packages/sporta-arena/src/contract.ts (M) — re-exports of the new names.
+- packages/sporta-arena/test/escalationReadGate.test.ts (A) — 22 tests, three labeled sections.
+- packages/sporta-product/SPEC.md (M, append-only) — wave-4 host-conversion section.
+- packages/sporta-product/src/domain/loopPorts.ts (A), learningPorts.ts (A) — port/type definitions moved out of contract.ts (see DEVIATIONS).
+- packages/sporta-product/src/contract.ts (M) — re-exports from the domain files (identical public names) + the wave-4 composition-root value exports.
+- packages/sporta-product/src/app/{productLoopProjection,productLoopSeamStages,productLoopEscalationStages,learningIntake}.ts (M), src/domain/learningConsent.ts (M) — imports repointed from ../contract.js to the domain files.
+- packages/sporta-product/test/productLoopOrganizationSeam.test.ts (A) — 5 tests.
+- packages/web/.gitignore (A) — the transitional bridge law + node_modules/.
+- packages/web/src/sporta/{SportaPanel.tsx, sportaPanel.css, sportaRoute.ts, hostPorts.ts, hostSeeds.ts, composition.ts, browserFixtureHost.ts} (A).
+- packages/web/src/main.tsx (M) — mounts the /sporta route.
+- packages/web/tsconfig.json (M) — types:["node"] (see DEVIATIONS).
+- packages/web/test/{sportaHost.test.ts, support/stubArenaRole.ts, fixtures/zcode-cli-standin.mjs} (A).
+- NOT committed (gitignored by law): packages/web/node_modules/@sporta/* — the 9 transitional symlinks.
+
+## TESTS
+
+- W4C-1: packages/sporta-product/test/productLoopOrganizationSeam.test.ts — 5/5 (promoted ⇒ done with promotion ref; live un-promoted candidate v2 ⇒ active; org-scoping (no cross-org leak); no candidate ⇒ pending; absent seam ⇒ the wave-3 parity detail). Hybrid class: REAL seam + REAL registry over fixture stores — labeled in the header.
+- W4C-2: packages/sporta-arena/test/escalationReadGate.test.ts — 22/22: Section 1 pure gate (7), Section 2 fixture lane over InMemoryArenaTransport (10, incl. frozen-port satisfaction), Section 3 REAL HTTP lane over a real node:http server + real fetch (5, incl. refusal-before-any-HTTP proven by GET counting, and URL-encoding-aware path assertions — HttpArenaTransport encodes `:` as %3A).
+- W4C-3: packages/web/test/sportaHost.test.ts — 2/2 (node:test + tsx, the project law): the full-real host loop (both write paths, 12-stage trace, mid-loop in-flight trace, A17 append-only + lineage laws) and the decline/honest-failure test (typed refusal surfaced verbatim, empty-scopes error propagates, early takeover fails honestly).
+- Full battery: 296/296 across packages/sporta-*/test (0 fail, 0 skipped) + 2/2 web host. New totals vs wave-3 baseline 269: +27 (5 W4C-1 + 22 W4C-2) sporta-side, +2 web-side.
+
+## REAL EVIDENCE (how measured — commands and numbers from this sandbox)
+
+- Architecture: `pnpm architecture:check` → `architecture: OK / violations: 0 / baseline: 0 / new: 0` (exit 0). During development it caught 4 import cycles in sporta-product (contract value-exports × app-files importing ../contract.js) — fixed by the domain restructure (see DEVIATIONS), re-run clean.
+- Surface: `node scripts/architecture/sporta-surface-check.mjs` → `OK — frozen surfaces intact, growth is additive-only` (sporta-arena 7 frozen +33 additive; sporta-product 6 frozen +11 additive).
+- Typecheck: `pnpm exec tsc -b packages/sporta-arena packages/sporta-product packages/web` → exit 0, no output.
+- Tests: `pnpm exec tsx --test packages/sporta-*/test/*.test.ts` → 296 pass / 0 fail / 0 skipped; `pnpm exec tsx --test packages/web/test/sportaHost.test.ts` → 2 pass / 0 fail. Host-loop real legs, printed by the test itself: process — 5 stream-json events, wall 81ms, exit code 0 (stand-in executable, labeled); storage — 2 blob files, r1 1696 bytes, content e6e439c7a2ba…, stat-verified on the real disk; arena — 5 real requests [GET pre-check, POST create, GET, GET, GET]: HttpArenaTransport.submit is an idempotent create (status-then-post), so every escalation costs one pre-check GET (404) + one POST, and the three further GETs are the result-stage reads (mid-loop trace, the test's explicit readResult, final trace).
+- W4C-2 REAL lane: refusals issued ZERO HTTP (GET count unchanged across the refusal, asserted); a permitted read crossed the real boundary (a real GET observed, path URL-encoded).
+- Lint: `pnpm lint` → 0 errors, 70 warnings (baseline identical — two transient unused-import warnings were found and removed before commit).
+- Web build: `pnpm --filter @zcode/web build` attempted 3× (bare, retried, NODE_OPTIONS=--max-old-space-size=2560) — ALL exit 137 (OOM-killed in the render phase after 7741 modules transformed, wall ~10.2–10.7s, ~3GB free at kill time; cgroup limit). The ADR anticipated exactly this: "the vite build may be resource-limited on this sandbox (honest typing; CI covers the full build)". The UI claim is therefore TYPED BUILD-VERIFIED ONLY via `tsc -b packages/web` (exit 0) — never browser-tested; no browser harness exists in this repo and none is claimed.
+
+## FIXTURE EVIDENCE (labeled)
+
+- W4C-1: InMemoryOrganizationStore behind the real registry + real seam (hybrid; header labels it).
+- W4C-2: InMemoryArenaTransport lane (10 tests); the REAL-lane server's Arena ROLE is fixture-scripted (real sockets, scripted lifecycle).
+- W4C-3: the stand-in CLI executable (a REAL OS process speaking the real headless interface — the vendored zcode-cli remains unbuildable: missing @zcode/model-option-map, @zcode/provider, @zcode/provider-node, @zcode/zcode-cua, @zcode/shared); the scripted Arena role; in-memory work/organization/preference/session stores; the seed MLT document and scripted user edit (fixture CONTENT carried by REAL legs); the browser fixture host (static trace snapshot, labeled "FIXTURE HOST" in the UI itself).
+
+## CONTRACT CHANGES (surface, verified by sporta-surface-check)
+
+- @sporta/arena (+33 additive, 7 frozen intact): types ArenaReadUsageContext, EscalationListInput, EscalationResultListInput; functions arenaRecordVisibleToUsage, arenaPolicyPermitsUsage; class ArenaReadRefusalError; ArenaClientPort.readResult signature gains an OPTIONAL second param (additive — implementations without it remain valid).
+- @sporta/product (+11 additive, 6 frozen intact): value exports ProductLoopProjection, LearningIntakeService; type exports ProductLoopProjectionDeps, LearningIntakeServiceDeps; the port/type definitions moved to src/domain/{loopPorts,learningPorts}.ts with identical public names re-exported through the contract (byte-for-byte the same surface; the move is structural only — see DEVIATIONS).
+- @zcode/web: no manifest change (WO-C1 law); the tsconfig gained types:["node"].
+
+## RIGHTS-PROVENANCE (invariant 22, C6)
+
+- The W4C-2 gate reads ONLY the escalation record's own `policy: PolicySet` (policy.rights.usages / prohibitions) against the caller-DECLARED usage context. Fail-closed: ≥1 declared usage permitted AND none prohibited; empty/absent-declared context affirms nothing (empty ⇒ refuses/sees nothing); an ABSENT usage argument bypasses the gate entirely (pre-wave-4 behavior preserved — the additive-only law). Prohibited direct reads throw the typed ArenaReadRefusalError before any transport call; listings exclude (honest absence — a listing cannot enumerate what the caller may not see; the W3-B documented tradeoff).
+- W4C-3 composition: the operator policy is SPORTA_HOST_POLICY (usages render/edit/derive, nothing prohibited); the editor-history bridge declares the operator's usages at wiring time (the real W3-B EditorSessionHistoryService is fail-closed without usage — the SERVICE and GATE are real; only the declaration site is the host adapter, labeled in composition.ts). The browser route renders the labeled FIXTURE host — it never claims real evidence.
+
+## PERFORMANCE
+
+- Host-composition test: 2 tests, 460ms total wall (including a real spawn at 81ms, real FS writes, real HTTP loopback).
+- Full sporta battery: 296 tests; lint 582ms on 2800 files; tsc -b (arena+product+web) clean.
+- Vite build: OOM at ~10.4s after 7741 modules (see REAL EVIDENCE) — no build-time number is claimable on this sandbox.
+
+## SECURITY
+
+- Fail-closed read gates (invariant 22) at all three arena read boundaries; refusals fire before any bytes leave the client (proven by request counting in the REAL lane).
+- Wire context minimization unchanged: exactly the declared escalation fields + pre-filtered contextRefs (asserted on the real wire in the host test's POST body).
+- No new credentials; no secrets in seeds or fixtures; the push used the pre-configured remote (token never echoed, never committed — remote URLs redacted in all output).
+- The host surface law: one read + exactly two writes; any other mutation API would be a spec violation (SPEC.md host-conversion section).
+
+## RISKS
+
+- a17-full-real flake: ONE failure observed across the many full-suite runs (terminal-event detail race in the real-process leg under parallel load); 3/3 green in isolation. Pre-existing wave-3 test, untouched by this packet; the W2 flake-fix law applies (TL may order the fix; not self-closed here).
+- The vite build OOM (exit 137) on this sandbox: CI covers the full build; until then the UI is typed-verified only.
+- The transitional symlink bridge hides the web→@sporta edge from the lockfile until the TL registers it (NEXT DEPENDENCIES). Drift is mitigated: `tsc -b packages/web` now typechecks the symlinked @sporta sources as part of the web program.
+- Latent no-op found (not fixed — outside this lane): packages/sporta-product/test/a17FullRealFixtures.ts compares `playlist.id` but KdenlivePlaylist has no `id` field (identity is attributes.id) — a test-only file outside any tsc program; its assertions never depended on the playlist edit firing. My hostSeeds uses the correct `attributes.id` compare. Flagged for the TL.
+- packages/web tsconfig now loads DOM + node types together (host module needs both worlds); if the TL prefers stricter isolation, a dedicated tsconfig for src/sporta/ is the follow-up.
+
+## BLOCKERS (carried)
+
+- The vendored apps/zcode-cli remains unbuildable in this sandbox (missing internal packages: @zcode/model-option-map, @zcode/provider, @zcode/provider-node, @zcode/zcode-cua, @zcode/shared). Real zcode-cli execution stays unmeasured; the labeled stand-in keeps the process/pipes/wall-time/exit-code legs REAL.
+
+## DEVIATIONS
+
+- sporta-product port/type definitions moved from contract.ts to src/domain/{loopPorts,learningPorts}.ts: forced by architecture:check — the W4C-3 contract VALUE exports (composition roots) made the pre-existing app→contract type imports an import cycle (4 violations). The public surface is the identical set of names (surface check OK); this is a structural move, not a semantic change, and is called out here because the packet said "additive" — at the file level this is a move, at the surface level it is additive-only.
+- packages/web/tsconfig.json gained "types": ["node"]: the host module (Node-only composition) is typechecked inside the web program; mirrors sporta-work's tsconfig. Without it, the symlinked @sporta sources fail TS2591 under the DOM lib.
+- The W4C-2 REAL-lane path assertions needed encodeURIComponent (HttpArenaTransport encodes `:` as %3A) — one test failed 21/22 before the fix; recorded for the evidence trail.
+- No deviation from the SPEC-first law: the SPEC.md section was written before any host code (same work commit, file order in the commit message documents it; the packet accepted a single commit).
+
+## NEXT DEPENDENCIES (the definitive registration replacing the transitional symlinks)
+
+In packages/web/package.json "dependencies", add:
+
+  "@sporta/arena": "workspace:*",
+  "@sporta/artifacts": "workspace:*",
+  "@sporta/contracts": "workspace:*",
+  "@sporta/editors": "workspace:*",
+  "@sporta/evaluation": "workspace:*",
+  "@sporta/lab": "workspace:*",
+  "@sporta/organizations": "workspace:*",
+  "@sporta/product": "workspace:*",
+  "@sporta/work": "workspace:*"
+
+(9 packages — exactly the 9 symlinks under packages/web/node_modules/@sporta today.) Then run `pnpm install` at the workspace root (TL-only; regenerates pnpm-lock.yaml), delete the 9 symlinks, and reduce packages/web/.gitignore to just `node_modules/`. Optional hardening the TL may prefer: add the @sporta packages as project references in packages/web/tsconfig.json instead of relying on symlink resolution.
+
+DELIVERY: branch wave4/worker-c @ ccbe8de (+ this report as the doc rider commit on top)
+
+Gate table (real, measured on this sandbox, final pre-commit run):
+
+| Gate | Command | Result |
+|---|---|---|
+| Architecture | pnpm architecture:check | OK — violations 0, baseline 0, new 0 |
+| Surface | node scripts/architecture/sporta-surface-check.mjs | OK — frozen surfaces intact, additive-only (arena +33, product +11) |
+| Typecheck | pnpm exec tsc -b packages/sporta-arena packages/sporta-product packages/web | exit 0, no output |
+| Tests (sporta battery) | pnpm exec tsx --test packages/sporta-*/test/*.test.ts | 296 pass / 0 fail / 0 skipped |
+| Tests (web host) | pnpm exec tsx --test packages/web/test/sportaHost.test.ts | 2 pass / 0 fail |
+| Lint | pnpm lint | 0 errors, 70 warnings (baseline identical) |
+| Web build | pnpm --filter @zcode/web build | exit 137 ×3 (OOM after 7741 modules, ~10.4s) — ADR-anticipated sandbox limit; UI typed build-verified via tsc, never browser-tested |

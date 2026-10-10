@@ -1,0 +1,187 @@
+/* SportaPanel styling — plain CSS (no tailwind scanning dependency). */
+
+.sporta-panel {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #e8e8ea;
+  background: #101014;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.sporta-header h1 {
+  margin: 0 0 4px;
+  font-size: 22px;
+}
+
+.sporta-subtitle {
+  margin: 0 0 8px;
+  color: #9a9aa6;
+  font-size: 13px;
+}
+
+.sporta-evidence {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border-radius: 4px;
+  padding: 2px 8px;
+  margin-bottom: 16px;
+}
+
+.sporta-evidence-real {
+  background: #103c2a;
+  color: #4ade80;
+}
+
+.sporta-evidence-fixture {
+  background: #3c2e10;
+  color: #fbbf24;
+}
+
+.sporta-error {
+  color: #f87171;
+  border: 1px solid #7f1d1d;
+  border-radius: 6px;
+  padding: 8px 12px;
+  background: #1f1212;
+}
+
+.sporta-loading {
+  color: #9a9aa6;
+}
+
+.sporta-stages,
+.sporta-action {
+  margin-top: 24px;
+}
+
+.sporta-stages h2,
+.sporta-action h2 {
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9a9aa6;
+  margin: 0 0 10px;
+}
+
+.sporta-stage-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sporta-stage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #1a1a20;
+  border-left: 3px solid #3f3f46;
+}
+
+.sporta-stage-done {
+  border-left-color: #4ade80;
+}
+
+.sporta-stage-active {
+  border-left-color: #fbbf24;
+}
+
+.sporta-stage-pending {
+  border-left-color: #3f3f46;
+}
+
+.sporta-stage-blocked {
+  border-left-color: #f87171;
+}
+
+.sporta-stage-refused {
+  border-left-color: #c084fc;
+}
+
+.sporta-stage-name {
+  font-weight: 600;
+  min-width: 190px;
+}
+
+.sporta-stage-state {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #9a9aa6;
+}
+
+.sporta-stage-ref {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: #7dd3fc;
+}
+
+.sporta-stage-detail {
+  flex-basis: 100%;
+  font-size: 12px;
+  color: #9a9aa6;
+}
+
+.sporta-action-hint {
+  font-size: 12px;
+  color: #9a9aa6;
+  margin: 0 0 10px;
+}
+
+.sporta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.sporta-actions button {
+  background: #27272e;
+  color: #e8e8ea;
+  border: 1px solid #3f3f46;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.sporta-actions button:hover:not(:disabled) {
+  background: #34343d;
+}
+
+.sporta-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sporta-actions input {
+  background: #1a1a20;
+  color: #e8e8ea;
+  border: 1px solid #3f3f46;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.sporta-label {
+  font-size: 12px;
+  color: #9a9aa6;
+}
+
+.sporta-action-result {
+  margin-top: 10px;
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #1a1a20;
+}
