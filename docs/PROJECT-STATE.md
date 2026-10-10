@@ -1,6 +1,6 @@
 # Sporta 2.0 Project State
 
-Status: WAVE 4 IN PROGRESS — LANES A + B LANDED (W2 flake fix 20/20 TL-measured + organization rejection/rollback decision path; C6 artifact-plane rights gate invariant-22 + editor write-plane audit; 318/318 TL-measured @ d6e9aec); REMAINING TAIL: w4c lane (projection candidate-read wiring + C6 arena read gate + packages/web host conversion) IN FLIGHT; post-wave-4: roadmap P6/P7/P8
+Status: WAVE 4 COMPLETE — LANES A + B + C LANDED (W2 flake fix 20/20 TL-measured + organization rejection/rollback decision path; C6 artifact-plane rights gate invariant-22 + editor write-plane audit; w4c: arena C6 read gate + product organization seam proof + packages/web host conversion + TL definitive 9-package @sporta workspace registration; 345/345 + 2/2 web host TL-measured @ 7f8742c); WAVE 5 (P6 sports production: w5a perception pipeline + w5b renderer/realities + w5c playback) IN FLIGHT; post-wave-5: roadmap P7/P8
 
 ## Repository identity
 
