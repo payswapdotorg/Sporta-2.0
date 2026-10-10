@@ -1,6 +1,6 @@
 # Sporta 2.0 Project State
 
-Status: WAVE 4 COMPLETE — LANES A + B + C LANDED (W2 flake fix 20/20 TL-measured + organization rejection/rollback decision path; C6 artifact-plane rights gate invariant-22 + editor write-plane audit; w4c: arena C6 read gate + product organization seam proof + packages/web host conversion + TL definitive 9-package @sporta workspace registration; 345/345 + 2/2 web host TL-measured @ 7f8742c); WAVE 5 (P6 sports production: w5a perception pipeline + w5b renderer/realities + w5c playback) IN FLIGHT; post-wave-5: roadmap P7/P8
+Status: WAVE 5 IN PROGRESS — LANE A LANDED (w5a: P6 perception pipeline stages acquisition->normalization->perception->tracking->calibration->event reconstruction as pure additive typed domain functions + pipeline->ingestObservations composition + second-domain invariant warehouse-robotics; NO-ML honesty; 379/379 + 2/2 web host TL-measured post-merge); LANES B/C (renderer/realities + playback) IN FLIGHT; post-wave-5: roadmap P7/P8
 
 ## Repository identity
 
