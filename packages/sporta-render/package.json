@@ -1,0 +1,11 @@
+{
+  "name": "@sporta/render",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./contract": "./src/contract.ts"
+  },
+  "scripts": {
+    "lint": "oxlint"
+  }
+}
