@@ -279,3 +279,254 @@ audit's outcome).
 | Session policy rights lack "edit" (Wave 1, unchanged)       | `EditorRightsRefusalError`     |
 | Checkpoint revision rights do not permit "edit" (NEW)       | `EditorRightsRefusalError`     |
 | Checkpoint revision retention is an effective purge (NEW)    | `EditorRetentionRefusalError`  |
+
+## Wave 6 — live/shared editor sessions (W6A, integration level 3)
+
+Status: SPEC — written before implementation (SPEC-first law). Authority:
+docs/architecture/editor-integration.md integration level 3 + its Session
+rules section (binding); the frozen Wave 1/3/4 seams are built ON, never
+edited (additive-only: new files under `src/domain/sharedSession/`, one
+new app service, new stores, and appended `contract.ts` re-exports).
+
+### Scope and seam law
+
+The live/shared session surface: multiple admitted participants editing
+one artifact checkpoint through ONE coordinated session with a total
+order over broadcast deltas, reconciled back into the canonical artifact
+graph on save/close. The level-3 capability is Sporta's coordination
+layer COMPOSED over a round-trip (level >= 2) adapter beneath — the
+underlying editor session is an ordinary broker session and keeps its
+Wave 1/3/4 laws verbatim; adapters declaring native level 3 are future
+work (the level-3 record itself carries `integrationLevel: 3` by
+construction, citing the resolved round-trip editor).
+
+- Broker, `EditDeltaRecord`, `EditorSessionRecord`, session-history
+  seams: FROZEN. The shared session CALLS the broker
+  (`resolveEditor`, `openSession`, `reconcileSession`); it never
+  reimplements rights, checkpoints, hashing or lineage.
+- Domain layer stays pure: no IO, no `node:` imports, no timers.
+  Timestamps are `Iso8601` parameters from the injected clock;
+  deltas' `deliveredAt` likewise.
+
+### openSharedSession(input) -> SharedSessionRecord
+
+1. Idempotent per `sessionId` (optional input field): a retry returns
+   the SAME stored record. Without an id the service mints `ss:<n>`.
+   The underlying broker session id is DERIVED deterministically as
+   `<sessionId>#es`, so an interrupted open retries onto the same
+   broker session (the broker's own idempotency law).
+2. `broker.resolveEditor` runs first (operation `round-trip`, level
+   >= 2 required — a shared session is useless without round-trip).
+   The resolution (editorId, integrationLevel, rationale) is carried
+   on the record verbatim (explainable provenance).
+3. Admission snapshot: the CHECKPOINT revision's `PolicySet` is read
+   via the injected `ArtifactGraphPort` and stored on the record as
+   the admission policy, citing `checkpointRevisionId`. Revisions are
+   immutable, so the snapshot equals any later read forever.
+4. The OPENER is admitted through the SAME admission gate as every
+   later participant (below) — the opener is participant #1 and
+   never gains rights the checkpoint revision does not carry.
+5. `broker.openSession` then applies every Wave 1 + W4B gate
+   (session-policy rights, checkpoint-revision rights, retention) and
+   creates the checkpoint; a typed editor refusal propagates.
+6. OPTIONAL coherence check (only when `historyRead` is wired AND a
+   usage context is declared): the freshly opened underlying editor
+   session MUST be visible through the rights-gated history read for
+   the opener's declared usage — the usage that admits a participant
+   must also be able to SEE the editor session whose policy carries
+   it. Divergence (e.g. the session policy prohibits a usage the
+   context declares, while the checkpoint policy does not) is a typed
+   `SharedSessionAdmissionError` (fail-closed). Absent port ⇒ no
+   check; absent declared usage ⇒ no check (nothing to cohere).
+7. Coordination state is initialized: head = the checkpoint revision,
+   empty log, `lastSequence = 0`.
+
+### The admission gate (invariant 22 at the level-3 boundary)
+
+A join request carries the participant id, optional declared
+capabilities, and a REQUIRED usage context (`{ usages }`). Admission
+is decided against the record's admission policy (the checkpoint
+revision's rights) — fail-closed:
+
+1. Absent or EMPTY usage context: `SharedSessionAdmissionError` —
+   admits NO ONE (the gate cannot affirm any permission).
+2. The context must declare `"edit"`: a shared editing session admits
+   editors only (the session-open gate's own law).
+3. The checkpoint rights must PERMIT `"edit"` (usages include it,
+   prohibitions do not): a participant NEVER gains rights the
+   checkpoint revision does not carry.
+4. NO declared usage may be prohibited by the checkpoint rights —
+   a mixed context is judged as a whole (the Wave 3 read-gate law,
+   applied on the write/admission side).
+5. Admitted participants carry `effectiveUsages` = declared ∩
+   checkpoint-permitted (declaration order preserved) and an
+   admission record citing `checkpointRevisionId` (provenance).
+
+### join / leave / presence
+
+- `joinSharedSession`: closed session → `SharedSessionClosedError`;
+  unknown session → `UnknownSharedSessionError`. Joining an already
+  LIVE participant is idempotent (record unchanged). Re-joining a
+  previously left participant re-admits (fresh admission through the
+  gate — the same participant id keeps ONE record).
+- `leaveSharedSession`: typed reason `"left" | "disconnected" |
+  "evicted"` (default `"left"`). First leave wins (idempotent);
+  unknown participant → `UnknownSharedParticipantError`. `closed`
+  is reserved for the close transition itself.
+- Presence is a PURE record per participant: declared capabilities,
+  `joinedAt`, `lastHeartbeatAt`, `state: live | left`. Heartbeat
+  updates `lastHeartbeatAt` from the injected clock ONLY — no
+  timers, no staleness computation, no IO (the semantic is carried,
+  liveness policy belongs to hosts above this layer). Closing a
+  session leaves every live participant with reason `"closed"`.
+
+### The coordination law (deterministic total order)
+
+Coordination state per session: `headRevisionId`, `lastSequence`,
+and the ordered broadcast log. `broadcastSharedDelta`:
+
+1. The broadcasting participant must be admitted AND live (else
+   typed `SharedSessionAdmissionError` / `UnknownSharedParticipantError`)
+   and the session open (else `SharedSessionClosedError`).
+2. IDEMPOTENT DELIVERY: a delta whose `deltaId` is already in the
+   log is NOT re-delivered — the existing ordered entry is returned
+   with `deduplicated: true` and the log is unchanged (checked
+   BEFORE the conflict rule, so a retry after the head moved is
+   still an idempotent no-op, never a spurious conflict).
+3. CONFLICT REFUSAL: a delta whose `baseRevisionId` differs from the
+   session head is refused with `SharedSessionConflictError`
+   carrying BOTH divergent revision ids (`sessionHeadRevisionId`,
+   `deltaBaseRevisionId`). Never merged, never guessed.
+4. Delivery appends with `sequence = lastSequence + 1` — sequences
+   are contiguous ascending from 1: the deterministic TOTAL ORDER.
+   `sharedSessionLogIsOrdered` asserts the invariant (strictly
+   ascending, contiguous, no duplicate delta ids/sequences).
+5. The head advances ONLY when a reconcile commits (below); live
+   broadcasts never move it.
+6. When `deltaSink` is wired, every NEWLY delivered delta (never a
+   deduplicated retry) is published to the sink together with the
+   live participant ids. Absent sink ⇒ no fan-out, core unchanged.
+
+### saveSharedSession (mid-session reconcile) and head advance
+
+The Wave 1 multi-save law, lifted to level 3: reconcile WITHOUT
+closing. The caller supplies the changed (merged) project state,
+its content hash, the project format and the external tool; the
+service calls `broker.reconcileSession` on the underlying session
+(idempotent per `(editorSessionId, changedProjectHash)` by the
+broker's own memo) and then advances the coordination head to the
+new revision. In-flight deltas based on the OLD head now conflict
+(the typed refusal above) — that is the intended semantics: the
+head moved, stale bases are refused with both divergent ids.
+
+### reconcileOnClose (the Session rules law)
+
+On close: reconcile, hash, create revision, emit EditDelta, then run
+relevant validation —
+
+1. The close memo is checked first: `closeSharedSession` is
+   idempotent per `sessionId` (first close wins, retries return the
+   identical stored result).
+2. `broker.reconcileSession` commits the new revision (parent = the
+   broker's current revision for the underlying session) and emits
+   the `EditDeltaRecord` with `editor-session` provenance — the
+   shared session never builds revisions itself (no second artifact
+   authority).
+3. VALIDATION (pure, fail-closed, BEFORE any state is written):
+   - chain law: the reconciled delta's `fromRevisionId` must equal
+     the session head — OR the reconciled revision IS already the
+     head (the idempotent re-save of the same reconcile). Anything
+     else (e.g. an uncoordinated reconcile outside this service
+     advanced the broker's current revision) is a typed
+     `SharedSessionConflictError` with both divergent ids; the
+     shared session refuses to reconcile onto a head it did not
+     advance.
+   - total-order invariant: the log's sequences are contiguous
+     ascending (else typed `SharedSessionOrderError`).
+4. On success: the record closes (`closedAt`), every live
+   participant leaves with reason `"closed"`, the head advances to
+   the new revision, the close result (reconcile result + broadcast
+   summary + participant leave summary) is memoized. The
+   invariant-22 propagation is the broker's own verbatim
+   session-policy → revision law (Wave 4), asserted at level 3 in
+   tests.
+
+### Stores and optional ports
+
+- `SharedSessionStorePort`: the sole owner of shared-session
+  records, coordination state and close memos. `saveSession` /
+  `saveCoordination` are last-write-wins state transitions;
+  `saveCloseResult` is first-write-wins (memo).
+- `InMemorySharedSessionStore` — fixture-grade, for tests.
+- `FsSharedSessionStore` — REAL durable JSON ledger (the W2
+  `FsArtifactBlobStore` pattern): one pretty-printed file per
+  session at `rootDir/<sha256(id)[0:2]>/<sha256(id)>.json` holding
+  `{session, coordination, closeResult?}`; atomic `.tmp`+rename
+  writes; integrity verified on EVERY read (parses, required
+  fields present and well-typed, the `sessionId` hashes back to
+  the file's own address) with typed `SharedSessionIntegrityError`
+  — never silent corruption. A fresh instance over the same
+  directory reads everything earlier instances wrote.
+- `SharedDeltaSinkPort` (optional, additive): live fan-out.
+- `historyRead?: EditorSessionHistoryReadPort` (optional,
+  additive, the W4-B pattern): the coherence check above. Existing
+  signatures are untouched; both ports are opt-in.
+
+### Idempotency summary
+
+| Operation     | Key                                        |
+| ------------- | ------------------------------------------ |
+| open          | `sessionId` (record) + derived `<id>#es`   |
+| join (live)   | `(sessionId, participantId)` no-op         |
+| leave         | first leave wins                           |
+| broadcast     | `deltaId` (deduplicated)                   |
+| save          | broker memo `(editorSessionId, hash)`      |
+| close         | close memo per `sessionId` (first wins)    |
+
+### Wave 6 failure semantics
+
+| Failure                                            | Typed error                      |
+| -------------------------------------------------- | -------------------------------- |
+| Usage context absent/empty or lacks "edit"         | `SharedSessionAdmissionError`    |
+| Checkpoint rights do not permit the context       | `SharedSessionAdmissionError`    |
+| Coherence: usage cannot see the editor session    | `SharedSessionAdmissionError`    |
+| Non-live participant broadcasts                   | `SharedSessionAdmissionError`    |
+| Delta base revision != session head               | `SharedSessionConflictError`     |
+| Reconcile onto a head the service did not advance | `SharedSessionConflictError`     |
+| Operation on a closed session                     | `SharedSessionClosedError`       |
+| Unknown session id                                | `UnknownSharedSessionError`      |
+| Unknown participant id                            | `UnknownSharedParticipantError`  |
+| Broadcast log violates the total-order invariant  | `SharedSessionOrderError`        |
+| FS ledger entry fails integrity checks            | `SharedSessionIntegrityError`    |
+
+All extend `EditorError` (machine-readable `detail` preserved).
+
+### Evidence grades
+
+- Pure-domain laws: fixture-grade by construction (no IO at all).
+- Service laws: in-memory stores + fixture adapters (labeled FIXTURE).
+- REAL lane: `FsSharedSessionStore` on a real temp dir, real
+  content-addressed blob store, real revision chain, real MLT XML
+  through the REAL `KdenliveAdapter`, reconciled through the REAL
+  broker — measured (files, bytes, wall time), labeled REAL.
+
+### Wave 6 implementation addenda (written with the implementation)
+
+- Delta ids: when a broadcast carries no caller-supplied `deltaId`, the
+  service derives one content-addressed over
+  `(sessionId, participantId, baseRevisionId, operations)` — identical
+  resubmissions dedupe by construction. Caller-supplied ids remain the
+  explicit idempotency key (the broker's `es:<n>` minting caveat does
+  not apply).
+- Validation order at save/close: the broker's `reconcileSession` is
+  the frozen session-rules law and commits its revision BEFORE the
+  shared-session validation runs (the broker's own writes are legal and
+  append-only). "Before any state is written" therefore means the
+  SHARED-SESSION state: a validation refusal (divergence detection)
+  writes no session/coordination/close-memo state — the shared session
+  stays open and refuses to adopt the moved head.
+- `SharedSessionHistoryReadPort` (the additive consumption shape for
+  the optional `historyRead` dep): the wave-3
+  `EditorSessionHistoryListInput` signature, which
+  `EditorSessionHistoryService` satisfies structurally — the frozen
+  contracts port is untouched.

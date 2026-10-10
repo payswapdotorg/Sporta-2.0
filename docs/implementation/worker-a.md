@@ -1257,3 +1257,120 @@ DELIVERY: branch wave5/worker-a @ 62341cccd2db729172b49c674d6e97b583ad591f (code
 | tsx --test packages/sporta-world                 | 9 pass / 0 fail     | 43 pass / 0 fail (9 + 34 new)          |
 | tsx --test packages/sporta-* (full battery)      | 318 pass / 0 fail   | 352 pass / 0 fail (318 + 34 new)       |
 | pnpm lint                                        | 0 errors / 70 warn  | 0 errors / 70 warnings (identical)     |
+
+# Wave 6 — Worker A (w6a)
+
+Status: W6A IMPLEMENTED (branch wave6/worker-a; SPEC commit e81c27f precedes the implementation commit — the SPEC-first law; this report commit sits on top, the documentation-commit pattern).
+
+Scope executed: worker packet w6a — P7 live/shared editor session core (editor-integration law, Integration level 3) in `packages/sporta-editors`, additive-only over the frozen Wave 1/3/4 seams, plus REAL-FS + REAL round-trip lane tests.
+
+## WORK ITEMS
+
+- **W6A-1 — shared session domain (additive, pure)** (`src/domain/sharedSession/`, NEW surface):
+  - `errors.ts` — typed errors (`SharedSessionAdmissionError`, `SharedSessionConflictError` carrying BOTH divergent revision ids `sessionHeadRevisionId`/`deltaBaseRevisionId`, `SharedSessionClosedError`, `UnknownSharedSessionError`, `UnknownSharedParticipantError`, `SharedSessionOrderError`, `SharedSessionIntegrityError`), all extending `EditorError` (machine-readable `detail` preserved).
+  - `session.ts` — the `SharedSessionRecord` (sessionId, integrationLevel 3 by construction, resolution provenance, underlying broker session id, artifactRef checkpoint, admission = the checkpoint revision's PolicySet snapshot + revision id, participants, presence); the admission gate derived from the SAME rights/usage-context gate family as session opens (fail-closed: absent/empty usage admits NO ONE; "edit" must be declared; the checkpoint rights must carry it; mixed contexts judged as a whole; effectiveUsages = declared ∩ checkpoint-permitted); typed join/leave/leave-reason transitions (`left | disconnected | evicted | closed`); close transition leaving every live participant with reason `closed` (first close wins); `requireLiveParticipant` (the broadcast admission law); deterministic `underlyingEditorSessionIdFor` (`<sessionId>#es`).
+  - `presence.ts` — `ParticipantPresence` (who is live, declared capabilities, `lastHeartbeatAt` semantic) with pure record transforms (join/heartbeat/leave/liveParticipantIds) — NO timers, NO IO.
+  - `coordination.ts` — deterministic delta-broadcast ordering: ONE total order per shared session with coordinator-assigned CONTIGUOUS ascending sequences; IDEMPOTENT delivery per delta id (checked BEFORE the conflict rule, so retries after a head move stay idempotent); CONFLICT-REFUSAL when a delta's base revision no longer matches the session head (typed, both divergent ids); the head advances ONLY on reconcile; `sharedSessionLogIsOrdered` (the total-order invariant) and `validateSharedSessionReconcile` (the chain law + order invariant, fail-closed).
+  - `ports.ts` — `SharedSessionStorePort`, `SharedDeltaSinkPort` (fan-out), `SharedSessionHistoryReadPort` (the additive wave-3 `EditorSessionHistoryListInput` consumption shape), service input/result types and `SharedEditorSessionDeps` (optional `deltaSink` / `historyRead` — the W4-B optional-deps pattern).
+- **W6A-2 — shared session service (app layer)**: `src/app/SharedEditorSessionService.ts` — open (broker resolve + checkpoint + admission) → join (presence + rights gate) → heartbeat → broadcast (coordination law + optional sink fan-out) → save (mid-session reconcile, head advance) → reconcileOnClose (hash, revision, EditDelta emission via the FROZEN broker, then validation; close memo, participants leave `closed`). Content-addressed delta-id derivation; `ss:<n>` session minting; idempotency per SPEC table.
+- **W6A-3 — tests**: pure-domain law suites + service law suites (fixture stores) + ONE REAL lane (real filesystem stores, real revision hash chain, real MLT XML through the real `KdenliveAdapter`, reconciled through the real broker to a real r1 → r2 → r3 lineage, with real durability across fresh store instances and measured evidence).
+
+## CHANGED FILES
+
+All inside `packages/sporta-editors` (additive-only; zero edits to existing files except `SPEC.md` (append) and `src/contract.ts` (appended re-exports)):
+
+- `SPEC.md` — Wave 6 SPEC section (committed FIRST, e81c27f) + implementation addenda.
+- `src/domain/sharedSession/{errors,session,presence,coordination,ports}.ts` — NEW (5 files).
+- `src/app/SharedEditorSessionService.ts` — NEW.
+- `src/adapters/{InMemorySharedSessionStore,FsSharedSessionStore,sharedSessionLedger,sharedSessionCloseLedger,sharedSessionLedgerPrimitives}.ts` — NEW (5 files; the ledger trio split per the file-size and no-cycle laws).
+- `src/contract.ts` — appended re-exports only (+56 named exports; 9 frozen names untouched).
+- `test/sharedSession.{sessionDomain,coordinationDomain,service,lifecycle,real}.test.ts` + `test/sharedSessionFixtures.ts` — NEW (5 suites + 1 support file).
+- `pnpm-lock.yaml`: NOT touched. No dependencies added (stdlib only; `node:fs`/`node:os`/`node:path`/`node:perf_hooks` in adapters/tests only — the domain layer stays pure).
+
+## TESTS
+
+- `sharedSession.sessionDomain.test.ts` — 11 tests: admission fail-closed laws (empty/absent context, edit-not-declared, checkpoint-without-edit, prohibited mixed usage, effective-usages intersection), open record + opener admission + checkpoint citation, deterministic underlying id, join idempotent/re-admit/closed, leave typed/idempotent/unknown, close (live → `closed`, left keeps reason, first close wins), requireLiveParticipant, presence heartbeat purity.
+- `sharedSession.coordinationDomain.test.ts` — 8 tests: contiguous ascending total order, idempotent delivery (log unchanged, original entry), conflict refusal carrying both divergent ids, idempotency-wins-over-conflict after head move, stale-base conflict after head advance + fresh delivery on the new head, log-order invariant refusals (gap/regression/duplicate/forged), validate chain law (both branches), typed order error.
+- `sharedSession.service.test.ts` — 6 tests: open (resolve + checkpoint + opener admission + real broadcast on the underlying session), idempotent open, typed refusals leaving NO shared-session trace (admission gate first, then the broker's own W1 gate propagating `EditorRightsRefusalError`), join fail-closed/unknown, non-live broadcaster refused + closed-session broadcast refused, heartbeat from the injected clock.
+- `sharedSession.lifecycle.test.ts` — 5 tests: sink fan-out to live participants (deduplicated retries NOT re-published), save+close chain r1→r2→r3 with stale-base conflict (both ids), EditDelta editor-session provenance, invariant-22 VERBATIM policy propagation, close summary + idempotent memo; uncoordinated-reconcile divergence DETECTED (shared session refuses to close onto a head it did not advance, no state written); optional ports truly additive (no sink/historyRead wired); historyRead coherence check (fail-closed, skipped when absent).
+- `sharedSession.real.test.ts` — 1 REAL lane test (below).
+
+## REAL EVIDENCE
+
+`packages/sporta-editors/test/sharedSession.real.test.ts` — EVIDENCE CLASS: REAL (measured, labeled per leg in the test header):
+
+- shared-session store REAL: `FsSharedSessionStore` on a REAL `fs.mkdtemp` directory — real atomic `.tmp`+rename writes, real sharded addressing, and REAL DURABILITY: a FRESH store instance over the same directory reads back the closed session, the frozen 3-entry coordination log and the close memo (`deepEqual` with the in-memory close result).
+- revision hash chain REAL: the REAL `ArtifactGraphService` (real parent/lineage integrity) + the REAL `FsArtifactBlobStore` on real disk — every changed project state is `put` as real XML bytes, its real sha-256 content address becomes the revision's `contentHash`, and the r1 → r2 → r3 lineage is asserted through the real `lineage()` read; the r3 content address is verified by reading the stored bytes back (`deepEqual`).
+- editor REAL: the REAL `KdenliveAdapter` — real MLT XML parsed, collaboratively edited (title + new playlist entry), serialized, re-parsed; the mid-session save and the close both reconcile through the REAL `EditorBrokerService` with the real adapter registered, emitting granular `set /mlt/...` operations on the EditDelta with `editor-session` provenance = `ss:w6a-real-1#es`.
+- coordination law under a REAL head: the stale in-flight delta (base r1) after the save moved the head to r2 is refused typed with BOTH divergent ids; the same delta retried on the new head delivers at sequence 3.
+- MEASURED (how: `performance.now()` wall time; `fs.stat` walk of the real directories; logged to stdout by the test): wall=35.9 ms, blobs=3 files/2547 bytes, sharedLedger=1 file/8707 bytes, editor-history=1 file/527 bytes (the durable `FsEditorSessionHistoryStore` ledger records the underlying broker session). Re-runs measured 35.9–38.4 ms.
+- FIXTURE (labeled in the same header): the `FixedClock` (deterministic timestamps) and the in-memory broker session store (the W1 seam).
+
+## FIXTURE EVIDENCE
+
+- `sharedSession.service.test.ts` + `sharedSession.lifecycle.test.ts` — EVIDENCE CLASS: FIXTURE (in-memory stores, `KdenliveFixtureAdapter`/`MysteryAppFixtureAdapter`, `FixedClock`); every rights/coordination/reconcile law exercised is still the real domain + real broker code.
+- `sharedSession.sessionDomain.test.ts` + `sharedSession.coordinationDomain.test.ts` — EVIDENCE CLASS: pure domain (no IO at all).
+- `sharedSessionFixtures.ts` — support file, deliberately not `*.test.ts` (never executed by the glob).
+
+## CONTRACT CHANGES
+
+- `src/contract.ts`: appended re-exports ONLY (+56 named exports: 8 errors, 6+8 session types/functions, 2+5 presence, 4+5 coordination, 15 ports types, `SharedEditorSessionService`, `InMemorySharedSessionStore`, `FsSharedSessionStore`). All 9 frozen surface names intact (surface check: 9 frozen +113 additive, was +57).
+- Frozen contracts (`@sporta/contracts`): UNTOUCHED. `EditDeltaRecord` still carries no `policy` field (the W4B structural note stands — the delta's policy context remains the session/revision it belongs to).
+- `module.ts`: untouched (the `provides` list is a manifest mirror; registering `shared-editor-session-port` there + architecture-policy.yaml is a TL serialization decision, typed under NEXT DEPENDENCIES).
+
+## RIGHTS-PROVENANCE
+
+- Invariant 22 at the level-3 boundary: the admission authority is the CHECKPOINT REVISION's own PolicySet (snapshot at open; revisions are immutable so it never drifts). A participant NEVER gains rights the checkpoint revision does not carry (typed refusal; asserted in the domain and service suites). Fail-closed: absent/empty declared usage context admits NO ONE — not even the opener.
+- The broker's W1+W4B gates run underneath every shared open (session policy, checkpoint rights, retention) — the shared session composes them, never replaces them; `EditorRightsRefusalError`/`EditorRetentionRefusalError` propagate typed.
+- Policy propagation to revisions stays the broker's VERBATIM law (asserted deep-equal through the level-3 save AND close in `sharedSession.lifecycle.test.ts`).
+- Every delivered delta entry carries participant + base revision provenance; the close result cites the underlying editor session; the record cites the checkpoint revision + every participant admission.
+- The optional `historyRead` coherence check keeps the admitting usage context consistent with the rights-gated read seam (fail-closed on divergence); absence of the port changes nothing (additive law).
+
+## PERFORMANCE
+
+- REAL lane measured (see REAL EVIDENCE): full open → join → 2 broadcasts → save → conflict refusal → 3rd broadcast → close → fresh-store durability verification in 35.9 ms wall (38.4 ms on the first run), 3 real blob files (2547 bytes), 1 shared-session ledger file (8707 bytes), 1 history ledger file (527 bytes).
+- Full editors suite: 93/93 in ~2.4 s; full battery 526/526 in ~13.7 s; lint 554 ms — all in line with the wave-5 baseline (environment: 4 GB sandbox).
+
+## SECURITY
+
+- Fail-closed admission (no guessing, no silent fallback); typed refusals everywhere (never silent degradation); integrity verification on EVERY durable ledger read (id-address law, typed `SharedSessionIntegrityError`); atomic writes (no torn records); bounded blast radius of refusals (no trace on refused opens; validation refusals write no shared-session state).
+- No new dependencies; no network; no eval; no secrets. The token in the packet's git URL is used for push only and never echoed in code or reports.
+
+## RISKS
+
+1. The level-3 surface composes round-trip (level >= 2) adapters; no adapter declares NATIVE level 3 yet — the record's `integrationLevel: 3` is by construction (this coordination layer), honestly typed in SPEC. A native-level-3 adapter declaration is a future additive step.
+2. Mid-session `saveSharedSession` lets the head advance, after which stale-based deltas refuse — correct by law, but hosts must handle `SharedSessionConflictError` (rebasing is a host concern, typed not implemented).
+3. The validation law runs after the broker's reconcile has committed its (legal, append-only) revision; a divergence refusal leaves that revision in the graph while the shared session stays open — honest, but hosts should surface the typed error (documented in the SPEC addenda).
+4. The coherence check only runs when `historyRead` is wired AND a usage context is declared; without the port, level-3 admission relies on the checkpoint gate alone (additive by design).
+5. Single-process store semantics (same as the existing W2/W3 FS stores); multi-process mutual exclusion is not modeled.
+
+## BLOCKERS
+
+None. (The `corepack pnpm` shim was used because the sandbox has no direct `pnpm` binary on PATH — an environment note, not a repo blocker. The `tsc -b` full-repo typecheck OOM limitation documented in PROJECT-STATE stands; the scoped protocol was used.)
+
+## DEVIATIONS
+
+1. The dependency cycle the architecture check caught (ledger ↔ close-ledger helper imports) was fixed by extracting `sharedSessionLedgerPrimitives.ts` — one MORE file than planned, net law-abiding (0 violations).
+2. `pnpm fmt:check` still fails on the 2 pre-existing editors files (`src/adapters/editors.ts`, `test/KdenliveAdapter.test.ts`) — they fail identically on the clean base (part of the repo's ~34 known pre-existing fmt failures) and were deliberately NOT touched (additive-only); every NEW file is oxfmt-clean (scoped check verified).
+3. The packet's baseline said "379/379 + 112/112 render + 2/2 web host (493 total)"; measured at base cfc37bf the sporta glob gives 491 (= 379 + 112) + 2 web host = 493 total — same union, different decomposition; the delivered battery is 526 + 2 = 528 total (491 + 35 new).
+4. tsx executes tests by transpilation without typechecking (the repo's documented limitation) — one runtime-only import slip was caught by the suite itself and fixed before delivery; src/ files carry the full tsc gate.
+
+## NEXT DEPENDENCIES
+
+1. TL: register the level-3 surface where manifests are serialized (architecture-policy.yaml `provides`/module.ts mirror) if the shared-editor-session port is to be consumed cross-module — additive, TL-owned.
+2. TL (optional ratification): the coherence-check semantics (usage-context incoherence = typed admission refusal at open) and the content-addressed delta-id derivation are recorded in the SPEC addenda for review.
+3. Wave 6+ candidates: a WebSocket/transport delta-sink adapter over ZCode broadcast seams (the `SharedDeltaSinkPort` is the seam); presence staleness policy (hosts above the pure heartbeat record); rebase-on-conflict tooling for refused stale deltas; native-level-3 adapter declarations (e.g. a live Kdenlive capability probe); product-projection wiring of shared sessions into the takeover UX.
+
+DELIVERY: branch wave6/worker-a @ 1053126 (implementation; SPEC commit e81c27f precedes it; this report commit sits on top — the documentation-commit pattern)
+
+## Gate table (measured at the delivered head 1053126)
+
+| Gate                                             | Base cfc37bf         | wave6/worker-a                          |
+| ------------------------------------------------ | ------------------- | --------------------------------------- |
+| pnpm architecture:check                          | 0 violations        | 0 violations / baseline 0 / new 0      |
+| sporta-surface-check                             | OK                  | OK (editors 9 frozen +113 additive)    |
+| tsc -b packages/sporta-editors                  | clean (exit 0)      | clean (exit 0)                          |
+| tsx --test packages/sporta-editors              | 58 pass / 0 fail    | 93 pass / 0 fail (58 + 35 new)         |
+| tsx --test packages/sporta-* (full battery)     | 491 pass / 0 fail   | 526 pass / 0 fail (491 + 35 new)       |
+| tsx --test packages/web (web host)              | 2 pass / 0 fail     | 2 pass / 0 fail                        |
+| pnpm lint                                        | 0 errors / 70 warn  | 0 errors / 70 warnings (identical)     |
