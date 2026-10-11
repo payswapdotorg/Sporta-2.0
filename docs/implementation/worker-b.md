@@ -1620,3 +1620,285 @@ Gate table (re-measured at the addendum head, this sandbox):
 | pnpm lint                                  | 0 errors / 70 warn  | 0 errors / 70 warnings (identical)   |
 
 DELIVERY: branch wave5/worker-b — standing delivery @ 891d77e (spec 7ab42c1, code 6c45ea3, report 891d77e); this addendum commit sits on top (fast-forward, no history rewrite)
+
+## Wave 6 — Worker B (w6b)
+
+Packet: P7 round-trip expansions — level-2 REAL editor adapters for the
+editor-integration initial ecosystem (Inkscape = vector, Godot =
+interactive/game/tactical, Audacity = audio). Base SHA 4e27d96 (wave-6
+lane A + TL level-3 surface registration). The KdenliveAdapter is the
+level-2 precedent; these three adapters follow its shape exactly. All
+work is additive-only in `packages/sporta-editors/`: zero edits to the
+broker, the domain layer, the frozen surfaces and the landed Wave 1–6a
+code; Node stdlib only; no dependency or lockfile changes.
+
+### WORK ITEMS
+
+1. W6B-SPEC (SPEC-first law, own commit BEFORE implementation): appended
+   the "Wave 6 — round-trip expansions (W6B)" section to
+   `packages/sporta-editors/SPEC.md` — per-adapter honest understanding
+   models, shared round-trip laws (fixed point from the second pass,
+   opaque carry, typed refusals), failure-semantics table, evidence
+   grades.
+2. W6B-1 `InkscapeAdapter` (REAL SVG 1.1, `image/svg+xml`, GPL-3.0):
+   parse reads the `<svg>` root geometry attributes, document-ordered
+   children (SVG paint order is semantic), `<g
+   inkscape:groupmode="layer">` layers with labels/ids and hollow
+   `<path>` elements with `d` carried verbatim; serialize guarantees
+   the XML declaration + `xmlns`/`xmlns:inkscape` on the root and
+   emits layers canonically with stable element ids; everything else
+   (namedview, text, rect, nested groups, …) is carried opaquely as
+   raw fragments; typed `InkscapeSvgError`.
+3. W6B-2 `GodotTscnAdapter` (REAL .tscn text scene,
+   `application/x-godot-scene` + `.tscn`, MIT): parse reads the
+   `[gd_scene]` header (first-section law), ext/sub resource records,
+   the ordered node list with parent paths, and TYPED property
+   literals — int/float carried as VERBATIM validated literal strings
+   (JS numbers corrupt int64/exotic floats; the lossless
+   representation is the literal itself), bool/string/null,
+   `Vector2(x, y)`, `NodePath("…")`, `ExtResource("…")`/
+   `SubResource("…")` reference ids, arrays, dictionaries; unmodeled
+   literals (e.g. `Color(…)`) and unknown sections (e.g.
+   `[connection]`) are carried opaquely verbatim; typed
+   `GodotTscnError` naming section + 1-based line.
+4. W6B-3 `AudacityAupAdapter` (REAL legacy 2.x XML `.aup`,
+   `application/x-audacity-project`, GPL-2.0+): parse reads project
+   attributes (projname/rate/snapto/selection…), the `<tags>` block,
+   the wavetrack list with channel/rate/gain/linked, and the
+   waveclip → sequence → waveblock chains with REQUIRED `start`
+   values plus the external simpleblockfile/aliasblockfile reference
+   children; the referenced sample data stays external (the
+   Kdenlive-MLT law — an .aup without its sample blocks on disk is
+   still a legal document; binary sample data is never fabricated);
+   unknown elements carried opaquely; typed `AudacityAupError`.
+5. W6B-4 REAL round-trip lane tests: one file per adapter following
+   `KdenliveAdapter.test.ts` (42 new tests total) — see TESTS.
+
+### CHANGED FILES
+
+- `packages/sporta-editors/SPEC.md` — appended W6B section (additive).
+- `packages/sporta-editors/src/adapters/editorXml.ts` (NEW, 325 ln) —
+  shared strict XML scanner with an injectable typed-error factory
+  (parameterized twin of the landed `kdenliveXml.ts` scanner; the
+  additive-only law forbids editing the kdenlive module, so the shared
+  form lives here — see DEVIATIONS/RISKS).
+- `packages/sporta-editors/src/adapters/inkscapeSvg.ts` (NEW, 235 ln) +
+  `InkscapeAdapter.ts` (NEW, 109 ln).
+- `packages/sporta-editors/src/adapters/godotTscnLiterals.ts` (NEW,
+  376 ln) + `godotTscn.ts` (NEW, 377 ln) + `GodotTscnAdapter.ts` (NEW,
+  109 ln).
+- `packages/sporta-editors/src/adapters/audacityAup.ts` (NEW, 336 ln) +
+  `AudacityAupAdapter.ts` (NEW, 114 ln).
+- `packages/sporta-editors/src/contract.ts` — appended the w6b additive
+  re-export block (classes, typed errors, helpers, state types); every
+  pre-existing export untouched (surface check re-verified).
+- `packages/sporta-editors/test/InkscapeAdapter.test.ts` (NEW),
+  `test/GodotTscnAdapter.test.ts` (NEW),
+  `test/AudacityAupAdapter.test.ts` (NEW).
+- No edits: `EditorBrokerService.ts`, `src/domain/**`, both fixture
+  adapters, `KdenliveAdapter.ts`, `kdenliveXml.ts`, `module.ts`,
+  `architecture-policy.yaml`, `package.json`, `pnpm-lock.yaml`.
+
+### TESTS
+
+42 new tests (14 per adapter file), all additive on the 93-test baseline:
+
+- Per adapter: metadata honesty (editorId/level/licensing/formats/
+  version shape); real-shaped parse into canonical state; opaque carry
+  of unmodeled elements with byte-exact raw assertions (multi-line
+  included); fixed-point law `export(parse(export(parse(doc))))`
+  byte-identical + first-pass normalization identified; state
+  survives export→parse with `deepStrictEqual`; REAL FILE lane (temp
+  workspace dir, write/read/edit/export/read-back, byte-stability
+  `serialize(parse(fileBytes)) === fileBytes`); entities/escapes both
+  directions; typed refusals (wrong root/format, malformed markup,
+  format-specific malformations — waveblock without start, property
+  lines outside sections, unknown escapes, non-string references, node
+  without name, ext_resource with properties, stray text);
+  serialize-refusal for non-states; deriveOperations (granular paths,
+  sha-256 hashes `/^[0-9a-f]{64}$/`, top-level fallback, non-objects →
+  `[]`, delta derivation changes on real edits); FIXTURE-labeled
+  broker smoke.
+- Godot-specific: int64 literal `9223372036854775807` survives
+  uncorrupted through file round-trip; `Vector2`/array/dict/
+  `NodePath`/`ExtResource`/`SubResource` typed assertions; unmodeled
+  `Color(…)` literal carried verbatim; `[connection]` section carried
+  opaquely and re-emitted byte-identically.
+- Audacity-specific: the external-reference chain (filename/
+  summaryfile/aliasfile) preserved across round-trip, asserted by
+  structural comparison; real edit adds a waveblock with a new external
+  sample reference on disk.
+
+### REAL EVIDENCE
+
+How measured (all in the three new test files):
+
+- REAL FILE lanes: `mkdtemp` under the OS tmpdir (one real temp
+  workspace directory per session — the editor-integration.md session
+  seam — `rm -rf`'d on dispose), serialized bytes written with
+  `node:fs/promises.writeFile`, read back with `readFile`, re-parsed,
+  re-serialized. Byte stability measured by string equality of actual
+  file contents: `serialize(parse(savedBytes)) === savedBytes` for
+  every serializer-produced file, plus the two-pass fixed point
+  `serialize(parse(serialize(parse(doc)))) === serialize(parse(doc))`.
+- Parse fidelity measured with `assert.deepEqual` on full canonical
+  states (ids, labels, parent paths, literal kinds and verbatim
+  numeric literals, attribute records, raw fragments).
+- Unknown-element honesty measured by exact raw-string assertions on
+  the preserved source slices (including multi-line fragments) and by
+  their presence, byte-identical, in re-serialized output.
+- Broker smoke reconciles use the REAL sha-256 of the REAL re-serialized
+  document bytes as `changedProjectHash` (`sha256Text` from the
+  artifacts contract) and REAL adapter-derived delta operations.
+- Gate numbers below re-measured in this sandbox at the delivered head
+  with the exact packet commands.
+
+### FIXTURE EVIDENCE
+
+- The three broker smoke tests (one per adapter file, labeled
+  "FIXTURE" in the test name and header docblock): in-memory
+  `ArtifactGraphService` + `InMemoryEditorSessionStore` + `FixedClock`
+  fixture wiring around the REAL `EditorBrokerService` constructor
+  seam — adapter records offered as availability, level-2 resolution
+  honored (open-source level-2 beats a proprietary level-2 competitor
+  for Inkscape; godot beats a level-1 exporter), session level read
+  from the REAL adapter record, understood reconcile through each
+  adapter's declared format (incl. the `.tscn` extension token).
+  No broker code was touched.
+
+### CONTRACT CHANGES
+
+- `packages/sporta-editors/src/contract.ts`: ADDITIVE re-exports only
+  (the w6a pattern): `InkscapeAdapter`/`InkscapeSvgError`/
+  `inkscapeLayersOf` + state types; `GodotTscnAdapter`/
+  `GodotTscnError` + literal/section/state types;
+  `AudacityAupAdapter`/`AudacityAupError`/`audacityWavetracksOf` +
+  state types. All eight frozen surface names intact
+  (sporta-surface-check OK, growth additive-only).
+- `packages/sporta-editors/CONTRACT.md`: no edit needed (the module
+  contract's invariants are unchanged; the adapters are new
+  capabilities behind the existing `EditorAdapterPort`).
+- `packages/sporta-editors/SPEC.md`: W6B section appended additively
+  (own commit, before implementation).
+
+### RIGHTS-PROVENANCE
+
+- Licensing per editor, declared on the adapter records and honored
+  by the fail-closed license classifier: Inkscape GPL-3.0, Godot MIT,
+  Audacity GPL-2.0+ — all permit edit/round-trip; the Inkscape broker
+  smoke proves a proprietary competitor loses (invariant 22 posture,
+  resolution-level).
+- Reconciled revisions/deltas continue to carry `editor-session`
+  provenance and the external tool/version through the frozen broker
+  path — provenance law unchanged, only new producers of
+  `deriveOperations`.
+- Adapter `editorVersion` records the editor release whose document
+  shape the adapter models (Inkscape 1.4.2, Godot 4.3.0, Audacity
+  2.4.2) — honest capability metadata, not a claim of executing the
+  editor.
+
+### PERFORMANCE
+
+- Measured with `node --test` durations on this sandbox: the full
+  editors suite runs 135 tests in ~3.5 s (was ~3.0 s for 93); the 42
+  new tests contribute ~0.5 s total, dominated by the nine REAL FILE
+  lanes (real temp dirs + real fs writes). Full sporta battery 568
+  tests in ~15 s (was ~15 s for 526). No hot path touched; all parsing
+  is single-pass index-based scanning over in-memory strings.
+
+### SECURITY
+
+- No new dependencies; Node stdlib only (`node:fs/promises` in tests
+  for the REAL lanes, no `node:crypto` additions beyond the existing
+  injected `sha256EditorHash`).
+- The strict scanners refuse (typed, never silently) malformed markup:
+  duplicate attributes, unterminated entities/CDATA/comments/DOCTYPE,
+  content after root, mismatched tags; XML prolog DOCTYPE/comments are
+  not carried (the precedent's law — no DTD-driven surprises on
+  re-emission).
+- Godot strings decode a fixed escape set only; unknown escapes are
+  typed refusals (no escape-smuggling into re-emitted output).
+- No path from adapter input to shell/process/network; file writes
+  happen only in tests' own temp dirs.
+
+### RISKS
+
+1. `editorXml.ts` duplicates the (uneditable) `kdenliveXml.ts` scanner
+   semantics — a future scanner fix must be applied in both places
+   until the TL serializes a dedupe (kdenliveXml migrating onto
+   editorXml with its error type injected).
+2. Godot literal coverage is the initial-ecosystem subset
+   (int/float/bool/string/null/Vector2/NodePath/ExtResource/
+   SubResource/arrays/dicts); other constructors (Color, Transform2D,
+   Vector3, …) are carried verbatim-opaquely — round-trip-safe but not
+   granularly addressable in `deriveOperations` until modeled.
+3. Numeric literals are verbatim strings by design (int64 safety); any
+   future numeric reasoning must parse them with BigInt, never
+   `Number`.
+4. Single-line-value law for .tscn matches the Godot text emitter; a
+   hand-edited multi-line array would be refused (typed, honest) —
+   documented in SPEC.
+5. TypeScript 6.0.2 pre-release quirks were worked around (see
+   DEVIATIONS); if the toolchain changes behavior again, the
+   guard + cast-through pattern in the serializers is the seam to
+   re-check.
+
+### BLOCKERS
+
+None. (The initial `pnpm` PATH issue was environmental — resolved with
+`corepack pnpm`; recorded under DEVIATIONS, not a repo blocker.)
+
+### DEVIATIONS
+
+1. SPEC path: the packet says `packages/sporta-editors/src/SPEC.md`;
+   at base 4e27d96 the SPEC file lives at
+   `packages/sporta-editors/SPEC.md` (no src/ copy exists). The W6B
+   section was appended to the real file.
+2. Delivery shape: the packet's delivery block shows a single commit,
+   but the SPEC-first law mandates the SPEC section in its OWN commit
+   before the implementation commit — delivered as three commits on
+   `wave6/worker-b` (spec 61194ac / code 3116cb7 / this report), the
+   established wave pattern (e.g. wave5's 7ab42c1/6c45ea3/891d77e).
+3. `editorXml.ts` is a new shared scanner rather than importing from
+   `kdenliveXml.ts`: the additive-only law forbids editing the landed
+   kdenlive module, and the precedent's scanner raises
+   `KdenliveXmlError` (wrong typed error for SVG/AUP adapters).
+4. `corepack pnpm …` was used instead of bare `pnpm` (PATH);
+   identical pnpm 10.33.2.
+5. TypeScript 6.0.2 (repo toolchain) pre-release quirks required:
+   guard-then-cast-through around `Array.isArray` on readonly arrays
+   (which silently degraded narrowing to `any`), an explicitly
+   annotated never-returning fail const, and a `type` discriminator on
+   `AudacityWaveclip`. All are normal-TypeScript-valid constructs.
+
+### NEXT DEPENDENCIES
+
+1. TL INTEGRATION: merge `wave6/worker-b` (spec 61194ac → code 3116cb7
+   → report); re-run the gate table at the integration station.
+2. TL-OWNED DEDUPE (optional, serialized): migrate `kdenliveXml.ts`
+   onto `editorXml.ts` with `KdenliveXmlError` injected — removes the
+   twin-scanner risk.
+3. Blender / Krita / Penpot remain the un-landed initial-ecosystem
+   editors for a future round-trip-expansion packet (Blender .blend is
+   binary — the honest level-2 lane there is likely its XML/X3D export
+   formats; needs a TL format decision before dispatch).
+4. Godot literal model can grow additively (Color/Transform2D/Vector3)
+   once a consumer needs granular paths into those values; the opaque
+   carry keeps round-trips safe in the meantime.
+5. The wave-6a shared-session surface can compose over these adapters
+   unchanged (level-3 over level-2 by construction — no action
+   needed, only noting the composition is now backed by four real
+   level-2 editors instead of one).
+
+DELIVERY: branch wave6/worker-b @ 3116cb7d889aca9bd3382af5d2465b32fd4b810c (spec 61194ac, code 3116cb7, report on top — the W3-B documentation-commit pattern)
+
+## Gate table (measured at the delivered head)
+
+| Gate                                       | Base 4e27d96         | wave6/worker-b                        |
+| ------------------------------------------ | -------------------- | ------------------------------------- |
+| pnpm architecture:check                    | 0 violations         | 0 violations / baseline 0 / new 0     |
+| sporta-surface-check                       | OK                   | OK (frozen names intact, additive)   |
+| tsc -b packages/sporta-editors             | clean (exit 0)       | clean (exit 0)                        |
+| tsx --test sporta-editors                 | 93 pass / 0 fail     | 135 pass / 0 fail (93 + 42 new)     |
+| tsx --test packages/sporta-* (full suite)  | 526 pass / 0 fail    | 568 pass / 0 fail (526 + 42 new)     |
+| pnpm lint                                  | 0 errors / 70 warn   | 0 errors / 70 warnings (identical)   |
