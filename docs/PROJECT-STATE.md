@@ -1,6 +1,6 @@
 # Sporta 2.0 Project State
 
-Status: WAVE 6 IN PROGRESS — P7 LANE A LANDED (w6a: live/shared editor session core, integration level 3 — shared-session domain + presence + delta coordination + reconcile-on-close + REAL round-trip lane; 93/93 editors + 414/414 battery + 114/114 render+web TL-measured @ 8834642); REMAINING P7: round-trip expansions; then P8 (production hardening)
+Status: WAVE 6 IN PROGRESS — P7 LANES A+B LANDED (w6a level-3 shared-session core @ 8834642; w6b round-trip expansions — Inkscape SVG + Godot tscn + Audacity aup real level-2 adapters, 135/135 editors + 570/570 battery TL-measured @ c0ad34e; 4/7 initial-ecosystem editors at level 2); REMAINING P7: live/shared expansions lane (w6c in flight); then P8 (production hardening)
 
 ## Repository identity
 
