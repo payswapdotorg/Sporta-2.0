@@ -182,3 +182,51 @@ export { SharedEditorSessionService } from "./app/SharedEditorSessionService.js"
 
 export { InMemorySharedSessionStore } from "./adapters/InMemorySharedSessionStore.js";
 export { FsSharedSessionStore } from "./adapters/FsSharedSessionStore.js";
+
+// ---------------------------------------------------------------------------
+// Wave 6 (w6b) — round-trip expansions (integration level 2): the REAL
+// Inkscape SVG, Godot .tscn and Audacity .aup adapters, following the
+// KdenliveAdapter level-2 precedent. Additive-only re-exports; every
+// Wave 1/3/4/6a signature above is untouched.
+// ---------------------------------------------------------------------------
+
+export { InkscapeAdapter } from "./adapters/InkscapeAdapter.js";
+export { InkscapeSvgError, inkscapeLayersOf } from "./adapters/inkscapeSvg.js";
+export type {
+  InkscapeProjectState,
+  InkscapeSvgDocument,
+  InkscapeLayer,
+  InkscapePath,
+  InkscapeRawElement,
+} from "./adapters/inkscapeSvg.js";
+
+export { GodotTscnAdapter } from "./adapters/GodotTscnAdapter.js";
+export { GodotTscnError } from "./adapters/godotTscnLiterals.js";
+export type {
+  GodotValue,
+} from "./adapters/godotTscnLiterals.js";
+export type {
+  GodotTscnState,
+  GodotSceneHeader,
+  GodotSceneSection,
+  GodotExtResource,
+  GodotSubResource,
+  GodotNodeSection,
+  GodotOpaqueSection,
+} from "./adapters/godotTscn.js";
+
+export { AudacityAupAdapter } from "./adapters/AudacityAupAdapter.js";
+export { AudacityAupError, audacityWavetracksOf } from "./adapters/audacityAup.js";
+export type {
+  AudacityProjectState,
+  AudacityProject,
+  AudacityProjectChild,
+  AudacityTagsBlock,
+  AudacityTag,
+  AudacityWavetrack,
+  AudacityWaveclip,
+  AudacitySequence,
+  AudacityWaveblock,
+  AudacityBlockFile,
+  AudacityRawElement,
+} from "./adapters/audacityAup.js";
