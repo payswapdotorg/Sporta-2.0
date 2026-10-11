@@ -530,3 +530,168 @@ All extend `EditorError` (machine-readable `detail` preserved).
   `EditorSessionHistoryListInput` signature, which
   `EditorSessionHistoryService` satisfies structurally — the frozen
   contracts port is untouched.
+
+## Wave 6 — round-trip expansions (W6B, integration level 2)
+
+Status: SPEC — written before implementation (SPEC-first law).
+Authority: docs/architecture/editor-integration.md (integration
+levels + initial ecosystem: Godot = interactive/game/tactical,
+Inkscape = vector, Audacity = audio) and the KdenliveAdapter
+level-2 precedent (parse/serialize laws, unknown-element honesty,
+typed format errors, `deriveOperations` contract). Additive-only:
+new files under `src/adapters/` + tests + appended `contract.ts`
+re-exports; the broker, the domain layer and every frozen surface
+are untouched (`KdenliveFixtureAdapter`/`MysteryAppFixtureAdapter`
+stay for fixture tests). Node stdlib only.
+
+### Scope
+
+Three REAL level-2 adapters, each round-tripping the REAL text
+document format of its editor:
+
+- `InkscapeAdapter` — SVG 1.1 (`image/svg+xml`), editorId
+  `inkscape`, licensing GPL-3.0.
+- `GodotTscnAdapter` — Godot text scene `.tscn`
+  (`application/x-godot-scene`, `.tscn`), editorId `godot`,
+  licensing MIT.
+- `AudacityAupAdapter` — Audacity 2.x legacy XML project `.aup`
+  (`application/x-audacity-project`), editorId `audacity`,
+  licensing GPL-2.0+.
+
+All three implement `EditorAdapterPort` exactly (editorId /
+editorVersion / integrationLevel 2 / licensing /
+knownProjectFormats / deriveOperations) and are wired into callers
+through the EXISTING broker injection seam
+(`EditorBrokerDeps.adapters`) — the broker itself is never edited.
+
+### Shared laws (the KdenliveAdapter shape, verbatim)
+
+- parse produces a canonical typed state; serialize emits a
+  well-formed document canonically; `parse(serialize(parse(doc)))`
+  equals `parse(doc)` (deep equality) and
+  `serialize(parse(serialize(x)))` equals `serialize(x)` byte-identically
+  (fixed point from the second pass — first-pass normalization of
+  semantically inert surface details is documented per adapter).
+- Elements/sections/properties the adapter does not model are
+  CARRIED OPAQUELY as raw source fragments and re-emitted
+  byte-identically — never guessed, never dropped.
+- A document that is not the expected format (wrong root, wrong
+  first section, malformed markup) is a TYPED error of that adapter
+  (`InkscapeSvgError` / `GodotTscnError` / `AudacityAupError`, all
+  extending `EditorError` with a machine-readable `detail`) naming
+  the failure point — never a raw `SyntaxError`, never a guess.
+- `deriveOperations(projectState)` derives typed `set` operations
+  with sha-256 value hashes: granular paths for the adapter's own
+  state shape, honest top-level carry for other object states,
+  nothing for non-objects.
+- File-size law: every file <= 400 lines; parser/serializer
+  machinery lives in per-format modules separate from the adapter
+  classes.
+
+### InkscapeAdapter — SVG 1.1 understanding model
+
+Understood: the `<svg>` root (ALL attributes preserved verbatim —
+`xmlns`, `xmlns:inkscape`, `width`/`height`/`viewBox` root geometry
+and any others), direct root children IN DOCUMENT ORDER (SVG paint
+order is semantic), `<g inkscape:groupmode="layer">` layers
+(`inkscape:label`, `id`, remaining attributes) with their children
+in document order, and hollow `<path>` elements inside layers
+(explicit `id`, the `d` data carried verbatim, remaining
+attributes preserved). Serialization guarantees the XML declaration
+and a root carrying at least `xmlns` (SVG 1.1) and
+`xmlns:inkscape` (added with their standard values only when the
+state does not already carry them) and emits layers as
+`<g inkscape:groupmode="layer" inkscape:label="...">` groups with
+stable element ids. Everything else (any non-layer element at any
+depth the adapter does not model — `rect`, `text`, `defs`,
+`metadata`, `sodipodi:namedview`, nested groups, non-hollow
+paths…) is carried as an opaque raw fragment. Normalizations
+(semantically inert, XML attribute order and whitespace): root
+attribute emission order (namespaces first, then the preserved
+insertion order), indentation, the `id`-first attribute order on
+modeled paths, missing `inkscape:label` on a layer group becomes
+`inkscape:label=""`. XML prolog DOCTYPE/comments are not carried
+(the Kdenlive precedent law). Stray non-whitespace character data
+inside `<svg>` or a layer `<g>` (element-only positions in every
+real document) is a typed refusal.
+
+### GodotTscnAdapter — .tscn understanding model
+
+Understood: the `[gd_scene ...]` header (all attributes as parsed
+Godot literals — `load_steps`, `format`, `uid`, …),
+`[ext_resource ...]` sections (all attributes as literals:
+`type`, `path`, `id`), `[sub_resource ...]` sections (attributes
+plus `key = value` properties), `[node name="..." type="..."
+parent="..."]` sections (attributes plus properties) with the node
+order and `parent` paths preserved (the node tree is the ordered
+section list; `parent` is absent for the scene root, `"."` for
+root-level children, a path for deeper nodes). Property values
+are parsed as TYPED Godot literals: int/float (VERBATIM literal
+strings — JS numbers corrupt int64 and exotic float forms, so the
+lossless representation is the validated literal itself), bool,
+string (unescaped), null, `Vector2(x, y)`, `NodePath("...")`,
+`ExtResource("id")`, `SubResource("id")`, arrays `[a, b]`,
+dictionaries `{k: v}`; any other literal (Color, Transform2D, …)
+is carried as an OPAQUE verbatim literal, never guessed. Unknown
+top-level sections (e.g. `[connection]`, `[editable]`) are carried
+as opaque raw section fragments and re-emitted byte-identically.
+Values are single-line (the Godot text-resource emitter never
+wraps values) — a value line that does not parse completely is a
+typed `GodotTscnError` naming the section and 1-based line. The
+document must begin with `[gd_scene`; a non-`gd_scene` first
+section (e.g. `.tres` `[gd_resource]`) is a typed refusal.
+Normalization: sections separated by one blank line, canonical
+`Vector2(x, y)`/array/dictionary spacing.
+
+### AudacityAupAdapter — .aup understanding model
+
+Understood: the `<project>` root (ALL attributes preserved —
+`projname`, `rate`, `snapto`/`selection*`, …) with children in
+document order, the `<tags>` block (each `<tag name="...">text`
+pair; `name` required), `<wavetrack>` elements with their
+attribute records (`name`, `channel`, `rate`, `offset`, `gain`,
+`linked`, …) and children in order, `<waveclip offset="...">`
+(attribute record) containing one modeled `<sequence ...>`
+(attribute record, e.g. `maxlen`), whose `<waveblock>` children
+carry the REQUIRED `start` attribute (typed refusal when absent —
+malformed in every real document) plus the modeled file-reference
+child: `<simpleblockfile filename="...">` or `<aliasblockfile
+summaryfile="..." aliasfile="...">` with all attributes preserved.
+The external sample data those references point at stays external
+— the .aup document is the adapter's format, exactly the
+Kdenlive-MLT law (an .aup without its sample blocks on disk is
+still a legal document; binary sample data is NEVER fabricated).
+Everything else is carried opaquely as raw fragments (including
+unknown children inside modeled containers). Non-`<project>` root
+is a typed refusal; malformed XML is a typed `AudacityAupError`
+naming the offset.
+
+### Wave 6 failure semantics (round-trip expansion)
+
+| Failure                                        | Typed error            |
+| ---------------------------------------------- | ---------------------- |
+| SVG: non-`<svg>` root / malformed markup       | `InkscapeSvgError`     |
+| SVG: stray text in element-only positions      | `InkscapeSvgError`     |
+| SVG: serialize of a non-SVG state              | `InkscapeSvgError`     |
+| tscn: first section is not `[gd_scene`         | `GodotTscnError`       |
+| tscn: malformed section/property/line         | `GodotTscnError`       |
+| tscn: serialize of a non-scene state           | `GodotTscnError`       |
+| aup: non-`<project>` root / malformed markup   | `AudacityAupError`    |
+| aup: waveblock without `start`                 | `AudacityAupError`    |
+| aup: serialize of a non-project state          | `AudacityAupError`    |
+
+All extend `EditorError` (machine-readable `detail` preserved).
+
+### Evidence grades (the packet's labeling law)
+
+- REAL: every round-trip lane test writes serialized bytes to a
+  real temp workspace directory (the editor-integration.md session
+  seam — one real temp dir per session, removed on dispose), reads
+  them back with `node:fs`, re-parses, re-serializes and proves
+  export->import->export byte stability with real diffs; ids,
+  provenance and the external-reference chain are asserted against
+  the file bytes on disk.
+- FIXTURE (labeled): broker-level smoke wiring (in-memory stores,
+  fixture artifact graph) — the resolution/level-2 honoring of the
+  REAL adapters through the REAL `EditorBrokerService` constructor
+  seam, without editing the broker.
