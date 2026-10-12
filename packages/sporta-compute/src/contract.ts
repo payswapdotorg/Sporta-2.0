@@ -59,3 +59,43 @@ export type {
 // Persisting broker composition over the untouched ComputeBrokerService.
 export { FsComputeBrokerService } from "./adapters/fsComputeBrokerService.js";
 export type { FsComputeBrokerDeps } from "./adapters/fsComputeBrokerService.js";
+
+// Wave 7 additions (P8 B6 provider-neutral fallback — W7B). Additive only.
+
+// Fallback-chain domain vocabulary (typed facts, never stringly).
+export type {
+  ProviderOutcomeClass,
+  TransientFailureMarker,
+  ProviderAttempt,
+  FallbackChainTrail,
+  FallbackChainPolicy,
+} from "./domain/fallback/types.js";
+
+// Deterministic outcome classification (total, fail-closed).
+export {
+  TRANSIENT_FAILURE_MARKERS,
+  classifyProviderOutcome,
+  FallbackClassificationError,
+} from "./domain/fallback/classify.js";
+
+// The explicit chain policy record + fail-closed validation.
+export {
+  DEFAULT_MAX_ATTEMPTS_PER_PROVIDER,
+  DEFAULT_RETRY_SAME_PROVIDER_ON_RETRYABLE_FAILURE,
+  defaultFallbackChainPolicy,
+  validateFallbackChainPolicy,
+  InvalidFallbackChainPolicyError,
+} from "./domain/fallback/policy.js";
+
+// Chain-trail terminal laws: aggregate refusal, typed exhaustion, visible summary.
+export {
+  AllProvidersExhaustedError,
+  aggregateRefusalForTrail,
+  isAllRefusalTrail,
+  lastFailingAttempt,
+  summarizeTrailForDetail,
+} from "./domain/fallback/trail.js";
+
+// The fallback chain service (additive to the frozen ComputeBrokerService).
+export { FallbackComputeService } from "./app/FallbackComputeService.js";
+export type { FallbackComputeDeps } from "./app/FallbackComputeService.js";

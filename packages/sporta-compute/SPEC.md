@@ -190,3 +190,160 @@ accessors) plus a `FsComputeJobLedger`:
 | -------------------------------- | -------------------------------------------- |
 | Corrupt ledger file (any cause)  | `ComputeLedgerError` (path + reason)        |
 | Ledger write failure (disk etc.) | `ComputeLedgerError` — fail-closed; the job state stays in the inner broker and the error surfaces |
+
+## Wave 7 — provider-neutral fallback chain (W7B, B6)
+
+Spec-before-code record for the B6 "provider-neutral compute/fallback"
+lane (work-order proof: "provider fallback" + "visible provider
+failure"). Everything is ADDITIVE: new files only
+(`src/domain/fallback/{types,classify,policy,trail}.ts`,
+`src/app/FallbackComputeService.ts`); the frozen domain (`ports.ts`,
+`stateMachine.ts`, `policy.ts`, `errors.ts`) and
+`ComputeBrokerService` stay untouched. New public names are APPENDED
+to `src/contract.ts` (surface stays additive-only).
+
+Anchor — the frozen law this section extends (invariant 3, quoted):
+"Every provider failure surfaces as a typed refusal; no refusal is
+ever converted into a success or a failure." The fallback chain
+extends that law from ONE provider to a CHAIN of providers: no
+provider's refusal or failure is ever converted, hidden, or silently
+retried away — and the caller SEES which provider failed, how, and
+what the chain did about it.
+
+### Scope problem
+
+`ComputeBrokerService` selects ONE provider at quote time (first
+non-refusing quote) and executes only that provider; a failure of the
+chosen provider is terminal for the job. B6 requires the compute
+plane to FALL BACK across providers at execution time —
+deterministically, with every provider's honest outcome visible.
+
+### Outcome classification (domain, pure — `classifyProviderOutcome`)
+
+Every `ProviderExecutionResult` is classified into exactly one of
+four classes:
+
+- `succeeded` — state `"succeeded"` (with or without an
+  `outputArtifactId`; both are legal port shapes);
+- `retryable-failure` — state `"failed"` whose `detail` matches an
+  entry of the EXPLICIT transient-failure record
+  `TRANSIENT_FAILURE_MARKERS` (an exact, case-sensitive substring
+  match; the record — timeouts, temporary unavailability, overload,
+  rate limits, connection resets/refusals, broken pipes, socket
+  hang-ups, restarts — is a versioned, auditable list, never an
+  ambient heuristic; first match in record order wins);
+- `terminal-refusal` — state `"refused"`: EVERY `TypedRefusal` kind
+  is terminal for THAT provider (a refusal is an honest no, never a
+  retry trigger);
+- `terminal-failure` — state `"failed"` matching no transient marker.
+
+Classification is TOTAL and fail-closed. A result whose shape violates
+the port laws — a state outside the three, a `"refused"` result
+without a well-formed `TypedRefusal` (one of the five kinds), or a
+`refusal` field carried on a `"succeeded"`/`"failed"` result — is a
+typed `FallbackClassificationError` carrying the reason and the
+ill-shaped value. There is NO silent default class.
+
+### FallbackChainPolicy (explicit record)
+
+```text
+providerOrder                          — the deterministic order (registration order)
+maxAttemptsPerProvider                 — default 1
+retrySameProviderOnRetryableFailure    — default false (the chain advances)
+```
+
+- The order is the explicit, total provider-id list: no ambient
+  config, no cost/latency guessing, no reordering.
+  `defaultFallbackChainPolicy(ids)` derives it from registration order.
+- `validateFallbackChainPolicy` fail-closes: an empty order, duplicate
+  order ids, a non-integer or `< 1` maxAttemptsPerProvider, or an
+  order entry that is not a registered provider is a typed
+  `InvalidFallbackChainPolicyError` carrying EVERY reason. A policy may
+  deliberately OMIT a registered provider (explicit exclusion); it may
+  never reference an unknown one. Duplicate ids among the registered
+  providers themselves are rejected at construction.
+
+### FallbackComputeService (app — the chain)
+
+`FallbackComputeService implements ComputeBrokerPort`, additive to the
+frozen `ComputeBrokerService` (which stays the quote-time-selection
+broker). The chain executes the spec against providers in the
+deterministic order; per provider, the attempt loop:
+
+- `succeeded` → the chain terminates with success;
+- `terminal-refusal` → the chain ADVANCES (never a same-provider
+  retry — a refusal is an honest no, not a retry trigger);
+- `terminal-failure` → the chain ADVANCES;
+- `retryable-failure` → same-provider retry ONLY when the policy
+  allows it and the provider's attempt budget remains; otherwise the
+  chain advances.
+
+- `quote(spec)` returns a quote from EVERY chain provider in order
+  (refusals visible) — the same law as the frozen broker. The chain
+  does NOT use quotes for selection: B6 is EXECUTION-time fallback, so
+  every chain provider is EXECUTED until one succeeds (the deliberate,
+  documented divergence from the frozen broker's quote-time skip).
+- `submit` event order: 1. jobId idempotency check; 2. policy check
+  BEFORE submission (the same domain `policyPermitsJob`; a denied job
+  is terminal `refused`, never queued, no provider touched); 3.
+  `queued` → `running` recorded (the chain is ONE job run;
+  per-provider attempts are trail facts, not job states); 4. provider
+  attempts per the loop above; 5. terminal state recorded.
+- **Visible provider failure (the B6 proof)**: the outcome carries the
+  COMPLETE per-provider attempt trail — every attempt's providerId,
+  outcome class, refusal/failure detail and clock-stamped timestamp —
+  on three surfaces: the additive `trail(jobId)` accessor (the
+  structured `FallbackChainTrail`), the terminal status `detail` (a
+  deterministic summary naming EVERY attempt), and the typed aggregate
+  error. A success reached after earlier provider failures/refusals
+  NEVER hides them: the succeeded status's `detail` names every
+  earlier attempt.
+- **All-refused exhaustion**: a job that EVERY provider refused (no
+  failure anywhere) ends `refused` — never `failed`, never
+  `succeeded` — with the honest aggregate refusal carrying the full
+  trail: kind and providerId follow the FIRST refusing provider (the
+  frozen broker's all-refuse law), and the detail names every
+  provider's refusal kind. Recorded refusals replay byte-identically
+  (invariant 17).
+- **Exhaustion with at least one failure**: the job is recorded
+  terminal `failed` (the status names the LAST failing provider;
+  `poll` returns it) AND `submit` THROWS the typed
+  `AllProvidersExhaustedError` carrying the jobId and the full attempt
+  trail — the honest aggregate failure, impossible to ignore.
+- **Ill-shaped provider result**: a `FallbackClassificationError`
+  propagates out of `submit` (fail-closed totality) AND the job is
+  recorded terminal `failed` with the reason, so the ledger stays
+  coherent (`poll`/`trail` answer with the partial trail).
+- **Idempotency**: same jobId → the terminal outcome REPLAYS
+  (byte-identical status, or the same typed terminal error — the
+  service stores the terminal throw and re-throws it on retry); a
+  provider never re-executes for the same jobId. Without a jobId the
+  service mints `job:<n>` (the broker's law).
+- **Never convert**: a refusal is never a failure, a failure is never
+  a success, a partial result is never silent (the W1 broker law,
+  restated for the chain). A provider that THROWS is recorded as a
+  failed attempt with the reason (the frozen broker's crash law) and
+  the chain advances per classification.
+- Terminal status providerId law: `succeeded` → the succeeding
+  provider; all-refused → the first refusing provider; failed → the
+  last failing provider. Deterministic in all three cases.
+- `poll(jobId)` returns the recorded terminal status; unknown → typed
+  `UnknownComputeJobError` (never a fabricated status). Additive
+  `history(jobId)` (state evidence: `queued → running → terminal`) and
+  `trail(jobId)` (attempt evidence) accessors, mirroring the frozen
+  broker's additive-accessor pattern. The chain is synchronous: an
+  observed trail always carries a terminal job state.
+- Clock law: attempt timestamps come ONLY from the injected clock
+  (domain purity holds; the domain trail helpers are pure and receive
+  timestamps as values).
+
+### Failure semantics (new typed errors, this lane)
+
+| Failure                             | Typed error / state                                          |
+| ---------------------------------- | ------------------------------------------------------------ |
+| Ill-shaped provider result          | `FallbackClassificationError` (reason + value) + terminal `failed` |
+| Invalid chain policy (wiring)       | `InvalidFallbackChainPolicyError` (every reason)              |
+| Chain exhausted with ≥ 1 failure    | terminal `failed` + thrown `AllProvidersExhaustedError` (full trail) |
+| Chain exhausted, all refused       | terminal `refused` + aggregate refusal (first-refuser kind, full trail in detail) |
+| Idempotent retry of a thrown outcome | the SAME typed terminal error replays (never a re-execution) |
+| Poll/trail of unknown job           | `UnknownComputeJobError`                                     |
