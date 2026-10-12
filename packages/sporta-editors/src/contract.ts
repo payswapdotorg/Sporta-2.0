@@ -274,3 +274,18 @@ export type {
 } from './adapters/wsSharedDeltaSink/wsSharedDeltaSink.js';
 export { connectWs } from './adapters/wsSharedDeltaSink/wsClient.js';
 export type { WsTestClient, WsCloseInfo, ConnectWsOptions } from './adapters/wsSharedDeltaSink/wsClient.js';
+
+// ═══ w7c-3 additions — ADDITIVE ONLY (frozen names above still export; surface check holds) ═══
+// WS transport origin/token auth (SPEC §W7C-3): fail-closed pre-handshake gate.
+export type {
+  WsUpgradeAuthConfig,
+  UpgradeAuthRejection,
+  UpgradeAuthKind,
+} from './adapters/wsSharedDeltaSink/wsAuth.js';
+export {
+  WsAuthConfigError,
+  authorizeUpgrade,
+  offeredAuthProtocol,
+  timingSafeTokenEqual,
+  validateWsUpgradeAuthConfig,
+} from './adapters/wsSharedDeltaSink/wsAuth.js';

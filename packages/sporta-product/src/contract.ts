@@ -55,3 +55,28 @@ export { ProductLoopProjection } from "./app/productLoopProjection.js";
 export type { ProductLoopProjectionDeps } from "./app/productLoopDeps.js";
 export { LearningIntakeService } from "./app/learningIntake.js";
 export type { LearningIntakeServiceDeps } from "./app/learningIntake.js";
+
+// w7c additive (SPEC §W7C-2 — the local-boot lane): the w6c-4
+// shared-session projection pieces re-exported through the public
+// entrypoint so the packages/web boot (and any future shell) wires them
+// through the package boundary exactly like every sibling service export.
+// Additive-only; frozen names unchanged (verified by sporta-surface-check).
+export {
+  SharedSessionProjection,
+  sharedSessionProjectionFromDeps,
+  withSharedSessions,
+} from "./app/sharedSessionProjection.js";
+export type {
+  SharedSessionProjectionDeps,
+  SharedSessionSummaryView,
+  SharedSessionDeltaLogEntry,
+  SharedSessionDetailView,
+  SharedSessionListView,
+  SharedSessionDetailResult,
+} from "./app/sharedSessionProjection.js";
+export { SharedSessionStoreProjection } from "./app/sharedSessionStoreProjection.js";
+export type {
+  SharedSessionProjectionPort,
+  SharedSessionSummaryRow,
+  SharedSessionDeltaLogRow,
+} from "./app/sharedSessionProjectionPort.js";

@@ -802,3 +802,72 @@ MISSING_HEARTBEAT_REASON, InvalidStalenessPolicyError, RebaseDeltaInput, RebaseL
 RebasedDelta, RebaseOutcome, RebaseNotExpressibleReason, RebaseInvalidReason, rebaseDelta,
 RebaseNotExpressibleError, RebaseInvalidInputError, WsSharedDeltaSink, WsSharedDeltaSinkOptions,
 WsDeliveryReceipt, WsDeliveryRecord, connectWs, WsTestClient, WsCloseInfo, ConnectWsOptions`
+
+## Wave 7 — Worker C (w7c): WS transport origin/token auth (SPEC-first)
+
+Additive to the frozen w6c-1 transport. ZERO edits to `frameCodec.ts` or any
+domain file; `handshake.ts`/`wsServer.ts`/`wsClient.ts`/`wsSharedDeltaSink.ts`
+gain STRICTLY ADDITIVE OPTIONAL options/params only (every frozen test stays
+green — absent auth config is byte-compatible with w6c behavior). New public
+names are APPENDED to `contract.ts`. Runtime law unchanged: node:test + tsx
+(bun does not deliver http 'upgrade' events).
+
+### W7C-3 — origin allow-list + shared-token auth (`adapters/wsSharedDeltaSink/wsAuth.ts`)
+
+The W6-C NEXT #1 security item. `WsServer` (and `WsSharedDeltaSink`, which
+passes it through) gains an OPTIONAL `auth` config:
+
+```ts
+interface WsUpgradeAuthConfig {
+  readonly allowedOrigins: readonly string[]; // exact-match allow-list
+  readonly sharedToken: string;               // offered as the single subprotocol
+}
+```
+
+- ABSENT auth config = the documented DEV-MODE law: current behavior exactly
+  (localhost dev; any origin, no token). This is a documented posture, never
+  an accident.
+- PRESENT auth config = FAIL-CLOSED. Both checks run BEFORE the 101 handshake
+  response is written, so a refused upgrade is an honest HTTP status and the
+  connection NEVER frames (no WebSocket frame is ever sent — the socket is
+  destroyed after the HTTP failure response):
+  1. ORIGIN: the `Origin` request header must EXACTLY match one entry of
+     `allowedOrigins` (case-sensitive string equality — no parsing, no
+     wildcard, no normalization; the fail-closed posture). A missing Origin
+     header is REFUSED (403 `missing Origin header`) — non-browser clients
+     must send it too.
+  2. TOKEN (the RFC-honest mechanism — browsers cannot set custom headers on
+     WebSocket, so the token rides `Sec-WebSocket-Protocol` per RFC 6455
+     §4.2/§4.2.2): the request must offer EXACTLY ONE subprotocol and it must
+     equal `sharedToken`, compared in CONSTANT TIME (sha-256 digests +
+     `crypto.timingSafeEqual` — no length leak). On success the server ECHOES
+     the subprotocol in the 101 response (RFC 6455 §4.2.2 — the client can
+     verify auth was actually applied); the stdlib test client verifies the
+     echo and fails loudly on a dishonest handshake.
+  - Rejections: wrong/missing origin → 403; missing/multiple/mismatched
+    subprotocol token → 401. Every rejection is answered with the honest
+    HTTP status + the `X-Sporta-Upgrade-Rejection` reason header (the w6c
+    failure-response wire format), then the socket is destroyed.
+- Config validation is typed and fail-closed (`WsAuthConfigError` extends
+  `EditorError`): `allowedOrigins` must be non-empty and every entry a
+  non-empty origin-shaped string (`scheme://host[:port]`, no whitespace);
+  `sharedToken` must be 16–256 chars of `[A-Za-z0-9_-]` (a safe RFC 7230
+  token charset, comma-free so it can never smuggle a second subprotocol).
+- Observability: `WsServerHandlers.onAuthRejection?(rejection, req)` — hosts
+  may audit refusals; it fires only when auth is configured and a request is
+  refused (never for dev-mode connections).
+- The stdlib test client (`connectWs`) gains additive options `origin`,
+  `token` (sends `Origin` + the single `Sec-WebSocket-Protocol: <token>` and
+  verifies the echo) and `subprotocols` (the raw multi-offer form, for the
+  fail-closed rejection lanes).
+- REAL test lanes: allowed origin+token connects and a delta frames
+  end-to-end; wrong origin refused (403, zero server connections); wrong
+  token refused (401, zero server connections); missing origin refused
+  (403); multiple offered subprotocols refused (401); absent auth config
+  stays open with the plain client (the backward-compat law); config
+  validation fail-closes.
+
+### Additive contract exports (w7c)
+
+`WsUpgradeAuthConfig, UpgradeAuthRejection, UpgradeAuthKind, WsAuthConfigError,
+authorizeUpgrade, offeredAuthProtocol, timingSafeTokenEqual`

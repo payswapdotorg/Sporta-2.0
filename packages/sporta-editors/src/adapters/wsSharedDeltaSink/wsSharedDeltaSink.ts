@@ -11,6 +11,7 @@
  */
 import type { SharedDeltaDelivery, SharedDeltaSinkPort } from '../../domain/sharedSession/ports.js';
 import { WsServer, type WsCloseInfo } from './wsServer.js';
+import type { WsUpgradeAuthConfig } from './wsAuth.js';
 
 export interface WsSharedDeltaSinkOptions {
   /** Exact upgrade path; default '/shared-deltas'. */
@@ -18,6 +19,12 @@ export interface WsSharedDeltaSinkOptions {
   readonly maxFramePayloadBytes?: number;
   /** Bounded per-client receipt history; default 128. */
   readonly receiptHistoryPerClient?: number;
+  /**
+   * w7c-3 additive OPTIONAL auth (SPEC §W7C-3), passed through to the
+   * server: origin allow-list + shared token, fail-closed pre-handshake.
+   * Absent = the documented dev-mode law (w6c behavior exactly).
+   */
+  readonly auth?: WsUpgradeAuthConfig;
 }
 
 export interface WsDeliveryRecord {
@@ -40,7 +47,11 @@ export class WsSharedDeltaSink implements SharedDeltaSinkPort {
 
   constructor(options: WsSharedDeltaSinkOptions = {}) {
     this.receiptHistoryPerClient = options.receiptHistoryPerClient ?? 128;
-    this.server = new WsServer({ path: options.path ?? '/shared-deltas', maxFramePayloadBytes: options.maxFramePayloadBytes });
+    this.server = new WsServer({
+      path: options.path ?? '/shared-deltas',
+      maxFramePayloadBytes: options.maxFramePayloadBytes,
+      auth: options.auth, // w7c-3 additive pass-through (absent = dev mode)
+    });
   }
 
   /** Binds the underlying HTTP listener. Port 0 → OS-assigned; resolves with the ACTUAL port. */
