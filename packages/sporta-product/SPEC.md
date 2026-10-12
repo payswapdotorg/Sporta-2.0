@@ -191,3 +191,109 @@ lane.
 - Real evidence states how it was measured (command, wall time, counts);
   fixture evidence is labeled fixture. A stage rendered from a fixture
   host in the browser is labeled fixture in the UI itself.
+
+## Wave 7 — Worker C (w7c): P8 product acceptance + local boot (SPEC-first)
+
+Additive to everything above; nothing above changes. Two lanes: the
+Completion-journey acceptance test (W7C-1, `test/acceptance/`) and the
+local-boot/deployment-descriptor spec (W7C-2, consumed by the
+`packages/web` boot module — spec'd here because the product shell owns
+the composition law; `packages/web` has no SPEC of its own).
+
+### W7C-1 — the Completion journey (`test/acceptance/completionJourney.test.ts`)
+
+The roadmap's Completion paragraph is executed as ONE REAL lineage test
+(the a17-full-real precedent, extended by the replay leg). Law:
+
+- ONE composition, built once over a real temp root; the journey's runs
+  share its stores (one organization registry lineage, one blob store,
+  one learning intake, one arena client, one editor history, one run
+  journal root). Run 1 = `wg:journey-1` (fresh user); the replay = run 2
+  on `wg:journey-2` (same intent, same user, the promoted organization).
+- Every leg is labeled REAL or FIXTURE in a printed per-leg evidence
+  table (the acceptance artifact). The table states HOW each REAL leg
+  was measured (real spawn/pipes/exit code, real FS bytes + sha-256
+  read-back, real MLT round-trip, real HTTP requests on the wire, real
+  service calls) and names every fixture boundary honestly (the
+  executable is the process-level stand-in; the Arena ROLE behind the
+  real HTTP transport is fixture-scripted; v1 in-memory ledgers:
+  work-graph/organization/preference/artifact-graph/editor-session
+  stores).
+- Intervention ledger (honest counting): a manual intervention is a
+  CORRECTIVE user action required to drive the loop to a closed
+  outcome — a manual editor takeover, or a user-triggered Arena
+  escalation on a capability gap. Learning-consent grants are
+  authorizations, tracked separately in the evidence table. The ledger
+  records kind + label + measured wall time; counts are of actions
+  ACTUALLY performed, never hypothetical.
+- Replay law: run 2 executes the same journey goal on the SAME
+  composition with the promoted organization v2 (the learning from run
+  1 folded in: `learnedPreferences` carries the consented learning
+  artifact id; `toolGraph` carries the Arena-learned capability tool;
+  `evidence` carries the real promotion + escalation ids). Run 2's
+  artifact content is the learned template — the run-1 user-edited
+  revision read back BYTE-IDENTICAL from the real durable blob store
+  (content-hash equality asserted). Run 2's capability check reads the
+  SELECTED organization record (v2 declares the capability → no gap, no
+  escalation; the Arena wire request count is asserted NOT to grow).
+  Run 2 needs zero consent (no new learning candidate is created —
+  nothing new happened). The reduced-intervention assertion is exactly
+  the ledger comparison (run 1 > run 2, printed with the measured
+  numbers); if a future run needed interventions, the ledger says so —
+  the test asserts what is counted, never a fabricated reduction.
+- Return-to-same-artifact law: after the loop, re-reading the journey
+  shows the SAME work graph id, the SAME artifact id, the grown revision
+  lineage (r1 preserved byte-identically, r2 a child of r1); durability
+  read-backs use FRESH adapter instances over the same roots —
+  `FsArtifactBlobStore` (both blobs byte-identical),
+  `FsEditorSessionHistoryStore` (the session listed), `FsAgentRunJournal`
+  (the run events replayed). The in-memory v1 ledgers are labeled as
+  such; durability is claimed ONLY for the real FS stores.
+- Traces are asserted honestly per run: run 1's final trace has all 12
+  stages done; run 2's trace shows what an intervention-free run really
+  projects (progress honest with zero user actions; takeover/editor
+  pending; learning done via the promoted artifact; no
+  capability-gap/arena/result stages firing for that graph).
+
+### W7C-2 — local boot + deployment descriptor (the P8 "local install" leg)
+
+`packages/web/src/sporta/boot/` (headless Node only — never enters the
+browser bundle; the same law as the W4-C composition). Law:
+
+- `bootSportaLocal(config)` is the single-entry local boot: one call
+  wires the REAL product host composition — real FS stores on disk
+  (artifact blobs via `FsArtifactBlobStore`, editor sessions via
+  `FsEditorSessionHistoryStore` wired into the broker's `sessionHistory`
+  dep, shared sessions via `FsSharedSessionStore`, run journals via
+  `FsAgentRunJournal` + `ResumingAgentRuntime` over the real process
+  adapter), the REAL product projection deps (ALL read seams:
+  editor-session history, learning artifacts, organization candidates,
+  escalations; PLUS the w6c `sharedSessionHistory` seam via
+  `SharedSessionStoreProjection` over the real FS store), the live
+  shared-session service over the real WS delta sink (bound to a real
+  port, actual port read back), and the `SportaHostPort` surface (the
+  SportaPanel route's exact contract: readState + the two write paths).
+- The boot returns the wiring FACTS: bootedAt, store roots (absolute),
+  the ACTUAL bound ports, the seams wired, the component ids. Facts are
+  measured, never defaulted silently.
+- `deploymentDescriptor.ts` — a typed, honest manifest: component list,
+  port map (port 0 documented = OS-assigned), store roots (relative
+  names under the store root), required env NAMES only (never values or
+  secrets), health checks per component, and the hosted-preview entry
+  point. The default descriptor describes THIS local boot honestly.
+- `validateDeploymentDescriptor.ts` — the descriptor validator:
+  fail-closed, typed `DeploymentDescriptorError` carrying the full
+  issue list; never a silent default. Missing/unknown components,
+  invalid/missing ports, missing store roots, malformed env names,
+  health checks referencing unknown components, and a missing
+  hosted-preview entry are all typed issues.
+- The REAL test lane (`packages/web/test/sportaBoot.test.ts`) boots the
+  composition on a real temp dir, drives live traffic through the
+  booted surfaces (a shared-session broadcast received by a real WS
+  client on the bound port; a takeover writing real editor history;
+  the run journal durable on disk), asserts the wiring facts, validates
+  the default descriptor AND the fail-closed rejections, and tears down
+  cleanly.
+- WS auth tie-in: the boot config accepts the OPTIONAL w7c-3
+  `WsUpgradeAuthConfig` (absent = the documented dev-mode law; present
+  = fail-closed origin/token auth on the delta sink's upgrades).
