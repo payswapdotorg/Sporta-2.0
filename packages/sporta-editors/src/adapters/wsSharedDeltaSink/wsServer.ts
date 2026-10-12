@@ -21,6 +21,14 @@ import {
   type WireFrame,
 } from './frameCodec.js';
 import { handshakeResponseFor } from './handshake.js';
+import {
+  authFailureResponseFor,
+  authorizeUpgrade,
+  offeredAuthProtocol,
+  validateWsUpgradeAuthConfig,
+  type UpgradeAuthRejection,
+  type WsUpgradeAuthConfig,
+} from './wsAuth.js';
 
 export const DEFAULT_MAX_FRAME_PAYLOAD_BYTES = 1_048_576;
 export const DEFAULT_MAX_MESSAGE_BYTES = 1_048_576;
@@ -29,6 +37,13 @@ export interface WsServerOptions {
   readonly path?: string;
   readonly maxFramePayloadBytes?: number;
   readonly maxMessageBytes?: number;
+  /**
+   * w7c-3 additive OPTIONAL auth (SPEC §W7C-3): origin allow-list + shared
+   * token, enforced BEFORE the 101 handshake — a refused upgrade gets an
+   * honest HTTP status and NEVER frames. Absent = the documented dev-mode
+   * law (w6c behavior exactly).
+   */
+  readonly auth?: WsUpgradeAuthConfig;
 }
 
 export interface WsCloseInfo {
@@ -50,6 +65,11 @@ export interface WsServerHandlers {
   onConnection?(connection: WsServerConnection): void;
   onText?(connection: WsServerConnection, text: string): void;
   onClose?(connection: WsServerConnection, close: WsCloseInfo): void;
+  /**
+   * w7c-3 additive: audit hook for refused upgrades (fires ONLY when auth
+   * is configured and a request was fail-closed — never in dev mode).
+   */
+  onAuthRejection?(rejection: UpgradeAuthRejection, req: IncomingMessage): void;
 }
 
 interface ConnState {
@@ -68,6 +88,7 @@ export class WsServer {
   private readonly path: string | undefined;
   private readonly maxFramePayloadBytes: number;
   private readonly maxMessageBytes: number;
+  private readonly auth: WsUpgradeAuthConfig | undefined; // w7c-3 additive
   private readonly states = new Map<string, ConnState>();
   private handlers: WsServerHandlers = {};
   private nextId = 0;
@@ -76,6 +97,10 @@ export class WsServer {
     this.path = options.path;
     this.maxFramePayloadBytes = options.maxFramePayloadBytes ?? DEFAULT_MAX_FRAME_PAYLOAD_BYTES;
     this.maxMessageBytes = options.maxMessageBytes ?? DEFAULT_MAX_MESSAGE_BYTES;
+    if (options.auth !== undefined) {
+      validateWsUpgradeAuthConfig(options.auth); // fail-closed config, typed error
+      this.auth = options.auth;
+    }
     this.httpServer = createServer((_req, res) => {
       res.statusCode = 426;
       res.setHeader('Upgrade', 'websocket');
@@ -136,7 +161,19 @@ export class WsServer {
   }
 
   private handleUpgrade(req: IncomingMessage, socket: TcpSocket, head: Buffer): void {
-    const handshake = handshakeResponseFor(req, { expectedPath: this.path });
+    // w7c-3: the fail-closed auth gate runs BEFORE the handshake response is
+    // written — a refused upgrade gets an honest HTTP status and NEVER frames.
+    if (this.auth !== undefined) {
+      const rejection = authorizeUpgrade(req, this.auth);
+      if (rejection !== null) {
+        socket.write(authFailureResponseFor(rejection));
+        socket.destroy();
+        this.handlers.onAuthRejection?.(rejection, req);
+        return;
+      }
+    }
+    const echoProtocol = this.auth === undefined ? undefined : offeredAuthProtocol(req) ?? undefined;
+    const handshake = handshakeResponseFor(req, { expectedPath: this.path, echoProtocol });
     socket.write(handshake.response);
     if (!handshake.accepted) {
       socket.destroy();
