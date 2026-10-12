@@ -1,6 +1,6 @@
 # Sporta 2.0 Project State
 
-Status: WAVE 7 COMPLETE — P8 (production hardening) DONE — all three lanes landed: w7a persistent worker sessions @ aa62726; w7b B6 provider-neutral fallback @ ccc736f; w7c product acceptance journey + local boot/deployment descriptor + WS fail-closed auth @ 9fc84e7 (677/677 full battery + 3/3 web host TL-measured, tsx --test) — NEXT: TL3 release audit → ROADMAP COMPLETE
+Status: ROADMAP COMPLETE (2026-10-12, TL3 release audit green @ 1b0a9f4) — all phases P0-P8 landed with TL-measured evidence (final battery 679/679, tsx --test; arch 0/0/0; surface frozen-intact; lint 0/70 baseline); the Completion paragraph is executed and passing as the W7C-1 REAL lineage test; hosted-preview live deployment stays typed-as-future per the provider rule (adapterized, descriptor entry /sporta, no live credentials exercised)
 
 ## Repository identity
 
