@@ -3,7 +3,11 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
-    "lib": ["es2025"]
+    "lib": ["es2025"],
+    // adapters 层的 W7 ledger 使用 node:fs/node:crypto（node 内建，无新依赖）；
+    // 与 sporta-editors / sporta-arena 相同，显式声明 node 类型让 hoisted 的
+    // @types/node 对本包可见。
+    "types": ["node"]
   },
   "include": ["src"],
   "references": [{ "path": "../sporta-contracts" }]
