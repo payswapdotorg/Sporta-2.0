@@ -1,6 +1,6 @@
 # Sporta 2.0 Project State
 
-Status: WAVE 6 COMPLETE — P7 ALL LANES LANDED (w6a level-3 shared-session core @ 8834642; w6b round-trip expansions — 4/7 initial-ecosystem editors at level-2 @ 1e5895e; w6c live/shared expansions — stdlib RFC6455 WebSocket delta-sink + presence staleness + rebase-on-conflict + product shared-session projection, station-serialized delivery per B1 @ de471b2; 185/185 editors + 623/623 battery + 2/2 web host TL-measured, tsx --test); NEXT: P8 (production hardening — provider fallback, durable artifacts, persistent workers, rights/security/privacy, local install, hosted preview, product acceptance)
+Status: WAVE 7 IN PROGRESS — P8 (production hardening) — w7a LANDED (persistent worker sessions: FsAgentRunJournal + resuming decorator + FsComputeJobLedger @ merge aa62726; 648/648 full battery + 2/2 web host TL-measured, tsx --test); REMAINING P8: provider fallback (w7b), product acceptance + deployment + WS auth (w7c)
 
 ## Repository identity
 
