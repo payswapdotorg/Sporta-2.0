@@ -232,3 +232,129 @@ oversight.
 `WorkGraphNodeRefError` (unknown kind or empty refId — runtime guard for
 callers that bypass types). Thrown by domain transitions, rethrown by the
 app; no partial writes, no silent fallbacks.
+
+## Wave 7 — durable run journals + resume semantics (W7A, P8 persistent workers)
+
+Spec-before-code record for the P8 "persistent workers" lane in the
+execution plane. Everything is ADDITIVE: new adapters-layer files only
+(`src/adapters/fsAgentRunJournal/`, `src/adapters/resumingAgentRuntime.ts`);
+the frozen domain (`ports.ts`, `stateMachine.ts`, `policy.ts`,
+`errors.ts`), the real `ZCodeAgentRuntimeAdapter`, the fixture adapter
+and every pre-existing file stay untouched. New public names are
+appended to `src/contract.ts` (surface stays additive-only). The
+decorator DELEGATES to a real `AgentRuntimeExecutionPort` — sporta-work
+still never implements a second runtime (invariant 2).
+
+### Scope problem
+
+`AgentRuntimeExecutionPort` implementations hold run state in process
+memory (`ZCodeAgentRuntimeAdapter.activeRuns`). A host restart drops
+every in-flight observation: events already observed are lost, and a
+caller cannot distinguish "run still going" from "run never existed".
+Wave 7 makes the OBSERVED run history durable and defines honest
+re-attach semantics on top of the port.
+
+### Durable run journal — `FsAgentRunJournal`
+
+Persistence pattern source: `FsSharedSessionStore` (sporta-editors W6)
+— hash-addressed per-id files, typed integrity errors, fresh-instance
+durability.
+
+- **Public layout**: one journal file per run at
+  `rootDir/<sha256(runId)[0:2]>/<sha256(runId)>.jsonl`
+  (default root: `<os tmpdir>/sporta-agent-run-journals`).
+- **File format**: JSONL — line 1 is a header record
+  `{ kind: "header", formatVersion: 1, runId, workGraphId, startedAt,
+  task, organizationId, organizationVersion }`; every following line is
+  an event record `{ kind: "event", event: AgentRunEvent }` in ARRIVAL
+  order (the order the decorator observed them).
+- **Atomic appends**: each `appendEvent` is one `fs.appendFile` of one
+  complete record line — a single O_APPEND write syscall per record.
+  Records never interleave mid-line and previously journaled bytes are
+  never rewritten. A host crash mid-append can tear only the trailing
+  record, which read-back detects and surfaces (below).
+- **`openJournal(metadata)`**: appends the header when absent; an
+  existing EQUAL header is an idempotent no-op (same-input retry); an
+  existing DIFFERENT header is a typed `AgentRunJournalError` (header
+  conflict) — a re-execution over an unresolved journal never
+  silently overwrites durable history.
+- **`appendEvent(runId, event)`**: the journal must be open for the
+  run, the event's `runId` must match, and the event `seq` must be
+  strictly greater than the last recorded seq (arrival order;
+  duplicates and regressions are typed errors; GAPS ARE HONEST — the
+  journal records what was observed, never invents what was not).
+- **`readJournal(runId)`**: full read-back with integrity
+  verification — every line must parse as its record kind with
+  well-typed fields, the header's `runId` must hash back to the file's
+  own address (id-address law), event seqs must be strictly
+  increasing, event `runId`s must match the header. ANY corrupt
+  record — including a torn tail from a crash mid-append — is a typed
+  `AgentRunJournalError` carrying the path and line number: never
+  silent truncation, never a fabricated event.
+- **`hasJournal(runId)`**: presence check without parsing.
+
+**Honest gaps law**: the journal records what was OBSERVED. A host
+crash between process events loses nothing already journaled, and the
+journal never fabricates the un-observed remainder — replay ends
+honestly at the last durable event.
+
+### Resume semantics — `ResumingAgentRuntime` (decorator)
+
+`ResumingAgentRuntime` implements `AgentRuntimeExecutionPort` by
+delegating to any inner port (the real ZCode adapter in REAL lanes;
+the fixture adapter in FIXTURE-labeled tests) and journaling through
+an `FsAgentRunJournal`:
+
+- **`startRun(input)`**:
+  1. delegates to the inner port — the `runId` and `startedAt` are the
+     inner's own facts (the decorator never derives them);
+  2. opens the journal with the handle's metadata. Same-input retries
+     are no-ops (the inner is idempotent per deterministic runId, so
+     the returned handle matches the journaled header). A DIFFERENT
+     handle for the same journal — e.g. a re-execution after a
+     restart — fails with a header-conflict `AgentRunJournalError`
+     instead of overwriting the durable history.
+- **`observeRun(runRef)`**:
+  1. **no journal** for the run → pass-through: the inner's own
+     answer, unchanged (the decorator journals exactly the runs it
+     started; runs it merely finds live are observed honestly, never
+     adopted retroactively — the header metadata is unrecoverable from
+     a bare runId);
+  2. **journal exists and its last journaled event is TERMINAL**
+     (`completed`/`failed`) → replay returns the journaled list
+     verbatim. The outcome was observed and journaled BEFORE the drop:
+     this is recorded truth, not a fabricated completion;
+  3. **journal exists, non-terminal, inner still observes the run** →
+     replay first (the journaled events, byte-identical order), then
+     continue: live events with seq strictly greater than the
+     journaled tail are appended in arrival order; a live event
+     overlapping the journaled seq range must deep-equal the journaled
+     record or the decorator fails with a typed
+     `AgentRunJournalError` (divergent replay — histories are never
+     silently merged);
+  4. **journal exists, non-terminal, inner no longer observes the run**
+     (an empty live list — the run was orphaned by the restart) →
+     typed `AgentRunOrphanedError` carrying the `runId`, the
+     `workGraphId`, the observed event count and the LAST journaled
+     event (the honest state at the crash). NEVER a fabricated
+     completion.
+
+### Failure semantics (new typed errors, adapters layer)
+
+| Failure                                             | Typed error                                            |
+| --------------------------------------------------- | ------------------------------------------------------ |
+| Corrupt journal record / torn tail (any line)        | `AgentRunJournalError` (path + line + reason)          |
+| Header conflict on re-open (different handle facts) | `AgentRunJournalError`                                 |
+| Append without an open journal                      | `AgentRunJournalError`                                 |
+| Duplicate / regressive seq append                   | `AgentRunJournalError`                                 |
+| Event `runId` mismatch                             | `AgentRunJournalError`                                 |
+| Divergent live-vs-journaled event (same seq)         | `AgentRunJournalError`                                 |
+| Orphaned run (non-terminal journal, inner cannot observe) | `AgentRunOrphanedError` (carries last journaled state) |
+
+### Known limitation (documented honestly)
+
+The port does not expose run termination, and the runId is only known
+after the inner returns a handle — so a re-execution attempt over an
+existing journal spawns the inner process BEFORE the journal refuses
+the overwrite. The spawn is wasted, the journal stays intact; hosts
+should prefer `observeRun` after restarts (case 2 or 4 above).

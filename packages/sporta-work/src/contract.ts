@@ -13,7 +13,9 @@
  * seam, service and fixture adapters). Wave 2 adds the REAL ZCode
  * AgentRuntime adapter alongside the fixture (additive; the fixture
  * stays for fixture-labeled tests). Wave 3 adds the refs port (typed
- * cross-domain reference appends — ADR wave-3 read seams).
+ * cross-domain reference appends — ADR wave-3 read seams). Wave 7
+ * adds the durable agent-run journal and the resuming decorator
+ * (P8 persistent workers — additive adapters).
  */
 export type {
   IntentSpec,
@@ -64,3 +66,17 @@ export type { FixtureAgentRuntimeDeps } from "./adapters/fixtureAgentRuntime.js"
 export { ZCodeAgentRuntimeAdapter } from "./adapters/zcodeAgentRuntime.js";
 export type { ZCodeAgentRuntimeDeps } from "./adapters/zcodeAgentRuntime.js";
 export { systemClockNow } from "./adapters/clock.js";
+
+// Wave 7 additions (P8 persistent workers — W7A). Additive only.
+
+// Durable agent-run journal (FsSharedSessionStore persistence pattern).
+export { FsAgentRunJournal } from "./adapters/fsAgentRunJournal/fsAgentRunJournal.js";
+export type { AgentRunJournalHashFn } from "./adapters/fsAgentRunJournal/fsAgentRunJournal.js";
+export { AgentRunJournalError } from "./adapters/fsAgentRunJournal/errors.js";
+export type { AgentRunJournalLocation } from "./adapters/fsAgentRunJournal/errors.js";
+export type { AgentRunJournalContents, AgentRunJournalMetadata } from "./adapters/fsAgentRunJournal/records.js";
+export { sha256AgentRunHash } from "./adapters/fsAgentRunJournal/records.js";
+
+// Resume/re-attach decorator over any AgentRuntimeExecutionPort.
+export { AgentRunOrphanedError, ResumingAgentRuntime } from "./adapters/resumingAgentRuntime.js";
+export type { ResumingAgentRuntimeDeps } from "./adapters/resumingAgentRuntime.js";
