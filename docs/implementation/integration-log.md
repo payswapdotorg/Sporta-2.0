@@ -195,3 +195,10 @@ Never record a merge as green from worker self-report alone.
 - TL-measured gates: architecture 0/0/0 · surface OK (frozen intact, additive-only) · tsc -b work+compute exit 0 · work **53/53** · compute **19/19** · full battery **648/648** (623 + 25 new, tsx --test) · web host **2/2** · lint 0 errors / 70 warnings (baseline held exactly).
 - acceptance: report sections reviewed; the dual-mode delivery law (B1-aware packet) worked as designed — the worker had a shell this round and used the gold channel.
 - next: w7b (B6 provider-neutral fallback) dispatch after this merge; w7c (acceptance + deployment + WS auth) after w7b; then TL3 release audit.
+
+## W7-B — 2026-10-12 — TL wave-7 second lane integration (B6 provider-neutral compute fallback)
+
+- merged: `wave7/worker-b` `ccc736f` (SPEC 88af6ad → code ccc736f) → main (`--no-ff`, based on post-w7a main, zero conflicts — the base-update dispatch paid off). Delivery mode: BRANCH (~23 min turn, established round 2 after a serial-cadence dead-at-birth round 1).
+- landed per lane: `packages/sporta-compute` — `domain/fallback/` (types/classify/policy/trail split: total typed classification — retryable/terminal — explicit FallbackChainPolicy record, refusal-is-terminal law, classification totality via typed error) + `app/FallbackComputeService.ts` (deterministic chain over ComputeProviderPort[], visible per-provider attempt trail, AllProvidersExhausted aggregate honesty, jobId idempotency replay, never-convert law) + contract.ts +40 additive + SPEC +157 + fallbackChain.test.ts (511 lines: FIXTURE chain mechanics + REAL node -e provider lane demonstrating a real failure → real fallback success with both in the trail).
+- TL-measured gates: architecture 0/0/0 · surface OK · tsc -b compute exit 0 · full battery **665/665** (648 + 17 new, tsx --test) · web host **2/2** · lint 0 errors / 70 warnings (baseline held).
+- next: w7c (product acceptance + deployment descriptor + WS auth) — the LAST P8 lane; then TL3 release audit → roadmap complete.

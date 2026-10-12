@@ -1,6 +1,6 @@
 # Sporta 2.0 Project State
 
-Status: WAVE 7 IN PROGRESS — P8 (production hardening) — w7a LANDED (persistent worker sessions: FsAgentRunJournal + resuming decorator + FsComputeJobLedger @ merge aa62726; 648/648 full battery + 2/2 web host TL-measured, tsx --test); REMAINING P8: provider fallback (w7b), product acceptance + deployment + WS auth (w7c)
+Status: WAVE 7 IN PROGRESS — P8 (production hardening) — w7a LANDED (persistent worker sessions @ aa62726); w7b LANDED (B6 provider-neutral fallback: typed classification + deterministic chain + visible trail @ ccc736f; 665/665 full battery TL-measured); REMAINING P8: product acceptance + deployment + WS auth (w7c)
 
 ## Repository identity
 
