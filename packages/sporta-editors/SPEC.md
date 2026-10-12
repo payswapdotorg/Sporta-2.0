@@ -695,3 +695,110 @@ All extend `EditorError` (machine-readable `detail` preserved).
   fixture artifact graph) — the resolution/level-2 honoring of the
   REAL adapters through the REAL `EditorBrokerService` constructor
   seam, without editing the broker.
+
+## Wave 6 — Worker C (w6c): live/shared expansions (P7)
+
+Additive to the frozen w6a level-3 core. ZERO edits to `session.ts`, `presence.ts`,
+`coordination.ts`, `errors.ts`, `ports.ts`, or `SharedEditorSessionService.ts`. New public
+names are APPENDED to `contract.ts`; every frozen name still exports (surface check holds).
+No new cross-module edges; no new dependencies (node stdlib only). Files are split per the
+file-size law (< 400 lines each).
+
+### W6C-1 — REAL stdlib WebSocket transport delta-sink (`adapters/wsSharedDeltaSink/`)
+
+REAL RFC 6455 over `node:http` + `node:crypto` + `node:net`. No third-party libraries.
+
+- Handshake law: `Sec-WebSocket-Accept = base64(SHA1(Sec-WebSocket-Key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"))`;
+  version 13 only; the client key must decode to exactly 16 canonical base64 bytes;
+  `Connection: Upgrade` + `Upgrade: websocket` required; non-upgrade requests on the port
+  are answered `426 Upgrade Required`; failed upgrades are answered with an honest status
+  (400/404/426) and the socket destroyed.
+- Frame law: FIN/opcode/mask/len with 126 (uint16) and 127 (uint64) extended lengths, parsed
+  incrementally (partial frames wait; multiple frames per chunk decode in order).
+  Client→server frames MUST be masked; an unmasked client frame is a protocol error → close 1002.
+  Server→client frames MUST NOT be masked. RSV bits set (no negotiated extension) → 1002.
+  Non-minimal length encodings → 1002. Control frames (close/ping/pong): FIN=1, payload ≤ 125,
+  never fragmented; violations → 1002. Unknown opcodes → 1002.
+- Caps: frame payload cap (default 1 MiB) and assembled-message cap (default 1 MiB). A header
+  claiming more → close 1009 WITHOUT buffering the body. Fragmented messages are assembled;
+  a new data frame during fragmentation → 1002.
+- Text law: text payloads are strict UTF-8 (invalid → close 1007). The delta protocol is
+  text-only; binary data frames are read and ignored by design. Close codes on the wire are
+  validated (1000–4999; reserved 1004/1005/1006/1015 rejected → 1002; 1-byte close payload → 1002);
+  a received close is echoed (no-status → echo 1000); server shutdown closes clients with 1001.
+- Sink law: `deliver(serializedDelta)` fans out ONE text frame per connected client, awaiting
+  kernel flush per client (sequential, receipt order = sorted connection-id order); receipts are
+  recorded PER CLIENT (bounded history, default last 128); ZERO clients = zero deliveries, NOT an
+  error. `listen(0)` binds an OS-assigned port and reports the ACTUAL bound port read back from
+  the OS. `close()` sends 1001 to every client, then stops the listener and resolves only after
+  sockets are down.
+- A stdlib test CLIENT is exported (`connectWs`): client-side masking is REQUIRED (RFC 6455 §5.1),
+  it verifies the accept hash (a dishonest handshake fails loudly), and it reports the server's
+  close frame separately from its own.
+- File split (file-size law): `frameCodec.ts` / `handshake.ts` / `wsServer.ts` / `wsClient.ts` /
+  `wsSharedDeltaSink.ts`.
+
+### W6C-2 — presence staleness policy (`domain/sharedSession/staleness/`)
+
+Host-level, ABOVE the pure heartbeat record; `presence.ts` is untouched. Pure, deterministic,
+no clock reads, no I/O. Thresholds are explicit records (`StalenessPolicy`), never ambient globals.
+
+Classification law, with `ageMs = nowMs - lastHeartbeatAtMs`:
+- missing heartbeat record → **EXPIRED** (fail-closed; threshold: `expiredAfterMs`; `ageMs: null`)
+- `ageMs < staleAfterMs` → **FRESH** (threshold: `staleAfterMs`)
+- `staleAfterMs <= ageMs < expiredAfterMs` → **STALE** (threshold: `expiredAfterMs`)
+- `ageMs >= expiredAfterMs` → **EXPIRED** (threshold: `expiredAfterMs`)
+
+Boundary instants are inclusive on the LATER class: `age == staleAfterMs` is STALE,
+`age == expiredAfterMs` is EXPIRED. A negative age (heartbeat ahead of `now`) falls in the FRESH
+branch by pure comparison — documented, deterministic. Every decision carries the participant id,
+the measured age, and the threshold used. `expiredAfterMs >= staleAfterMs >= 0`, both finite;
+violations throw `InvalidStalenessPolicyError` (threshold ordering is a record property).
+`stalenessSnapshot(participants, nowMs, policy)` is the composition the service layer MAY call;
+decisions preserve input order; counts are derived. The frozen service is NOT edited.
+
+### W6C-3 — rebase-on-conflict for REFUSED stale deltas (`domain/sharedSession/rebase/`)
+
+Additive, pure, I/O-free recovery for deltas the frozen coordination domain REFUSED as stale.
+
+- Input: the refused delta (with its stale base revision), the ordered delta log that advanced
+  the head past that base, and the current head revision.
+- Output is TOTAL (three-kind union, never a throw for domain reasons, never a silent drop,
+  never a fake apply): `rebased` | `not-expressible` (typed `RebaseNotExpressibleError` naming
+  the conflicting log entry) | `invalid-input` (typed `RebaseInvalidInputError`).
+- Rebase incompatibility law: each delta may declare a touch surface (opaque coordinate tokens).
+  A rebase is expressible iff NO intervening log entry's surface intersects the refused delta's.
+  An ABSENT surface on either side is UNKNOWN and refuses (fail-closed). `'*'` is a wildcard
+  intersecting everything. The FIRST conflicting entry in LOG ORDER is named (`entryId` if
+  present, else `revision:<n>`).
+- Validation law: integers required; `baseRevision > headRevision` → invalid; `baseRevision < head`
+  with an empty log → invalid (`log-does-not-cover-intervening-revisions` — silently re-basing over
+  unknown history would be a fake apply); log must be strictly ascending with every revision in
+  `(base, head]`. `baseRevision == headRevision` with an empty log is the trivial rebase.
+- Determinism: same inputs → same outcome (no clock, no randomness). Idempotence: re-applying
+  rebase to an already-rebased delta against an empty intervening log at the same head leaves
+  `(baseRevision, payload)` identical with an empty applied-revision list.
+- `reanchor` is a caller-supplied PURE transform `(payload, appliedLog) => payload`; no transform
+  means identity re-anchor (valid when surfaces are disjoint). A throwing reanchor is a caller
+  programming error and propagates.
+
+### W6C-4 — product shared-session projection (read-only takeover UX wiring)
+
+- READ-ONLY: the projection never mutates session state; the level-3 editors service remains the
+  sole writer.
+- Optional-port pattern (W4-B): an absent `SharedSessionHistoryReadPort` yields an EMPTY
+  projection (`wired: false`, empty list, not-found detail) — never a crash, never a throw.
+- `withSharedSessions(view, list)` is a pure combiner; `productLoopProjection.ts` is NOT edited
+  this wave (the combiner is consumed additively by callers).
+- Product gains NO new dependencies; the registered `@sporta/editors` edge is used as-is.
+- REAL lane proves the read-back over real `FsSharedSessionStore` + real service lifecycle
+  (open → join → broadcast → save → close); FIXTURE lanes prove the absent-port and fake-port paths.
+
+### Additive contract exports (w6c)
+
+`StalenessClass, StalenessPolicy, StalenessRecord, StalenessDecision, StalenessSnapshot,
+classifyStaleness, stalenessSnapshot, validateStalenessPolicy, participantRecord,
+MISSING_HEARTBEAT_REASON, InvalidStalenessPolicyError, RebaseDeltaInput, RebaseLogEntry,
+RebasedDelta, RebaseOutcome, RebaseNotExpressibleReason, RebaseInvalidReason, rebaseDelta,
+RebaseNotExpressibleError, RebaseInvalidInputError, WsSharedDeltaSink, WsSharedDeltaSinkOptions,
+WsDeliveryReceipt, WsDeliveryRecord, connectWs, WsTestClient, WsCloseInfo, ConnectWsOptions`
