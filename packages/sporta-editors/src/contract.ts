@@ -230,3 +230,47 @@ export type {
   AudacityBlockFile,
   AudacityRawElement,
 } from "./adapters/audacityAup.js";
+
+// ═══ w6c additions — ADDITIVE ONLY (all frozen names above must still export; surface check holds) ═══
+
+// w6c-2: presence staleness policy
+export type {
+  StalenessClass,
+  StalenessPolicy,
+  StalenessRecord,
+  StalenessDecision,
+  StalenessSnapshot,
+} from './domain/sharedSession/staleness/staleness.js';
+export {
+  classifyStaleness,
+  stalenessSnapshot,
+  validateStalenessPolicy,
+  participantRecord,
+  MISSING_HEARTBEAT_REASON,
+  InvalidStalenessPolicyError,
+} from './domain/sharedSession/staleness/staleness.js';
+
+// w6c-3: rebase-on-conflict
+export type {
+  RebaseDeltaInput,
+  RebaseLogEntry,
+  RebasedDelta,
+  RebaseOutcome,
+  RebaseNotExpressibleReason,
+  RebaseInvalidReason,
+} from './domain/sharedSession/rebase/rebase.js';
+export {
+  rebaseDelta,
+  RebaseNotExpressibleError,
+  RebaseInvalidInputError,
+} from './domain/sharedSession/rebase/rebase.js';
+
+// w6c-1: stdlib WebSocket transport delta-sink + test client
+export { WsSharedDeltaSink } from './adapters/wsSharedDeltaSink/wsSharedDeltaSink.js';
+export type {
+  WsSharedDeltaSinkOptions,
+  WsDeliveryReceipt,
+  WsDeliveryRecord,
+} from './adapters/wsSharedDeltaSink/wsSharedDeltaSink.js';
+export { connectWs } from './adapters/wsSharedDeltaSink/wsClient.js';
+export type { WsTestClient, WsCloseInfo, ConnectWsOptions } from './adapters/wsSharedDeltaSink/wsClient.js';

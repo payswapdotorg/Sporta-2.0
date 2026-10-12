@@ -23,6 +23,7 @@ import type { WorkGraphPort } from "@sporta/work/contract";
 import type { OrganizationResolverPort } from "@sporta/organizations/contract";
 import type { ArtifactGraphPort } from "@sporta/artifacts/contract";
 import type { EditorBrokerPort } from "@sporta/editors/contract";
+import type { SharedSessionProjectionPort } from "./sharedSessionProjectionPort.js";
 import type { ArenaClientPort } from "@sporta/arena/contract";
 
 /** Injected ports + optional ambient shell context + optional read seams. */
@@ -45,4 +46,11 @@ export interface ProductLoopProjectionDeps {
   learningArtifacts?: LearningArtifactReadPort;
   organizationCandidates?: OrganizationCandidateReadPort;
   escalations?: EscalationReadPort;
+  /**
+   * w6c-4 (ADDITIVE, optional; absent = empty projection, never a crash —
+   * W4-B pattern): shared live/editor sessions for the takeover UX
+   * projection (read-only; the product-owned projection seam — see
+   * sharedSessionProjectionPort.ts).
+   */
+  sharedSessionHistory?: SharedSessionProjectionPort;
 }

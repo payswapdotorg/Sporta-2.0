@@ -541,3 +541,100 @@ Gate table (real, measured on this sandbox, final pre-report run):
 | Lint | pnpm lint | 70 warnings, 0 errors (baseline identical; 14 new files add zero) |
 | Format | pnpm exec oxfmt --check packages/sporta-render/{src,test,SPEC.md,CONTRACT.md} | all correct |
 | File-size law | raw line counts | largest src file 296 lines (timeline.ts); all ≤ 400 |
+
+## Wave 6 — Worker C (w6c) — live/shared expansions (P7) — station-serialized delivery
+
+*(Assembled at the integration station from the worker's delivered report — the worker's dispatch environment had no shell (BLOCKER B1), so the complete deliverables package was embedded in its report text and serialized into the repo by the TL per the TL-serialization exception. All code is the worker's text, verbatim, plus the station re-seam shims at the marked appendix-A drift points.)*
+
+# Wave 6 — Worker C (w6c) — FINAL REPORT
+*(this section is the content appended to `docs/implementation/worker-c.md`)*
+
+## WORK ITEMS
+- **W6C-1** — REAL stdlib RFC 6455 WebSocket transport delta-sink: frame codec, handshake, server, test client, sink implementing the frozen `SharedDeltaSinkPort` fan-out seam. COMPLETE (code + REAL lane).
+- **W6C-2** — presence staleness policy: typed FRESH/STALE/EXPIRED classification, fail-closed missing-record, thresholds-as-records, `stalenessSnapshot` composition. COMPLETE (pure).
+- **W6C-3** — rebase-on-conflict for REFUSED stale deltas: total three-kind outcome, typed `RebaseNotExpressibleError` naming the conflicting entry, fail-closed unknown surfaces, idempotence/determinism laws. COMPLETE (pure).
+- **W6C-4** — product read-only `SharedSessionProjection` over `SharedSessionHistoryReadPort`, W4-B optional-port pattern, pure `withSharedSessions` combiner, REAL + FIXTURE lanes. COMPLETE.
+
+## CHANGED FILES
+- NEW `packages/sporta-editors/src/adapters/wsSharedDeltaSink/frameCodec.ts` (~200 ln)
+- NEW `…/adapters/wsSharedDeltaSink/handshake.ts` (~100 ln)
+- NEW `…/adapters/wsSharedDeltaSink/wsServer.ts` (~260 ln)
+- NEW `…/adapters/wsSharedDeltaSink/wsClient.ts` (~260 ln)
+- NEW `…/adapters/wsSharedDeltaSink/wsSharedDeltaSink.ts` (~100 ln)
+- NEW `packages/sporta-editors/src/domain/sharedSession/staleness/staleness.ts` (~110 ln)
+- NEW `packages/sporta-editors/src/domain/sharedSession/rebase/rebase.ts` (~190 ln)
+- NEW tests: `frameCodec.test.ts`, `wsSharedDeltaSink.test.ts`, `staleness.test.ts`, `rebase.test.ts` (editors); `sharedSessionProjection.test.ts` (product)
+- APPEND `packages/sporta-editors/src/SPEC.md` (Wave-6 w6c section — commit 1, SPEC-first)
+- APPEND `packages/sporta-editors/src/contract.ts` (additive export block above)
+- PATCH `packages/sporta-product/src/app/productLoopDeps.ts` (one optional field; D3)
+- APPEND `docs/implementation/worker-c.md` (this report)
+- ZERO edits to frozen w6a files; ZERO new dependencies; pnpm-lock untouched.
+
+## TESTS
+50 new editors tests (codec 14, sink REAL 7, staleness 13, rebase 16) + 5 product tests (REAL 3, FIXTURE 2) = **55 additive**. Expected totals (arithmetic on the baseline, NOT measurements): editors 93+50 = **143 pass / 0 fail**; full battery 526+55 = **581 pass / 0 fail**.
+
+## REAL EVIDENCE
+REAL lanes are built to produce: actual OS-assigned port (asserted > 0, read back), real loopback TCP + verified accept hash, exact serialized delta bytes compared by string equality on the receiving client, exact receipt accounting (`attempted/delivered/per-client history`), clean 1000/1001 close handshakes observed as the server's close frame, and the real service broadcast → sink → socket path. **Not executed in this dispatch environment (no shell) — BLOCKER B1; the station re-runs the battery below.** Commands: the packet's verification battery, verbatim.
+
+## FIXTURE EVIDENCE
+Labeled `FIXTURE` in test names: absent-port empty projection (list/detail, `wired:false`, no crash) and fake in-memory history port mapping. Product REAL lanes use the real `FsSharedSessionStore` in a temp dir with recursive cleanup.
+
+## CONTRACT CHANGES
+Additive-only contract block (27 new names, listed in SPEC). `SharedDeltaSinkPort` is implemented, not modified. New typed errors: `InvalidStalenessPolicyError`, `RebaseNotExpressibleError`, `RebaseInvalidInputError`. No frozen renames or removals.
+
+## RIGHTS-PROVENANCE
+All code authored fresh this wave. RFC 6455 implemented from the public IETF specification. Node stdlib only (`node:http`, `node:crypto`, `node:net`, `node:fs`, `node:os`, `node:path`, `node:test`, `node:assert`). No third-party code, no copied snippets, no lockfile changes.
+
+## PERFORMANCE
+Design points: single-pass incremental frame decode (no re-scan); 1 MiB frame/message caps; sequential fan-out with per-client kernel-flush awaits (deterministic receipt order, O(n) in clients); bounded per-client receipt history (128); 500 ms close guards (`unref`'d) prevent hangs; no polling anywhere. No measured numbers — pending station (B1).
+
+## SECURITY
+1. **Rotate the PAT embedded in this dispatch packet** — it transited plaintext; use a fine-grained, short-expiry, repo-scoped token via a credential helper, never inline. Never echoed here.
+2. WS surface: masked-frame enforcement both directions, 1 MiB caps (memory-bomb refusal via 1009 without buffering), strict UTF-8, wire close-code validation, default bind **127.0.0.1**.
+3. **No origin/auth check on the WS endpoint** — localhost-safe only; must add an origin allowlist + token before any broader exposure (NEXT DEPENDENCIES #1).
+4. Projection is strictly read-only; product cannot mutate session state.
+
+## RISKS
+Frozen-surface drift (appendix A) — mechanical, one wiring point per assumption; sequential fan-out latency at high client counts; test client accepts single-frame server messages only (loud, by design); `sink.deliver` snapshots connections at call start.
+
+## BLOCKERS
+- **B1**: no shell/execution in this dispatch environment → the verification battery was not run here; all gate numbers PENDING station measurement; no numbers fabricated.
+- **B2**: assumed frozen signatures (appendix A) need compile verification at the station; any drift is a shim at the marked single points.
+
+## DEVIATIONS
+D1: two commits (SPEC-first law over the single-commit template). D2: push uses a credential env var, token never inline. D3: `productLoopDeps` field delivered as a patch (file not edited sight-unseen). D4: `head > base` with an empty log is `invalid-input` (silent rebase = fake apply) — stricter than packet silence, law in SPEC. D5: `productLoopProjection.ts` untouched; pure combiner provided instead.
+
+## NEXT DEPENDENCIES
+1) WS origin/token auth before non-localhost exposure; 2) w6a service calling `stalenessSnapshot` (I provide only the composition); 3) coordination wiring `rebaseDelta` into REFUSED responses; 4) takeover-render integration of `withSharedSessions` into `productLoopProjection`; 5) interop contract test against a reference WS client.
+
+## DELIVERY
+```bash
+git checkout 4e27d96 && git checkout -b wave6/worker-c
+git add packages/sporta-editors/src/SPEC.md
+git commit -m "w6c: SPEC section — live/shared expansions (SPEC-first, before implementation)"
+git add -A
+git commit -m "w6c: P7 live/shared expansions — stdlib WebSocket delta-sink + presence staleness + rebase-on-conflict + product shared-session projection"
+git push "$SPORTA_PUSH_URL" wave6/worker-c   # SPORTA_PUSH_URL set from the secure channel; token never echoed
+```
+**DELIVERY: branch wave6/worker-c @ <commit sha — fixed at station push; B1>**
+
+## GATE TABLE (station re-run required)
+
+| Gate | Baseline @ 4e27d96 (TL) | w6c this dispatch | Status |
+|---|---|---|---|
+| `pnpm architecture:check` | 0 violations | PENDING (B1) — expected 0 (additive files inside registered edges only) | re-run |
+| surface check | OK | PENDING — expected OK (frozen exports untouched; additive block) | re-run |
+| `tsc -b` editors+product | clean | PENDING (B2, appendix A) | re-run |
+| editors tests | 93 pass / 0 fail | PENDING — +50 new → expected 143/0 | re-run |
+| full sporta battery | 526 pass / 0 fail | PENDING — +55 new → expected 581/0 | re-run |
+| lint | 0 errors / 70 warnings | PENDING — expected 0 errors; new files written lint-clean | re-run |
+
+
+### Station integration notes (TL)
+
+- Resumption FIX applied: the wsSharedDeltaSink.test.ts dead-destructure removed (worker's own re-verify finding).
+- Appendix-A drift shims (single marked points): WsSharedDeltaSink gained the frozen `publish(SharedDeltaDelivery)` mapping over its `deliver(string)` core; import specifiers fixed to `@sporta/editors/contract` (house root-export convention); `AddressInfo` re-imported from `node:net`; `DEFAULT_MAX_FRAME_PAYLOAD_BYTES` exported from frameCodec; strict-indexed-access guards added (house noUncheckedIndexedAccess); wsSharedDeltaSink.test REAL service lane re-seamed onto the real full-deps service stack; staleness snapshot test input corrected at the expiry boundary (the worker's arithmetic slip — the boundary law classifies age === expiredAfterMs as EXPIRED).
+- Product projection re-seam: the frozen `SharedSessionHistoryReadPort` is the W4-B editor-session listing seam, so the projection now owns its port contract (`sharedSessionProjectionPort.ts`) and the REAL adapter (`sharedSessionStoreProjection.ts`) maps the real FsSharedSessionStore ledger layout (id discovery from the public `rootDir/<xx>/<hash>.json` layout, verified reads through the public find* port methods). productLoopDeps gains the optional `sharedSessionHistory` seam (W4-B pattern).
+- RUNTIME LAW discovered: the ws transport lanes pass under the Node runner (tsx --test — the canonical battery) and time out under bun (bun does not deliver the 'upgrade' event on http.ClientRequest). Battery numbers below are tsx --test (Node), per the packet's verification battery.
+- TL-measured gates: architecture 0/0/0 · surface OK (editors +173 additive, frozen intact) · tsc -b editors+product exit 0 · editors **185/185** (135 + 50 new) · product **43/43** (38 + 5 new) · full sporta battery **623/623** · web host **2/2** · lint 0 errors / 70 warnings (baseline held).
+- SECURITY (worker's flag, station-confirmed): the dispatch packet embedded the GitHub PAT in plaintext — ROTATE the PAT after this merge (operator action).
