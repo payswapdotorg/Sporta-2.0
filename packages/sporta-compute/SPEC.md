@@ -110,3 +110,83 @@ execution state; the broker is the only writer of job status.
 8. status returned.
 
 Every state change is appended to the job's history.
+
+## Wave 7 — durable compute job ledger (W7A, P8 persistent workers)
+
+Spec-before-code record for the P8 "persistent workers" lane in the
+compute plane. Everything is ADDITIVE: new adapters-layer files only
+(`src/adapters/fsComputeJobLedger.ts`,
+`src/adapters/fsComputeBrokerService.ts`); the frozen domain
+(`ports.ts`, `stateMachine.ts`, `policy.ts`, `errors.ts`) and
+`ComputeBrokerService` stay untouched. New public names are appended
+to `src/contract.ts` (surface stays additive-only).
+
+### Scope problem
+
+`ComputeBrokerService` owns its job ledger (`Map<SportaId,
+InternalJob>`) in process memory. A host restart drops every job
+status, refusal and history: a caller that polls a previously
+submitted job after a restart sees only `UnknownComputeJobError`.
+Wave 7 maps the broker's in-memory ledger onto real disk.
+
+### Durable job ledger — `FsComputeJobLedger`
+
+Persistence pattern source: `FsSharedSessionStore` (sporta-editors
+W6) — hash-addressed per-id JSON files, atomic writes, typed
+integrity errors, fresh-instance durability.
+
+- **Public layout**: one ledger file per job at
+  `rootDir/<sha256(jobId)[0:2]>/<sha256(jobId)>.json`
+  (default root: `<os tmpdir>/sporta-compute-jobs`).
+- **Record**: the broker's own `InternalJob` shape, on disk:
+  `{ jobId, status: ComputeJobStatus, history: ComputeJobState[],
+  submittedAt: Iso8601 }` — pretty-printed JSON, one file per job.
+- **Atomic writes**: stage under `rootDir/.tmp`, rename into place —
+  a reader never observes a torn file (the W2/W6 precedent).
+- **Integrity verification on every read**: the file must parse;
+  fields must be present and well-typed; `status.jobId` must equal
+  the record `jobId`; the `jobId` must hash back to the file's own
+  address (id-address law); `history` must be non-empty with its last
+  entry equal to `status.state` (the status is the history's tip);
+  `refusal` must be present exactly when `state === "refused"` (the
+  port law). Anything else is a typed `ComputeLedgerError` carrying
+  the path and reason — never silent corruption.
+- **Durability**: a fresh instance over the same directory reads
+  everything earlier instances wrote.
+
+### Persisting broker — `FsComputeBrokerService` (composition)
+
+`ComputeBrokerService` is NOT edited. `FsComputeBrokerService`
+composes it and persists through its port-shaped public surface
+(`quote`/`submit`/`poll` + the additive `history`/`submittedAt`
+accessors) plus a `FsComputeJobLedger`:
+
+- **`submit(input)`**:
+  - caller-provided `jobId` already in the ledger → return the
+    PERSISTED status WITHOUT executing (idempotent across restarts —
+    the job survives byte-identically and the provider never
+    re-executes);
+  - otherwise → delegate to the inner broker, then persist the
+    resulting status, the inner's full state history and
+    `submittedAt` through the ledger.
+- **Minted job ids** (no caller `jobId`): skip ids already persisted
+  — a fresh broker over an old ledger never reuses a persisted job's
+  id (probe-and-advance mint). The chosen id is passed explicitly to
+  the inner broker, so the inner never mints its own.
+- **`poll(jobId)` / `history(jobId)` / `submittedAt(jobId)`**: inner
+  broker first; on `UnknownComputeJobError` (a fresh inner after a
+  restart) → the ledger's persisted record; absent in both → the
+  typed error stands (never a fabricated status).
+- **In-flight limitation (honest)**: the inner broker is synchronous
+  — it reaches a terminal state inside `submit`, so what persists is
+  terminal state. A submit interrupted mid-flight (host crash before
+  the ledger write) leaves NO ledger entry and the job honestly does
+  not survive. Persisted refusal/failure states replay byte-
+  identically — a refusal stays a refusal (invariant 17).
+
+### Failure semantics (new typed error, adapters layer)
+
+| Failure                          | Typed error                                  |
+| -------------------------------- | -------------------------------------------- |
+| Corrupt ledger file (any cause)  | `ComputeLedgerError` (path + reason)        |
+| Ledger write failure (disk etc.) | `ComputeLedgerError` — fail-closed; the job state stays in the inner broker and the error surfaces |
