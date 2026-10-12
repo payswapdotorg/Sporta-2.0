@@ -1,6 +1,6 @@
 # Sporta 2.0 Project State
 
-Status: WAVE 7 IN PROGRESS — P8 (production hardening) — w7a LANDED (persistent worker sessions @ aa62726); w7b LANDED (B6 provider-neutral fallback: typed classification + deterministic chain + visible trail @ ccc736f; 665/665 full battery TL-measured); REMAINING P8: product acceptance + deployment + WS auth (w7c)
+Status: WAVE 7 COMPLETE — P8 (production hardening) DONE — all three lanes landed: w7a persistent worker sessions @ aa62726; w7b B6 provider-neutral fallback @ ccc736f; w7c product acceptance journey + local boot/deployment descriptor + WS fail-closed auth @ 9fc84e7 (677/677 full battery + 3/3 web host TL-measured, tsx --test) — NEXT: TL3 release audit → ROADMAP COMPLETE
 
 ## Repository identity
 
