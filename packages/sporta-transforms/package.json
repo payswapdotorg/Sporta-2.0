@@ -1,0 +1,21 @@
+{
+  "name": "@sporta/transforms",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./contract": "./src/contract.ts"
+  },
+  "scripts": {
+    "lint": "oxlint"
+  },
+  "dependencies": {
+    "@sporta/contracts": "workspace:*",
+    "@sporta/work": "workspace:*",
+    "@sporta/artifacts": "workspace:*",
+    "@sporta/world": "workspace:*",
+    "@sporta/compute": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.2"
+  }
+}

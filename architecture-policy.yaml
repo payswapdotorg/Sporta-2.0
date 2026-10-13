@@ -146,7 +146,7 @@ modules:
   - id: sporta-product
     roots: [packages/sporta-product/src]
     managed: true
-    requires: [sporta-contracts, sporta-work, sporta-organizations, sporta-artifacts, sporta-editors, sporta-world, sporta-arena, sporta-evaluation, sporta-lab, sporta-policy]
+    requires: [sporta-contracts, sporta-work, sporta-organizations, sporta-artifacts, sporta-editors, sporta-world, sporta-arena, sporta-evaluation, sporta-lab, sporta-policy, sporta-transforms, sporta-marketplace, sporta-app-environments]
     publicEntrypoints: [packages/sporta-product/src/contract.ts]
     layers: { domain: domain, app: app, adapters: adapters }
     layerOrder: [domain, app, adapters]
@@ -159,6 +159,30 @@ modules:
     layers: { domain: domain, app: app, adapters: adapters }
     layerOrder: [domain, app, adapters]
     owner: tl-registration
+  - id: sporta-transforms
+    roots: [packages/sporta-transforms/src]
+    managed: true
+    requires: [sporta-contracts, sporta-work, sporta-artifacts, sporta-world, sporta-compute]
+    publicEntrypoints: [packages/sporta-transforms/src/contract.ts]
+    layers: { domain: domain, app: app, adapters: adapters }
+    layerOrder: [domain, app, adapters]
+    owner: worker-a
+  - id: sporta-marketplace
+    roots: [packages/sporta-marketplace/src]
+    managed: true
+    requires: [sporta-contracts, sporta-transforms, sporta-artifacts, sporta-policy]
+    publicEntrypoints: [packages/sporta-marketplace/src/contract.ts]
+    layers: { domain: domain, app: app, adapters: adapters }
+    layerOrder: [domain, app, adapters]
+    owner: worker-b
+  - id: sporta-app-environments
+    roots: [packages/sporta-app-environments/src]
+    managed: true
+    requires: [sporta-contracts, sporta-work, sporta-policy]
+    publicEntrypoints: [packages/sporta-app-environments/src/contract.ts]
+    layers: { domain: domain, app: app, adapters: adapters }
+    layerOrder: [domain, app, adapters]
+    owner: worker-c
 
 global:
   maxFileLines: 400

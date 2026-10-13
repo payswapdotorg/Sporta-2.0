@@ -1,0 +1,20 @@
+{
+  "name": "@sporta/marketplace",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./contract": "./src/contract.ts"
+  },
+  "scripts": {
+    "lint": "oxlint"
+  },
+  "dependencies": {
+    "@sporta/contracts": "workspace:*",
+    "@sporta/transforms": "workspace:*",
+    "@sporta/artifacts": "workspace:*",
+    "@sporta/policy": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.2"
+  }
+}

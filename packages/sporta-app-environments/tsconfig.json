@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "lib": ["es2025"],
+    "types": ["node"]
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../sporta-contracts" },
+    { "path": "../sporta-work" },
+    { "path": "../sporta-policy" }
+  ]
+}

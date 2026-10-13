@@ -1025,6 +1025,22 @@ importers:
         specifier: ^6.0.2
         version: 6.0.2
 
+  packages/sporta-app-environments:
+    dependencies:
+      '@sporta/contracts':
+        specifier: workspace:*
+        version: link:../sporta-contracts
+      '@sporta/policy':
+        specifier: workspace:*
+        version: link:../sporta-policy
+      '@sporta/work':
+        specifier: workspace:*
+        version: link:../sporta-work
+    devDependencies:
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
+
   packages/sporta-arena:
     dependencies:
       '@sporta/contracts':
@@ -1107,6 +1123,25 @@ importers:
         specifier: ^6.0.2
         version: 6.0.2
 
+  packages/sporta-marketplace:
+    dependencies:
+      '@sporta/artifacts':
+        specifier: workspace:*
+        version: link:../sporta-artifacts
+      '@sporta/contracts':
+        specifier: workspace:*
+        version: link:../sporta-contracts
+      '@sporta/policy':
+        specifier: workspace:*
+        version: link:../sporta-policy
+      '@sporta/transforms':
+        specifier: workspace:*
+        version: link:../sporta-transforms
+    devDependencies:
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
+
   packages/sporta-organizations:
     dependencies:
       '@sporta/contracts':
@@ -1168,6 +1203,28 @@ importers:
       '@sporta/world':
         specifier: workspace:*
         version: link:../sporta-world
+
+  packages/sporta-transforms:
+    dependencies:
+      '@sporta/artifacts':
+        specifier: workspace:*
+        version: link:../sporta-artifacts
+      '@sporta/compute':
+        specifier: workspace:*
+        version: link:../sporta-compute
+      '@sporta/contracts':
+        specifier: workspace:*
+        version: link:../sporta-contracts
+      '@sporta/work':
+        specifier: workspace:*
+        version: link:../sporta-work
+      '@sporta/world':
+        specifier: workspace:*
+        version: link:../sporta-world
+    devDependencies:
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
 
   packages/sporta-work:
     dependencies:
