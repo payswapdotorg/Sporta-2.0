@@ -1,14 +1,14 @@
 # Sporta 2.0 Project State
 
-Status: P0–P8 RELEASE BASELINE COMPLETE (TL3 @ 1b0a9f4; 679/679 recorded tests; architecture 0/0/0). P9 Transform Studio/Marketplace + Application Environments design accepted and documented 2026-10-13; P9 IMPLEMENTATION NOT STARTED. The P0–P8 completion verdict remains valid for that baseline only. Hosted-preview live deployment remains explicitly future; no live provider credentials exercised.
+Status: P0–P8 RELEASE BASELINE COMPLETE (TL3 @ 1b0a9f4; 679/679 recorded tests; architecture 0/0/0). P9 Wave 0 frozen + three implementation lanes in flight (2026-10-13): design merged @ab76ee1, TL package freeze @bee069b (battery 696/696), workers w9a/w9b/w9c dispatched. The P0–P8 completion verdict remains valid for that baseline only. Hosted-preview live deployment remains explicitly future; no live provider credentials exercised.
 
 ## P9 — new feature extension (2026-10-13)
 
 - Architecture change: accepted for implementation; specification set is committed on branch `feature/transform-marketplace-app-environments`.
 - Scope: Transform Studio; marketplace of useful free/paid typed pipelines; mandatory automated + human review of every publication/update; pipeline choice at prerecorded/live feed launch; user-attached Application Environments exposed through scoped capabilities on the existing ZCode AgentRuntime.
 - Canonical docs: `docs/architecture/adr-transform-studio-marketplace-and-application-environments.md`, `docs/contracts/transform-marketplace.md`, `docs/contracts/application-environment.md`, `docs/work-orders/transform-marketplace-work-orders.md`, `docs/testing/transform-marketplace-acceptance.md`.
-- Implementation status: DESIGN ONLY. This change does not claim P9 packages, architecture-policy registrations, runtime code, payment integration, production live-feed provider or live hosted deployment.
-- Next: TL-only Wave 0 freezes exact contracts/package roots/dependency policy; then three disjoint workers. P9 completion requires TL-measured evidence on the integration SHA.
+- Implementation status: WAVE 0 FROZEN + THREE LANES IN FLIGHT (2026-10-13). TL Wave 0 landed @ bee069b: the three package roots exist with TL-frozen contracts (sporta-transforms 21 names, sporta-marketplace 16, sporta-app-environments 14), module manifests, architecture-policy entries and surface-freeze registration; full battery 696/696 at the freeze. Workers w9a/w9b/w9c dispatched (transform graph/execution; marketplace lifecycle/entitlements; app environments + studio UX). No runtime feature code is claimed complete yet; payment integration stays a labeled fixture port until a real provider is exercised; live-feed and hosted deployment stay future.
+- Next: harvest wave9/worker-{a,b,c} delivery branches → TL six-gate battery → serial merge → P9 acceptance gates (docs/testing/transform-marketplace-acceptance.md, 26 gates) → P9 completion verdict only from TL-measured evidence on the integration SHA.
 - Rights boundary: transforming appearance does not automatically clear copyright. Source rights, component licenses and intended output use are independently checked.
 
 ## Repository identity
