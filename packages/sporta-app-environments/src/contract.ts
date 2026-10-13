@@ -187,3 +187,103 @@ export type ApplicationActionAdmissionResult =
         | "instruction-injection-suspected";
       detail: string;
     };
+
+// ============================================================================
+// Wave 9 (Worker C) — additive implementations BEHIND the frozen types
+// (frozen block above untouched; names appended, surface stays green).
+// ============================================================================
+
+// W9C-1 — descriptor registry + capability catalog validation (pure).
+export type { ApplicationDescriptorValidation } from "./domain/registry.js";
+export { validateApplicationEnvironmentDescriptor } from "./domain/registry.js";
+
+// W9C-1 — scoped grants, expiry/revocation, separate learning consent.
+export type { AttachApplicationInput, GrantLearningConsentInput } from "./domain/grants.js";
+export {
+  declaredCapabilityClasses,
+  grantedClassesCover,
+  initialLearningConsent,
+  isAttachmentExpired,
+  isAttachmentRevoked,
+} from "./domain/grants.js";
+
+// W9C-2 — session lifecycle + the closeState law.
+export type { ApplicationCloseState, CloseSessionInput, OpenSessionInput } from "./domain/sessions.js";
+export {
+  TERMINAL_CLOSE_STATES,
+  appendCheckpointRef,
+  auditStreamRefFor,
+  closeApplicationSession,
+  closeStateForRevocation,
+  isSuccessfulCloseState,
+} from "./domain/sessions.js";
+
+// W9C-3 — deterministic action admission ladder (typed refusals).
+export type { ApplicationActionRequest, ApplicationSandboxScope } from "./domain/admission.js";
+export {
+  CONFIRMATION_CLASS_BY_SIDE_EFFECT,
+  admissionBasisFor,
+  admitApplicationAction,
+} from "./domain/admission.js";
+
+// W9C-4 — sanitized audit assembly (append-only law).
+export type { ApplicationActionEvidence, SanitizedRefs } from "./domain/audit.js";
+export {
+  actionRecordFingerprint,
+  assembleActionRecord,
+  buildActionRecordId,
+  sanitizeActionRefs,
+} from "./domain/audit.js";
+
+// Domain ports, typed errors and stable-id helpers.
+export type {
+  AgentRuntimeExecutionPort,
+  AgentRunEvent,
+  AgentRunHandle,
+  AppActionBoundaryPorts,
+  AppEnvironmentClock,
+  AppEnvironmentHashPort,
+  ApplicationActionAuditStorePort,
+  ApplicationArtifactRevisionPort,
+  ApplicationAttachmentStorePort,
+  ApplicationDescriptorStorePort,
+  ApplicationSessionStorePort,
+  ApplicationTargetStatePort,
+  ApplicationTargetStateSnapshot,
+  StartAgentRunInput,
+  WorkGraphPort,
+  WorkGraphRefsPort,
+} from "./domain/ports.js";
+export {
+  AppEnvironmentError,
+  ApplicationAttachmentError,
+  ApplicationAuditConflictError,
+  ApplicationDescriptorValidationError,
+  ApplicationReconciliationError,
+  ApplicationSessionStateError,
+  ApplicationTargetStateError,
+  ApplicationUnknownRecordError,
+} from "./domain/errors.js";
+export { fnv1aHex, stableStringify } from "./domain/stable.js";
+
+// App services (registry, attachments/sessions, the real agent-path action).
+export type { DescriptorRegistryServiceDeps, ApplicationTargetVerification } from "./app/descriptorRegistryService.js";
+export { DescriptorRegistryService } from "./app/descriptorRegistryService.js";
+export type { AttachmentServiceDeps } from "./app/attachmentService.js";
+export { AttachmentService } from "./app/attachmentService.js";
+export type { AppSessionServiceDeps } from "./app/appSessionService.js";
+export { AppSessionService } from "./app/appSessionService.js";
+export type {
+  AppActionServiceDeps,
+  ExecuteAppActionInput,
+  ExecuteAppActionResult,
+} from "./app/appActionService.js";
+export { AppActionService } from "./app/appActionService.js";
+
+// Adapters — REAL node:crypto sha256 + clock; FIXTURE-labeled in-memory
+// store; the REAL local file-backed app target adapter.
+export { FixedClock, systemClockNow } from "./adapters/clock.js";
+export { Sha256AppEnvironmentHash, sha256Text } from "./adapters/hash.js";
+export { InMemoryAppEnvironmentStore } from "./adapters/inMemoryAppEnvironmentStore.js";
+export type { LocalFileAppTargetDeps } from "./adapters/localFileAppTarget.js";
+export { LocalFileAppTargetAdapter } from "./adapters/localFileAppTarget.js";

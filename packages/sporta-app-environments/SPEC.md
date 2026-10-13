@@ -145,6 +145,13 @@ service executes a confirmation-required action ONLY when the caller passes
   `permissionDecision.basis` vocabulary
   (`not-granted|revoked|expired|requires-confirmation`) with the precise
   reason kept in `detail`; the status is `denied` — never `succeeded`.
+- Status law (P9-19): a MUTATING capability (declared side effects) is
+  `succeeded` only when the run completed AND the state digest changed AND
+  a new observation of a declared side-effect kind appeared; a
+  PURE-OBSERVATION capability (no declared side effects) is `succeeded`
+  when the run completed and the target state was READ — observation has
+  no mutation to verify. Everything else is `failed` (a disconnected or
+  failed app is never successful).
 
 ## W9C-5 — ONE real local app action over the REAL agent/tool path
 
@@ -166,10 +173,11 @@ second runtime (lock 37):
    verdict is the real process exit code). No terminal event inside the
    deadline → the action FAILS (`missingCoverageNote` says so) — a
    disconnected app is never successful (P9-19).
-5. Read the target state AFTER; verify the effect: run verdict `completed`
-   AND state digest changed AND a new observation of a declared
-   side-effect kind. Anything else is `status: failed` with unverified
-   effects — never success.
+5. Read the target state AFTER; verify the effect by the declared class:
+   a mutating capability requires a completed run AND a changed state
+   digest AND a new observation of a declared side-effect kind; a pure
+   observation requires a completed run and a readable state. Anything
+   else is `status: failed` with unverified effects — never success.
 6. On VERIFIED success reconcile into the EXISTING lineage: commit an
    artifact revision for the evidence bytes through the injected
    artifact-revision port, append the agent-run + action nodes through the
