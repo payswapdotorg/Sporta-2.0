@@ -34,6 +34,6 @@ Sporta 2.0 is a fork of zai-org/zcode. ZCode remains the generic execution/works
 13. docs/work-orders/sporta-work-orders.md
 14. docs/testing/sporta-acceptance.md
 15. docs/agent-handoff/sporta-tech-lead.md
-16. docs/agent-handoff/sporta-worker-packets.md
+19. docs/agent-handoff/sporta-worker-packets.md
 
 Chat is not an authority source.
