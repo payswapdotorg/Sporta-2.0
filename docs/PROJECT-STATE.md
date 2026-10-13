@@ -4,7 +4,7 @@ Status: P0–P8 RELEASE BASELINE COMPLETE (TL3 @ 1b0a9f4; 679/679 recorded tests
 
 ## P9 — new feature extension (2026-10-13)
 
-- Architecture change: accepted for implementation; specifications are being prepared on branch `feature/transform-marketplace-app-environments`.
+- Architecture change: accepted for implementation; specification set is committed on branch `feature/transform-marketplace-app-environments`.
 - Scope: Transform Studio; marketplace of useful free/paid typed pipelines; mandatory automated + human review of every publication/update; pipeline choice at prerecorded/live feed launch; user-attached Application Environments exposed through scoped capabilities on the existing ZCode AgentRuntime.
 - Canonical docs: `docs/architecture/adr-transform-studio-marketplace-and-application-environments.md`, `docs/contracts/transform-marketplace.md`, `docs/contracts/application-environment.md`, `docs/work-orders/transform-marketplace-work-orders.md`, `docs/testing/transform-marketplace-acceptance.md`.
 - Implementation status: DESIGN ONLY. This change does not claim P9 packages, architecture-policy registrations, runtime code, payment integration, production live-feed provider or live hosted deployment.
