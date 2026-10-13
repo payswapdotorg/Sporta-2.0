@@ -1,0 +1,254 @@
+/* Transform Studio styling — plain CSS (the sportaPanel.css precedent). */
+
+.studio-panel {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #e8e8ea;
+  background: #101014;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.studio-header h1 {
+  margin: 0 0 4px;
+  font-size: 22px;
+}
+
+.studio-subtitle {
+  margin: 0 0 8px;
+  color: #9a9aa6;
+  font-size: 13px;
+}
+
+.studio-evidence {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border-radius: 4px;
+  padding: 2px 8px;
+  margin-bottom: 16px;
+}
+
+.studio-evidence-real {
+  background: #103c2a;
+  color: #4ade80;
+}
+
+.studio-evidence-fixture {
+  background: #3c2e10;
+  color: #fbbf24;
+}
+
+.studio-error {
+  color: #f87171;
+  border: 1px solid #7f1d1d;
+  border-radius: 6px;
+  padding: 8px 12px;
+  background: #1f1212;
+}
+
+.studio-loading,
+.studio-empty,
+.studio-hint {
+  color: #9a9aa6;
+}
+
+.studio-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 16px 0 24px;
+}
+
+.studio-tab {
+  border: 1px solid #2a2a33;
+  background: #16161c;
+  color: #c8c8d0;
+  border-radius: 6px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.studio-tab-active {
+  border-color: #4ade80;
+  color: #4ade80;
+}
+
+.studio-section {
+  margin-top: 8px;
+}
+
+.studio-section h2 {
+  font-size: 17px;
+  margin: 8px 0 12px;
+}
+
+.studio-section h3 {
+  font-size: 15px;
+  margin: 12px 0 6px;
+}
+
+.studio-section h4 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #9a9aa6;
+  margin: 12px 0 4px;
+}
+
+.studio-nodelist {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+}
+
+.studio-node {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  padding: 6px 10px;
+  border: 1px solid #23232b;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  background: #16161c;
+}
+
+.studio-node-kind {
+  font-size: 11px;
+  font-weight: 600;
+  color: #fbbf24;
+  min-width: 150px;
+}
+
+.studio-node-name {
+  font-weight: 600;
+}
+
+.studio-node-component {
+  color: #9a9aa6;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.studio-button {
+  border: 1px solid #2f6f4f;
+  background: #103c2a;
+  color: #4ade80;
+  border-radius: 6px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.studio-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.studio-button-secondary {
+  border-color: #2a2a33;
+  background: #16161c;
+  color: #c8c8d0;
+}
+
+.studio-validation {
+  margin-top: 16px;
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+.studio-validation-valid {
+  border: 1px solid #2f6f4f;
+  background: #0e241a;
+}
+
+.studio-validation-invalid {
+  border: 1px solid #7f1d1d;
+  background: #1f1212;
+}
+
+.studio-violations {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.studio-violations li {
+  margin: 4px 0;
+}
+
+.studio-violation-chip {
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+  padding: 2px 8px;
+  background: #3c2e10;
+  color: #fbbf24;
+}
+
+.studio-listing,
+.studio-app {
+  border: 1px solid #23232b;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  background: #16161c;
+}
+
+.studio-listing-meta {
+  color: #9a9aa6;
+  font-size: 12px;
+  margin: 4px 0;
+}
+
+.studio-launch-options {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.studio-disclosure {
+  margin-top: 16px;
+  border: 1px solid #2a2a33;
+  border-radius: 8px;
+  padding: 12px 16px;
+  background: #16161c;
+}
+
+.studio-legal {
+  border-left: 3px solid #fbbf24;
+  padding-left: 10px;
+  color: #fbbf24;
+  font-size: 12px;
+}
+
+.studio-confirmation {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.studio-admission {
+  margin-top: 16px;
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+.studio-admission-ok {
+  border: 1px solid #2f6f4f;
+  background: #0e241a;
+}
+
+.studio-admission-refused {
+  border: 1px solid #7f1d1d;
+  background: #1f1212;
+}

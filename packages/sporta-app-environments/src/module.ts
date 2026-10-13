@@ -12,6 +12,14 @@ export const sportaAppEnvironmentsModule = {
     "app-session-types",
     "app-action-audit-types",
     "app-action-admission-types",
+    // Wave 9 (Worker C) — additive provided capabilities.
+    "app-descriptor-registry",
+    "app-scoped-grants",
+    "app-action-admission-ladder",
+    "app-session-lifecycle",
+    "app-action-audit",
+    "app-local-process-adapter",
+    "app-agent-tool-endpoint",
   ],
   publicEntrypoints: ["contract.ts"],
 } as const;

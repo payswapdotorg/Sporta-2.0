@@ -187,3 +187,113 @@ export type ApplicationActionAdmissionResult =
         | "instruction-injection-suspected";
       detail: string;
     };
+
+// ============================================================================
+// Wave 9 (Worker C) — additive implementations BEHIND the frozen types
+// (frozen block above untouched; names appended, surface stays green).
+// ============================================================================
+
+// W9C-1 — descriptor registry laws (validation, catalog stability).
+export type {
+  ApplicationConsentInput,
+  ApplicationLearningConsentInput,
+} from "./domain/grants.js";
+export {
+  APPLICATION_CAPABILITY_CLASSES,
+  assertCatalogStable,
+  declaredCapabilityClasses,
+  descriptorIdentity,
+  validateApplicationDescriptor,
+} from "./domain/registry.js";
+
+// W9C-2 — scoped grants: exact classes, expiry, revocation, separate
+// learning consent (lock 31).
+export {
+  attachmentStatus,
+  buildApplicationAttachment,
+  isCapabilityClassGranted,
+  withLearningConsent,
+  withoutLearningConsent,
+  withRevocation,
+} from "./domain/grants.js";
+
+// W9C-3 — the deterministic admission ladder (typed refusals).
+export type { ApplicationAdmissionContext, ApplicationSandboxPolicy } from "./domain/admission.js";
+export { admitApplicationAction, requiredConfirmationClass } from "./domain/admission.js";
+
+// W9C-4 — bounded session lifecycle (closeState honesty law, safe-stop).
+export type { ApplicationSessionCloseReason } from "./domain/sessionLifecycle.js";
+export {
+  auditStreamRefFor,
+  closeApplicationSession,
+  closeStateFor,
+  openApplicationSession,
+  safeStopSessions,
+  sessionMayReportSuccess,
+  withCheckpoint,
+} from "./domain/sessionLifecycle.js";
+// W9C-5 — audit laws (sanitized refs, honest statuses, append-only).
+export type { ApplicationPermissionBasis } from "./domain/audit.js";
+export {
+  assertAppendOnly,
+  buildDeniedActionRecord,
+  buildExecutedActionRecord,
+  permissionBasisFor,
+  sanitizeInputRefs,
+} from "./domain/audit.js";
+
+// Domain ports, typed errors and stable-stringify.
+export type {
+  AppEnvironmentClock,
+  AppEnvironmentHashPort,
+  ApplicationActionAuditStorePort,
+  ApplicationActionOutcome,
+  ApplicationActionRequest,
+  ApplicationAttachmentStorePort,
+  ApplicationCapabilityInvocationPort,
+  ApplicationCapabilityInvocationResult,
+  ApplicationDescriptorStorePort,
+  ApplicationEffectSinkPort,
+  ApplicationEffectSinkResult,
+  ApplicationInvocationEffect,
+  ApplicationSessionStorePort,
+} from "./domain/ports.js";
+export {
+  AppEnvironmentsError,
+  ApplicationActionError,
+  ApplicationAttachmentError,
+  ApplicationRegistryError,
+  ApplicationSessionError,
+} from "./domain/errors.js";
+export { stableStringify } from "./domain/stable.js";
+
+// App services (registry/attachments, sessions, action orchestration).
+export type { ApplicationEnvironmentServiceDeps } from "./app/applicationEnvironmentService.js";
+export { ApplicationEnvironmentService } from "./app/applicationEnvironmentService.js";
+export type { ApplicationSessionServiceDeps } from "./app/applicationSessionService.js";
+export { ApplicationSessionService } from "./app/applicationSessionService.js";
+export type { ApplicationActionServiceDeps } from "./app/applicationActionService.js";
+export { ApplicationActionService } from "./app/applicationActionService.js";
+
+// Adapters — REAL sha256/clock; clearly-labeled FIXTURE-grade in-memory
+// stores; the REAL local-process app adapter; the generic HTTP tool
+// endpoint for agent processes.
+export { sha256Text, sha256Bytes, Sha256AppEnvironmentHash } from "./adapters/hash.js";
+export { systemClockNow, FixedClock } from "./adapters/clock.js";
+export {
+  InMemoryApplicationActionAuditStore,
+  InMemoryApplicationAttachmentStore,
+  InMemoryApplicationDescriptorStore,
+  InMemoryApplicationSessionStore,
+} from "./adapters/inMemoryAppEnvironmentStore.js";
+export type {
+  LocalAppDeclaredAction,
+  LocalAppSelfDescription,
+  LocalApplicationAdapterDeps,
+} from "./adapters/localAppAdapter.js";
+export { LocalApplicationAdapter } from "./adapters/localAppAdapter.js";
+export type {
+  ApplicationActionToolEndpointDeps,
+  ApplicationActionToolResponse,
+} from "./adapters/agentToolEndpoint.js";
+export { ApplicationActionToolEndpoint } from "./adapters/agentToolEndpoint.js";
