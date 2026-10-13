@@ -1,6 +1,6 @@
 # Sporta 2.0 Architecture Lock
 
-Status: LOCKED FOR IMPLEMENTATION
+Status: LOCKED FOR IMPLEMENTATION — P9 extension accepted 2026-10-13; see docs/architecture/adr-transform-studio-marketplace-and-application-environments.md
 
 ## Product thesis
 
@@ -24,6 +24,10 @@ capability gap -> Arena escalation -> expert intervention -> validated result
 - Arena owns human expert qualification, expert sessions, intervention validation and settlement.
 - External editors own their internal project state; Sporta owns artifact lineage and reconciliation.
 - The originating Sporta workflow remains authoritative over Sporta state. Arena never directly mutates it.
+- Sporta Marketplace owns pipeline submission/review/listing/offer/entitlement/suspension state and points to immutable releases; it does not own execution or content bytes.
+- Sporta Transforms owns typed graph composition and run manifests; WorkGraph remains task/run authority and Artifact Fabric remains content/revision authority.
+- Sporta Application Environments owns attachment metadata, capability grants and audit; the external app owns its internal state.
+- Every source/model/dependency/runtime is digest-pinned; moving tags are never execution identity.
 
 ## Non-negotiable invariants
 
@@ -51,6 +55,19 @@ capability gap -> Arena escalation -> expert intervention -> validated result
 22. Rights, privacy and retention policy propagate through artifacts, editors and Arena.
 23. Workers operate concurrently only inside disjoint ownership boundaries.
 24. Shared contracts, root manifests and lockfiles are TL-owned and serialized.
+25. Transform pipelines are typed DAGs; nodes may use models, scripts, deterministic transforms or granted application capabilities.
+26. Every first publication and material update requires automated checks plus human review before becoming public.
+27. Pipeline runs pin approved release/component digests, config hash, rights snapshot and output provenance.
+28. GitHub/Hugging Face/blob providers store assets; they never own Sporta marketplace approval state.
+29. Free and paid offerings pass equal quality, rights and security gates; entitlement/charge retries are idempotent.
+30. Attached applications expose only declared, user-granted, scoped and revocable capabilities; observation does not imply mutation.
+31. App-attachment permission is distinct from learning consent.
+32. Untrusted pipeline code/models run only in isolated bounded execution profiles, without default host-secret access or unrestricted network egress.
+33. Semantic/event fidelity is evaluated independently from source/output rights review; uncertainty/provenance are preserved or changes are explicit.
+34. Similarity/appearance change alone never makes an output legally cleared or “copyright-safe”.
+35. Every output run preserves lineage to input and exact release; publishing a new version never mutates existing runs.
+36. Publishing, destructive actions, purchases, public distribution and permission escalation require explicit confirmation and policy checks.
+37. The TL registers new P9 package roots/edges before workers start; no duplicate runtime, scheduler, artifact or permission authority.
 
 ## Canonical topology
 
@@ -72,6 +89,14 @@ Intent
   -> candidate organization
   -> evaluation
   -> promotion
+
+Feed -> source-rights check -> approved TransformListing/version
+  -> typed transform DAG -> existing ZCode/Compute execution
+  -> derived ArtifactRevision + semantic/event evidence
+
+User-approved ApplicationAttachment -> scoped ApplicationCapability
+  -> existing ZCode AgentRuntime/tool/session boundary
+  -> audited action/effect -> Artifact Fabric + WorkGraph reconciliation
 ~~~
 
 ## Organization
@@ -180,6 +205,14 @@ No single benchmark metric is sufficient for promotion.
 Provider-neutral adapters support local, user-owned and hosted execution.
 
 Preview target may use Vercel, Neon, R2, Upstash Redis and optional Apify, but no named provider is a semantic dependency.
+
+## P9 Transform Studio and Application Environments
+
+- Transform Studio composes typed DAGs from models, scripts, deterministic transforms and approved app actions.
+- Marketplace releases use app-store publication rules: immutable candidates, automated gates and human review for every update.
+- The marketplace owns listings/review/entitlements; pipeline execution remains a WorkGraph run using existing runtime/compute facilities.
+- Attached applications expose a generic Application Environment contract with independent observe/control/file/semantic/network scopes.
+- See `docs/architecture/adr-transform-studio-marketplace-and-application-environments.md` and P9 contracts.
 
 ## Concurrency
 

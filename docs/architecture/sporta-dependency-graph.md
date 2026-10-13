@@ -37,3 +37,26 @@ Workers edit only owned directories. Shared contract exports, root manifests, lo
 ## Critical path
 
 contracts -> WorkGraph/artifacts/organizations/Arena/editor seams -> Lab + user takeover -> Arena learning -> evaluation/promotion -> complete end-to-end loop
+
+
+## P9 — Transform Studio / Marketplace / Application Environments (new post-release feature)
+
+**Precondition:** TL-only Wave 0 freezes contracts and architecture-policy strategy; P0–P8 remain the released baseline.
+
+- Worker A: `sporta-transforms` — typed DAG, resolution/composition, execution manifest and semantic/event evidence.
+- Worker B: `sporta-marketplace` — submissions, automated/human review, immutable listings, offers, entitlements and suspension.
+- Worker C: `sporta-app-environments` plus assigned product UX — app descriptors, scoped grants/audit/revocation and feed/Studio UX.
+- TL owns shared contracts, architecture policy, manifests, lockfile, dependency reconciliation and end-to-end acceptance.
+
+Target dependency direction (exact module roots and edges are TL-frozen before code):
+
+```text
+sporta-policy + sporta-contracts
+  -> existing work / artifacts / world / compute / ZCode tool-session seams
+  -> sporta-transforms
+  -> sporta-marketplace
+product projections consume transforms + marketplace + app-environments
+sporta-app-environments -> existing policy + ZCode workspace/runtime/tool capabilities
+```
+
+No second runtime, task/run authority, scheduler, artifact authority, rights authority or payment authority. See `docs/work-orders/transform-marketplace-work-orders.md`.

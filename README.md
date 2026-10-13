@@ -14,6 +14,13 @@ user intent
   -> permitted learning
   -> improved organization
 
+approved transform marketplace
+  -> choose pipeline for prerecorded/live feed
+  -> typed transform DAG -> derived artifacts + event evidence
+
+user-attached application
+  -> scoped capabilities -> existing ZCode AgentRuntime -> audited result
+
 capability gap
   -> Arena human expertise
   -> validated result
@@ -40,6 +47,11 @@ Read these documents before making architectural or product changes:
 9. docs/testing/sporta-acceptance.md
 10. docs/agent-handoff/sporta-tech-lead.md
 11. docs/agent-handoff/sporta-worker-packets.md
+12. docs/architecture/adr-transform-studio-marketplace-and-application-environments.md
+13. docs/contracts/transform-marketplace.md
+14. docs/contracts/application-environment.md
+15. docs/work-orders/transform-marketplace-work-orders.md
+16. docs/testing/transform-marketplace-acceptance.md
 
 ## Substrate
 
@@ -53,13 +65,21 @@ Sporta is intentionally not backend-only. Users should be able to express intent
 
 Initial open-source editor targets are Kdenlive, Blender, Godot, Krita, Inkscape, Audacity and Penpot. They are adapters/capabilities, not semantic authorities.
 
+## Transform Studio and Marketplace
+
+Creators can compose useful feed-to-output pipelines from models, scripts, deterministic transforms and approved application capabilities. Each public release and update must be reviewed; users can select approved free or paid versions for prerecorded or live feeds. Marketplace approval does not guarantee that every input/output use is copyright lawful.
+
+## Application Environments
+
+Users can attach authorized local, remote or service apps to a workspace so agents can use declared, user-granted capabilities through existing ZCode runtime/workspace boundaries. Observation, control and learning permission are separate. Sporta does not create a second AgentRuntime.
+
 ## Human capability loop
 
 When the organization reaches a typed capability gap, Sporta may submit an idempotent escalation to payswapdotorg/Arena. Arena provides an isolated expert session and validated typed results. Sporta remains authoritative over its own Work Graph and decides whether a returned learning artifact is promoted.
 
 ## Current implementation state
 
-Architecture is locked and implementation has not yet started. See docs/PROJECT-STATE.md for the authoritative status.
+P0–P8 passed the TL3 release audit (679/679 recorded tests). Transform Studio/Marketplace and Application Environments are a new P9 extension: specifications are checked in, but implementation has not started. See docs/PROJECT-STATE.md.
 
 ---
 

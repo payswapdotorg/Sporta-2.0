@@ -59,3 +59,8 @@ Final seeded proof must trace:
 intent -> organization -> AgentRuntime -> artifact -> external editor -> user edit -> learning -> capability gap -> Arena -> expert result -> candidate -> evaluation -> promotion
 
 without changing the canonical WorkGraph or artifact lineage.
+
+
+## Post-release P9 extension
+
+See `docs/work-orders/transform-marketplace-work-orders.md` for scoped assignments and integration gates. TL must run a new architecture registration Wave 0; the completed P0–P8 release status does not imply P9 implementation is complete.
