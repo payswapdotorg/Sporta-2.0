@@ -170,3 +170,130 @@ export type TransformListingSelectionResult =
         | "suspended";
       detail: string;
     };
+
+// ============================================================================
+// Wave 9 (Worker B) — additive implementations BEHIND the frozen types
+// (frozen block above untouched; names appended, surface stays green).
+// ============================================================================
+
+// W9B-1 — typed errors (the compute-fallback fail-closed precedent).
+export type {
+  TransformSubmissionRefusalKind,
+  TransformReviewRefusalKind,
+  TransformListingRefusalKind,
+  TransformEntitlementRefusalKind,
+} from "./domain/errors.js";
+export {
+  MarketplaceError,
+  MarketplaceSubmissionError,
+  MarketplaceReviewError,
+  MarketplaceListingError,
+  MarketplaceEntitlementError,
+} from "./domain/errors.js";
+
+// W9B-1 — ports: clocks, hashing, manifest reads, signal sources,
+// the automated check lane (P9-08/P9-13).
+export type {
+  MarketplaceClock,
+  MarketplaceHashPort,
+  TransformManifestReadPort,
+  TransformDependencySignal,
+  TransformDependencySignalSource,
+  TransformSimilaritySignal,
+  TransformSimilaritySignalSource,
+  TransformAutomatedCheck,
+  TransformAutomatedCheckReport,
+  TransformCheckRunnerPort,
+} from "./domain/ports.js";
+
+// W9B-1 — the declared automated checks + human review law.
+export {
+  DECLARED_AUTOMATED_CHECK_IDS,
+  SIMILARITY_WARN_THRESHOLD,
+  DeclaredTransformCheckRunner,
+  computeCandidateDigest,
+} from "./domain/checks.js";
+export type { DeclaredTransformCheckRunnerDeps } from "./domain/checks.js";
+export {
+  REQUIRED_REVIEW_ROLES,
+  requiredReviewGates,
+  validateHumanReview,
+  assembleReviewDecision,
+} from "./domain/review.js";
+export type {
+  TransformHumanReviewEntry,
+  TransformReviewGateSet,
+  HumanReviewValidation,
+  AssembleReviewDecisionInput,
+} from "./domain/review.js";
+
+// W9B-1/W9B-2 — lifecycle tables + material-change detection (P9-09).
+export {
+  CANDIDATE_TRANSITIONS,
+  LISTING_TRANSITIONS,
+  candidateCanTransition,
+  listingCanTransition,
+  candidateIsTerminal,
+  listingBlocksNewSelection,
+} from "./domain/lifecycle.js";
+export { detectMaterialChange } from "./domain/materiality.js";
+export type {
+  TransformMaterialChange,
+  TransformMaterialChangeReport,
+} from "./domain/materiality.js";
+
+// W9B-3 — the provider-neutral payment seam (lock 29, P9-11).
+export type {
+  SettlementAuthorizeRequest,
+  SettlementRecord,
+  SettlementPort,
+} from "./domain/paymentPort.js";
+
+// W9B-4 — rights snapshots + fail-closed admission (P9-14..17).
+export type { TransformRightsSnapshot, RightsSnapshotValidation } from "./domain/selection.js";
+export {
+  RIGHTS_PREREQUISITE_CATEGORIES,
+  validateRightsSnapshot,
+  evaluateRights,
+  evaluateAdmission,
+} from "./domain/selection.js";
+
+// W9B-4 — the typed launch disclosure (P9-12, P9-17).
+export type { TransformLaunchDisclosure, BuildDisclosureInput } from "./domain/disclosure.js";
+export { buildLaunchDisclosure } from "./domain/disclosure.js";
+
+// App-layer services (fixture-grade in-memory ledgers, honestly labeled).
+export type {
+  TransformDraftRecord,
+  TransformSubmissionRecord,
+  PublicationServiceDeps,
+  RecordReviewDecisionInput,
+} from "./app/publicationService.js";
+export { PublicationService } from "./app/publicationService.js";
+export type {
+  TransformListingActionRecord,
+  TransformListingInput,
+  ListingServiceDeps,
+} from "./app/listingService.js";
+export { ListingService } from "./app/listingService.js";
+export type {
+  EntitlementServiceDeps,
+  GrantEntitlementInput,
+} from "./app/entitlementService.js";
+export { EntitlementService, deriveIdempotencyKey, offerCharges } from "./app/entitlementService.js";
+export type {
+  ListingSelectionServiceDeps,
+  SelectForLaunchInput,
+} from "./app/listingSelectionService.js";
+export { ListingSelectionService } from "./app/listingSelectionService.js";
+
+// Adapters: real node:crypto hashing + clocks; FIXTURE-labeled
+// settlement and signal sources (honest evidence grades).
+export { sha256Text, Sha256MarketplaceHash } from "./adapters/hash.js";
+export { systemClockNow, FixedClock } from "./adapters/clock.js";
+export type { FixtureSettlementAdapterOptions } from "./adapters/fixtureSettlement.js";
+export { FixtureSettlementAdapter } from "./adapters/fixtureSettlement.js";
+export {
+  FixtureDependencySignalSource,
+  FixtureSimilaritySignalSource,
+} from "./adapters/fixtureSignals.js";

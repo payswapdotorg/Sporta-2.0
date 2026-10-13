@@ -1,0 +1,27 @@
+/**
+ * Pure deterministic serialization/id helpers (the sporta-work and
+ * sporta-transforms domain/stable.ts precedent, repeated in kind
+ * because cross-package deep imports are forbidden and those
+ * contracts do not export these). No IO, no crypto — the domain
+ * layer stays pure.
+ */
+
+/** Canonical stable serialization: object keys sorted recursively. */
+export function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map((item) => stableStringify(item)).join(",")}]`;
+  const entries = Object.entries(value as Record<string, unknown>)
+    .filter(([, entryValue]) => entryValue !== undefined)
+    .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0));
+  return `{${entries.map(([key, entryValue]) => `${JSON.stringify(key)}:${stableStringify(entryValue)}`).join(",")}}`;
+}
+
+/** FNV-1a 32-bit content fingerprint, 8 hex chars. */
+export function fnv1aHex(input: string): string {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash.toString(16).padStart(8, "0");
+}

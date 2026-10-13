@@ -4,6 +4,9 @@ import type {
   TransformEntitlement,
   TransformSuspensionRecord,
   TransformListingSelectionResult,
+  TransformRightsSnapshot,
+  TransformLaunchDisclosure,
+  SettlementRecord,
 } from "./contract.js";
 
 /** Example review decision: automated pass + human signoff. */
@@ -94,4 +97,49 @@ export const exampleTransformListingSelectionResult: TransformListingSelectionRe
   admitted: false,
   reason: "rights-prerequisites-unsatisfied",
   detail: "source rights snapshot missing authorization for derive",
+};
+
+/** Example caller-supplied rights snapshot (typed evidence, P9-14). */
+export const exampleTransformRightsSnapshot: TransformRightsSnapshot = {
+  snapshotId: "rights:example",
+  capturedAt: "2026-10-13T00:00:00.000Z",
+  satisfactions: [
+    { prerequisite: "authorized source footage", authorized: true, evidence: "league license l-123" },
+    { prerequisite: "model and dataset licenses", authorized: true, evidence: "MIT weights card" },
+  ],
+  authorizedUsages: ["render", "derive"],
+};
+
+/** Example launch disclosure (P9-12: what the user sees pre-launch). */
+export const exampleTransformLaunchDisclosure: TransformLaunchDisclosure = {
+  listingId: "list:example",
+  pipelineId: "pipe:example",
+  publisher: "publisher:example",
+  approvedVersion: "1.0.0",
+  releaseDigest: "sha256:example",
+  reviewedAt: "2026-10-13T00:00:00.000Z",
+  offer: exampleTransformListing.offer,
+  rightsPrerequisites: ["authorized source footage"],
+  dependencies: [{ kind: "code", name: "trim-script", digest: "sha256:example", license: "MIT" }],
+  expectedOutputs: ["trimmed video artifact"],
+  limitations: ["no model, no live feed claims"],
+  costExpectation: { amount: null, currency: null, basis: "free offer — no charge per run" },
+  latencyExpectation: { typicalLatencyMs: 500, declaredThroughput: "single clip" },
+  evidenceGrade: "fixture",
+  provenanceNote:
+    "output provenance points to the source rights scope and pipeline release sha256:example " +
+    "(version 1.0.0); no guarantee of legality for every downstream use — similarity is never clearance",
+  generatedAt: "2026-10-13T00:00:00.000Z",
+};
+
+/** Example FIXTURE-labeled settlement record (P9-11 idempotency). */
+export const exampleSettlementRecord: SettlementRecord = {
+  settlementId: "setl:fixture:example",
+  idempotencyKey: "idem:example",
+  status: "settled",
+  amount: { amount: 5, currency: "USD" },
+  settledAt: "2026-10-13T00:00:00.000Z",
+  duplicate: false,
+  attempts: 1,
+  detail: "FIXTURE settlement settled (deterministic test adapter — not a real charge)",
 };
