@@ -36,6 +36,17 @@ round-trip and live/shared integrations.
 
 provider fallback, durable artifacts, persistent workers, rights/security/privacy, local install, hosted preview and product acceptance.
 
+## P9 — Transform Studio, Transform Marketplace and Application Environments (new post-release feature)
+
+- Visual pipeline builder for typed feed-to-output DAGs combining models, scripts, deterministic transforms and approved app capabilities.
+- Free/paid marketplace of useful executable pipelines; every release/update goes through automated checks and human review before public availability.
+- Users select a reviewed pipeline for prerecorded/live feed launch; release dependencies are pinned and output lineage + event-semantic evidence are retained.
+- Users attach authorized apps to Sporta workspaces and let agents use declared app capabilities through existing ZCode runtime/session/tool boundaries.
+- Sandboxing, rights/provenance/license, privacy/retention, price/entitlement, event fidelity and live latency/back-pressure checks are mandatory.
+- P9 is not complete until the dedicated acceptance matrix passes on a TL-verified integration SHA.
+
+See `docs/architecture/adr-transform-studio-marketplace-and-application-environments.md`.
+
 ## Completion
 
-A fresh user can express intent, get an explainable organization, watch execution, edit manually in Sporta or an integrated editor, return to the same WorkGraph/artifact, authorize learning, trigger Arena on a capability gap, receive a validated result, and demonstrate reduced manual intervention on a future run.
+A fresh user can express intent, get an explainable organization, watch execution, edit manually in Sporta or an integrated editor, return to the same WorkGraph/artifact, authorize learning, trigger Arena on a capability gap, receive a validated result, and demonstrate reduced manual intervention on a future run. For P9, a creator can publish an approved pipeline, a user can select it for a feed, and an agent can safely use a connected application under explicit, revocable permissions.
