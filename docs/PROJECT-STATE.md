@@ -1,6 +1,15 @@
 # Sporta 2.0 Project State
 
-Status: ROADMAP COMPLETE (2026-10-12, TL3 release audit green @ 1b0a9f4) — all phases P0-P8 landed with TL-measured evidence (final battery 679/679, tsx --test; arch 0/0/0; surface frozen-intact; lint 0/70 baseline); the Completion paragraph is executed and passing as the W7C-1 REAL lineage test; hosted-preview live deployment stays typed-as-future per the provider rule (adapterized, descriptor entry /sporta, no live credentials exercised)
+Status: P0–P8 RELEASE BASELINE COMPLETE (TL3 @ 1b0a9f4; 679/679 recorded tests; architecture 0/0/0). P9 Transform Studio/Marketplace + Application Environments design accepted and documented 2026-10-13; P9 IMPLEMENTATION NOT STARTED. The P0–P8 completion verdict remains valid for that baseline only. Hosted-preview live deployment remains explicitly future; no live provider credentials exercised.
+
+## P9 — new feature extension (2026-10-13)
+
+- Architecture change: accepted for implementation; specifications are being prepared on branch `feature/transform-marketplace-app-environments`.
+- Scope: Transform Studio; marketplace of useful free/paid typed pipelines; mandatory automated + human review of every publication/update; pipeline choice at prerecorded/live feed launch; user-attached Application Environments exposed through scoped capabilities on the existing ZCode AgentRuntime.
+- Canonical docs: `docs/architecture/adr-transform-studio-marketplace-and-application-environments.md`, `docs/contracts/transform-marketplace.md`, `docs/contracts/application-environment.md`, `docs/work-orders/transform-marketplace-work-orders.md`, `docs/testing/transform-marketplace-acceptance.md`.
+- Implementation status: DESIGN ONLY. This change does not claim P9 packages, architecture-policy registrations, runtime code, payment integration, production live-feed provider or live hosted deployment.
+- Next: TL-only Wave 0 freezes exact contracts/package roots/dependency policy; then three disjoint workers. P9 completion requires TL-measured evidence on the integration SHA.
+- Rights boundary: transforming appearance does not automatically clear copyright. Source rights, component licenses and intended output use are independently checked.
 
 ## Repository identity
 
