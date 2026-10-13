@@ -231,3 +231,68 @@ export type TransformGraphValidation =
         detail: string;
       }[];
     };
+
+// ============================================================================
+// Wave 9 (Worker A) — additive implementations BEHIND the frozen types
+// (frozen block above untouched; names appended, surface stays green).
+// ============================================================================
+
+// W9A-1 — typed DAG validation (fail-closed).
+export type { TransformGraphValidationOptions } from "./domain/graphValidation.js";
+export { validateTransformPipelineManifest } from "./domain/graphValidation.js";
+
+// W9A-2 — bounded execution plans + typed plan refusals.
+export type {
+  TransformExecutionPlanOptions,
+  TransformPlannedStep,
+  TransformExecutionPlan,
+} from "./domain/ports.js";
+export { resolveTransformExecutionPlan } from "./domain/executionPlan.js";
+export type { TransformExecutionRefusalKind } from "./domain/errors.js";
+export {
+  TransformError,
+  TransformGraphValidationError,
+  TransformExecutionPlanError,
+  TransformRunError,
+} from "./domain/errors.js";
+
+// Execution ports (declared in domain; adapters implement).
+export type {
+  TransformComponentResolverPort,
+  TransformDeterministicNodeInput,
+  TransformDeterministicNodeOutput,
+  TransformDeterministicNodePort,
+  TransformModelInvokeInput,
+  TransformModelInvokeOutput,
+  TransformModelRefusalKind,
+  TransformModelPort,
+  TransformHashPort,
+} from "./domain/ports.js";
+
+// W9A-4 — carry-forward verification + run assembly.
+export type { EventStreamCarryForward } from "./domain/carryForward.js";
+export { verifyEventStreamCarryForward } from "./domain/carryForward.js";
+export { stableStringify, stableEquals, fnv1aHex } from "./domain/stable.js";
+export type {
+  TransformRunServiceDeps,
+  TransformRunInputArtifact,
+  StartTransformRunInput,
+} from "./app/transformRunService.js";
+export { TransformRunService } from "./app/transformRunService.js";
+
+// Real adapters (hash/clock/component store/REAL deterministic node).
+export { sha256Text, sha256Bytes, Sha256TransformHash } from "./adapters/hash.js";
+export { systemClockNow, FixedClock } from "./adapters/clock.js";
+export type {
+  DeterministicComponent,
+  PinnedDeterministicComponent,
+} from "./adapters/componentStore.js";
+export {
+  JSON_EVENT_STREAM_TRIM_SOURCE,
+  jsonEventStreamTrimComponent,
+  DeterministicComponentStore,
+} from "./adapters/componentStore.js";
+export type { DeterministicFilterNodeDeps } from "./adapters/deterministicFilterNode.js";
+export { DeterministicFilterNodeAdapter } from "./adapters/deterministicFilterNode.js";
+export type { FixtureTransformModelDeps } from "./adapters/fixtureModelAdapter.js";
+export { FixtureTransformModelAdapter } from "./adapters/fixtureModelAdapter.js";
