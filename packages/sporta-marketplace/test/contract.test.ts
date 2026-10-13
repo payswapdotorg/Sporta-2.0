@@ -6,6 +6,11 @@ import {
   exampleTransformEntitlement,
   exampleTransformSuspensionRecord,
   exampleTransformListingSelectionResult,
+  exampleTransformCandidateRecord,
+  exampleTransformCheckLaneRecord,
+  exampleTransformRightsSnapshot,
+  exampleTransformLaunchDisclosure,
+  exampleTransformListingStateEvent,
 } from "../src/contract.example.js";
 import type {
   TransformReviewDecision,
@@ -13,6 +18,7 @@ import type {
   TransformEntitlement,
   TransformSuspensionRecord,
   TransformListingSelectionResult,
+  TransformLaunchDisclosure,
 } from "../src/contract.js";
 
 test("example review decision carries human signoff for every role", () => {
@@ -52,4 +58,35 @@ test("example selection refusal is fail-closed and typed", () => {
     assert.equal(selection.reason, "rights-prerequisites-unsatisfied");
     assert.ok(selection.detail.length > 0);
   }
+});
+
+test("example candidate record is submitted with a frozen digest (P9-07)", () => {
+  assert.equal(exampleTransformCandidateRecord.lifecycle, "SUBMITTED");
+  assert.ok(exampleTransformCandidateRecord.candidateDigest !== null);
+  assert.ok(exampleTransformCandidateRecord.submittedAt !== null);
+});
+
+test("example check lane carries typed outcomes with honest evidence kinds", () => {
+  const outcomes = exampleTransformCheckLaneRecord.results.map((result) => result.outcome);
+  assert.deepEqual([...outcomes].sort(), ["pass", "warn"]);
+  const similarity = exampleTransformCheckLaneRecord.results.find(
+    (result) => result.checkId === "similarity-signal",
+  );
+  assert.equal(similarity?.outcome, "warn");
+  assert.equal(similarity?.evidenceKind, "fixture");
+});
+
+test("example launch disclosure shows the P9-12 record with the fixed legal notice", () => {
+  const disclosure: TransformLaunchDisclosure = exampleTransformLaunchDisclosure;
+  assert.equal(disclosure.approvedVersion, "1.0.0");
+  assert.equal(disclosure.cost, null);
+  assert.ok(disclosure.dependencies.length >= 1);
+  assert.match(disclosure.legalNotice, /never implies legal clearance/);
+  assert.equal(exampleTransformRightsSnapshot.satisfied.length >= 1, true);
+});
+
+test("example listing state event records withdrawal provenance (no silent state loss)", () => {
+  assert.equal(exampleTransformListingStateEvent.kind, "withdrawn");
+  assert.equal(exampleTransformListingStateEvent.effect, "block-new-runs");
+  assert.ok(exampleTransformListingStateEvent.actor.length > 0);
 });
