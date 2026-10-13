@@ -67,6 +67,9 @@ Immutable lifecycle/promotion decision.
 | external editor state | editor application |
 | Arena escalation/session | Arena |
 | organization promotion | Sporta Organizations |
+| transform graph composition + transform run manifest | Sporta Transforms |
+| pipeline listing/review/offer/entitlement | Sporta Marketplace |
+| app attachment/grants/action audit | Sporta Application Environments |
 
 ## Rules
 
@@ -77,3 +80,7 @@ Immutable lifecycle/promotion decision.
 - Tenant checks at service boundaries.
 - External provider identifiers never become domain identifiers.
 - No hidden chain-of-thought is stored as evidence.
+- Pipeline source/weights are digest-pinned; external providers never own Sporta approval state.
+- Pipeline publication and material updates require automated checks and human review; paid and free listings share the same gates.
+- Similarity/transform change is not legal clearance; source/output rights are checked independently.
+- App observation and control are independent, revocable grants and do not imply learning consent.
