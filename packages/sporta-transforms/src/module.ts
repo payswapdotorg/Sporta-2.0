@@ -17,6 +17,12 @@ export const sportaTransformsModule = {
     "transform-release-candidate-types",
     "transform-run-manifest-types",
     "transform-graph-validation-types",
+    // Wave 9 (Worker A) — additive provided capabilities.
+    "transform-graph-validation",
+    "transform-execution-plan",
+    "transform-deterministic-execution",
+    "transform-model-lane",
+    "transform-run-service",
   ],
   publicEntrypoints: ["contract.ts"],
 } as const;
