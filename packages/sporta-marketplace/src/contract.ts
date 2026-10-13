@@ -27,8 +27,14 @@ export type {
   PolicySet,
   ArtifactRevisionRecord,
 } from "@sporta/contracts/contract";
-import type { TransformPipelineManifest, TransformReleaseCandidate } from "@sporta/transforms/contract";
-export type { TransformPipelineManifest, TransformReleaseCandidate } from "@sporta/transforms/contract";
+import type {
+  TransformPipelineManifest,
+  TransformReleaseCandidate,
+} from "@sporta/transforms/contract";
+export type {
+  TransformPipelineManifest,
+  TransformReleaseCandidate,
+} from "@sporta/transforms/contract";
 
 /** Candidate review lifecycle (docs/contracts/transform-marketplace.md). */
 export type TransformCandidateLifecycleState =
@@ -170,3 +176,117 @@ export type TransformListingSelectionResult =
         | "suspended";
       detail: string;
     };
+
+// ============================================================================
+// Wave 9 (Worker B) — additive implementations BEHIND the frozen types
+// (frozen block above untouched; names appended, surface stays green).
+// ============================================================================
+
+// W9B-1 — candidate lifecycle, immutability and material-change law.
+export type { TransformCandidateRecord, TransformMaterialChangeKind } from "./domain/lifecycle.js";
+export {
+  advanceCandidate,
+  advanceListing,
+  classifyCandidateMaterialChange,
+  compareVersions,
+  draftCandidateRecord,
+} from "./domain/lifecycle.js";
+
+// W9B-1 — the automated check lane (explicit registry, typed outcomes).
+export type {
+  CheckLaneStorePort,
+  TransformAutomatedCheckResult,
+  TransformCheckDefinition,
+  TransformCheckLaneInput,
+  TransformCheckLaneRecord,
+  TransformCheckRole,
+  TransformDependencySignal,
+} from "./domain/checks.js";
+export {
+  TRANSFORM_AUTOMATED_CHECK_REGISTRY,
+  failedGateCheckIds,
+  runDeclaredChecks,
+} from "./domain/checks.js";
+
+// W9B-3 — provider-neutral settlement port (payments are adapters only).
+export type {
+  SettlementPort,
+  TransformSettlementRecord,
+  TransformSettlementRequest,
+  TransformSettlementResult,
+} from "./domain/paymentPort.js";
+export { settlementIdempotencyKeyPreimage } from "./domain/paymentPort.js";
+
+// W9B-4 — rights snapshot law + typed launch disclosure (P9-12/14/16).
+export type { TransformRightsSnapshot } from "./domain/rights.js";
+export { isWellFormedRightsSnapshot, rightsPrerequisitesSatisfied } from "./domain/rights.js";
+export type { TransformLaunchDisclosure } from "./domain/disclosure.js";
+export { TRANSFORM_LAUNCH_LEGAL_NOTICE, buildLaunchDisclosure } from "./domain/disclosure.js";
+
+// Domain ports, typed errors and stable-id helpers.
+export type {
+  CandidateStorePort,
+  DecisionStorePort,
+  EntitlementStorePort,
+  ListingStateEventStorePort,
+  ListingStorePort,
+  MarketplaceClock,
+  MarketplaceHashPort,
+  SuspensionStorePort,
+  TransformListingStateEvent,
+  TransformManifestReadPort,
+} from "./domain/ports.js";
+export {
+  MarketplaceError,
+  TransformCandidateImmutableError,
+  TransformCheckLaneError,
+  TransformLifecycleError,
+  TransformListingError,
+  TransformManifestUnresolvedError,
+  TransformReleaseDigestMismatchError,
+  TransformReviewError,
+  TransformSettlementRefusedError,
+  TransformUnknownRecordError,
+  TransformVersionRegressionError,
+} from "./domain/errors.js";
+export { idFromDigest, stableStringify } from "./domain/stable.js";
+
+// App services (submission/check lane, review, listing, entitlement,
+// fail-closed admission).
+export type {
+  CheckLaneSignalsInput,
+  StartDraftInput,
+  SubmissionServiceDeps,
+} from "./app/submissionService.js";
+export { SubmissionService } from "./app/submissionService.js";
+export type {
+  HumanReviewEntryInput,
+  RecordReviewDecisionInput,
+  ReviewServiceDeps,
+} from "./app/reviewService.js";
+export { REQUIRED_REVIEW_ROLES, ReviewService } from "./app/reviewService.js";
+export type { ListingServiceDeps, PublishApprovedReleaseInput } from "./app/listingService.js";
+export { ListingService } from "./app/listingService.js";
+export type { EntitlementServiceDeps } from "./app/entitlementService.js";
+export { EntitlementService } from "./app/entitlementService.js";
+export type {
+  FeedLaunchAdmissionServiceDeps,
+  SelectForLaunchInput,
+} from "./app/feedLaunchAdmissionService.js";
+export { FeedLaunchAdmissionService } from "./app/feedLaunchAdmissionService.js";
+
+// Adapters — REAL hash/clock; clearly-labeled FIXTURE settlement,
+// manifest source and in-memory stores.
+export { Sha256MarketplaceHash, sha256Text } from "./adapters/hash.js";
+export { FixedClock, systemClockNow } from "./adapters/clock.js";
+export { FixtureSettlementAdapter } from "./adapters/fixtureSettlement.js";
+export { FixtureManifestSource } from "./adapters/fixtureManifestSource.js";
+export {
+  InMemoryCandidateStore,
+  InMemoryCheckLaneStore,
+  InMemoryDecisionStore,
+  InMemoryEntitlementStore,
+  InMemoryListingStateEventStore,
+  InMemoryListingStore,
+  InMemorySuspensionStore,
+} from "./adapters/inMemoryMarketplaceStore.js";

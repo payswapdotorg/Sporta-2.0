@@ -27,3 +27,53 @@ contract; lock invariants 26-29, 35):
   component rights (P9-14/15).
 - Similarity/appearance is only a quality signal or review trigger; it can
   never alone grant legal clearance (P9-16, lock 34).
+
+## Wave 9 (Worker B) implementation notes
+
+Additive-only behind the frozen surface (see SPEC.md for the
+spec-before-code record). Public names appended through `contract.ts`
+(287 lines, under the 300-line law); no frozen name was touched, moved
+or renamed.
+
+- Candidate lifecycle is an explicit typed transition table
+  (`domain/lifecycle.ts`); DRAFT is private and digest-free, SUBMISSION
+  freezes a REAL sha256 candidate digest once, and any behavioral
+  change is a new candidate at a new version
+  (`classifyCandidateMaterialChange` names the changed family).
+- The automated check lane (`domain/checks.ts`) is an explicit registry:
+  graph-validation and digest-integrity are `measured` (real validator
+  run, real re-hash); license/SBOM/dependency/similarity evidence is
+  `fixture`-labeled. Gate failures block advancement; similarity can
+  only WARN (P9-16); the lane has no approval concept at all.
+- Human review (`app/reviewService.ts`) requires all three roles
+  (product/rights/security) for approval and refuses approval over a
+  failed gate. Durable decisions are idempotent per
+  (candidate digest, outcome). Post-publication outcomes route to the
+  listing service (single owner of listing state).
+- Listings (`app/listingService.ts`) pin `currentRelease.releaseDigest`
+  to the approving decision's candidate digest (byte-equality asserted
+  in the service); `versionHistory` is append-only (v1 stays
+  byte-identical when v2 publishes); suspension writes the frozen
+  `TransformSuspensionRecord`; withdrawal/supersession record additive
+  state events (no silent state loss). Listing `policy` and
+  `expectations` project from the reviewed manifest (PolicySet
+  propagation).
+- Entitlements (`app/entitlementService.ts`) share one gate path for
+  free and paid offers (lock 29); paid grants authorize through the
+  provider-neutral `SettlementPort` with a DERIVED idempotency key
+  (never double-charged); refused settlement issues no entitlement;
+  expiry is checked at admission; `usedRuns` counts admissions only.
+- Admission (`app/feedLaunchAdmissionService.ts`) returns the frozen
+  `TransformListingSelectionResult` with the deterministic refusal
+  order listing-state -> suspension -> entitlement -> revocation ->
+  expiry -> usage -> rights; a missing/malformed rights snapshot is the
+  typed `rights-prerequisites-unsatisfied` refusal. The typed
+  `TransformLaunchDisclosure` (P9-12) carries publisher, version,
+  terms/price, rights prerequisites, dependencies (fail-closed on
+  unresolvable manifests), outputs, limitations, cost/latency with
+  evidence grade, review date, and the fixed legal notice.
+- Adapters: REAL `Sha256MarketplaceHash` (node:crypto); clearly-labeled
+  FIXTURE `FixtureSettlementAdapter` (idempotent per key, one charge,
+  attempts counted), `FixtureManifestSource`, and the in-memory stores.
+  A real payment provider and the product manifest store plug the same
+  ports later without contract changes.

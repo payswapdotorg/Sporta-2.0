@@ -50,7 +50,7 @@ only from an injected clock; digests only from an injected hash port.
 - `classifyCandidateMaterialChange(prior, next)` is an explicit record
   comparison (the compute-fallback classification law: total, typed, never
   ambient): families `manifest | code | model | dependency | runtime |
-  source | license | sbom`. Any digest/attestation difference is material;
+source | license | sbom`. Any digest/attestation difference is material;
   the classifier names which families changed for reviewer attention.
   Identical candidates classify as `[]`.
 
@@ -59,14 +59,14 @@ only from an injected clock; digests only from an injected hash port.
 `CheckRunnerPort` executes DECLARED checks over the candidate. The check
 registry is explicit and versioned (never ambient):
 
-| checkId                   | role   | evidence basis | pass condition                                          |
-| ------------------------- | ------ | -------------- | ------------------------------------------------------- |
-| `graph-validation`        | gate   | measured       | manifest (via `TransformManifestReadPort`) passes the w9a `validateTransformPipelineManifest`; unresolvable manifest = fail |
-| `digest-integrity`        | gate   | measured       | recomputed candidate digest (injected hash port) equals the frozen digest |
-| `license-presence`        | gate   | fixture        | non-empty `licensing.license` on the manifest AND every pinned dependency declares a non-empty license |
-| `sbom-presence`           | gate   | fixture        | candidate `attestations` contain a `kind: "sbom"` entry |
-| `unsafe-dependency-signal`| gate   | fixture        | every pinned dependency resolves in the injected dependency-signal source: `unsafe` -> fail, `unknown` -> **warn** (absence of signal is not safety), `clean` -> pass |
-| `similarity-signal`       | signal | fixture        | injected similarity signal present -> **warn** (review trigger only); absent -> pass |
+| checkId                    | role   | evidence basis | pass condition                                                                                                                                                        |
+| -------------------------- | ------ | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `graph-validation`         | gate   | measured       | manifest (via `TransformManifestReadPort`) passes the w9a `validateTransformPipelineManifest`; unresolvable manifest = fail                                           |
+| `digest-integrity`         | gate   | measured       | recomputed candidate digest (injected hash port) equals the frozen digest                                                                                             |
+| `license-presence`         | gate   | fixture        | non-empty `licensing.license` on the manifest AND every pinned dependency declares a non-empty license                                                                |
+| `sbom-presence`            | gate   | fixture        | candidate `attestations` contain a `kind: "sbom"` entry                                                                                                               |
+| `unsafe-dependency-signal` | gate   | fixture        | every pinned dependency resolves in the injected dependency-signal source: `unsafe` -> fail, `unknown` -> **warn** (absence of signal is not safety), `clean` -> pass |
+| `similarity-signal`        | signal | fixture        | injected similarity signal present -> **warn** (review trigger only); absent -> pass                                                                                  |
 
 - Outcomes are the frozen `pass | fail | warn` with per-check
   `evidenceKind: measured | fixture` — computed evidence (hash recompute,
@@ -117,7 +117,7 @@ registry is explicit and versioned (never ambient):
   candidate is the typed `TransformListingError` (`candidate-not-approved`)
   — the unreviewed-update negative lane.
 - Listing state machine (explicit, typed): `PUBLISHED -> SUSPENDED |
-  WITHDRAWN | SUPERSEDED`, one-way in this slice (reactivation is a TL
+WITHDRAWN | SUPERSEDED`, one-way in this slice (reactivation is a TL
   seam). `suspendListing` writes the frozen `TransformSuspensionRecord`
   (effect `block-new-runs`) and sets status `SUSPENDED`; `withdrawListing`
   and `supersedeListing` are peer transitions. History (versionHistory,
@@ -190,19 +190,19 @@ copyright safety.
 
 ## Failure semantics (event order)
 
-| condition                              | outcome                                                |
-| -------------------------------------- | ------------------------------------------------------ |
-| publish non-APPROVED candidate         | typed `TransformListingError` `candidate-not-approved`  |
-| decision digest != frozen candidate digest | typed `TransformReleaseDigestMismatchError`        |
-| gate check failed                      | typed `TransformCheckLaneError` `automated-gate-failed` |
-| approve with missing role              | typed `TransformReviewError` `missing-reviewer-role`    |
-| approve with failed gate               | typed `TransformReviewError` `automated-checks-failed`  |
-| mutate a SUBMITTED+ candidate          | typed `TransformCandidateImmutableError`              |
-| same-version different-digest submit   | typed `TransformCandidateImmutableError`              |
-| refused settlement                     | typed `TransformSettlementRefusedError`, no entitlement |
-| suspended/withdrawn/superseded listing | typed admission refusal (frozen reason), history kept |
-| unresolvable manifest at disclosure    | typed `TransformManifestUnresolvedError`              |
-| unknown entitlement at admission       | typed refusal `no-entitlement`                        |
+| condition                                  | outcome                                                 |
+| ------------------------------------------ | ------------------------------------------------------- |
+| publish non-APPROVED candidate             | typed `TransformListingError` `candidate-not-approved`  |
+| decision digest != frozen candidate digest | typed `TransformReleaseDigestMismatchError`             |
+| gate check failed                          | typed `TransformCheckLaneError` `automated-gate-failed` |
+| approve with missing role                  | typed `TransformReviewError` `missing-reviewer-role`    |
+| approve with failed gate                   | typed `TransformReviewError` `automated-checks-failed`  |
+| mutate a SUBMITTED+ candidate              | typed `TransformCandidateImmutableError`                |
+| same-version different-digest submit       | typed `TransformCandidateImmutableError`                |
+| refused settlement                         | typed `TransformSettlementRefusedError`, no entitlement |
+| suspended/withdrawn/superseded listing     | typed admission refusal (frozen reason), history kept   |
+| unresolvable manifest at disclosure        | typed `TransformManifestUnresolvedError`                |
+| unknown entitlement at admission           | typed refusal `no-entitlement`                          |
 
 ## Honest evidence
 

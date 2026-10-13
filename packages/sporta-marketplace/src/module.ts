@@ -4,18 +4,19 @@
  */
 export const sportaMarketplaceModule = {
   id: "sporta-marketplace",
-  requires: [
-    "sporta-contracts",
-    "sporta-transforms",
-    "sporta-artifacts",
-    "sporta-policy",
-  ],
+  requires: ["sporta-contracts", "sporta-transforms", "sporta-artifacts", "sporta-policy"],
   provides: [
     "marketplace-review-decision-types",
     "marketplace-listing-types",
     "marketplace-entitlement-types",
     "marketplace-suspension-types",
     "marketplace-selection-result-types",
+    // Wave 9 (Worker B) additive capabilities:
+    "marketplace-candidate-lifecycle",
+    "marketplace-automated-check-lane",
+    "marketplace-settlement-port",
+    "marketplace-launch-disclosure",
+    "marketplace-fail-closed-admission",
   ],
   publicEntrypoints: ["contract.ts"],
 } as const;

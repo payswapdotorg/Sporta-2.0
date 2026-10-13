@@ -9,10 +9,10 @@
     "lint": "oxlint"
   },
   "dependencies": {
-    "@sporta/contracts": "workspace:*",
-    "@sporta/transforms": "workspace:*",
     "@sporta/artifacts": "workspace:*",
-    "@sporta/policy": "workspace:*"
+    "@sporta/contracts": "workspace:*",
+    "@sporta/policy": "workspace:*",
+    "@sporta/transforms": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^6.0.2"
