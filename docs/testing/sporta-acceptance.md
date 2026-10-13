@@ -20,3 +20,8 @@ A16 hosted preview with truthful capacity state.
 A17 complete intent -> organization -> execution -> artifact -> user edit -> learning -> capability gap -> Arena -> result -> candidate -> evaluation -> promotion loop.
 
 Evidence must distinguish real execution from fixtures. No gate may be weakened to convert a failure into success.
+
+
+## P9 — Transform Studio / Marketplace / Application Environments
+
+The P9 gates are defined in `docs/testing/transform-marketplace-acceptance.md` (P9-01 through P9-26). P9 remains incomplete until the release candidate demonstrates reviewed pipeline publication/updates, rights/security gates, feed launch with pinned output lineage, and one real app attachment with scoped/revocable capabilities. An approved listing is not universal copyright clearance; a fixture feed is not live-provider evidence.
