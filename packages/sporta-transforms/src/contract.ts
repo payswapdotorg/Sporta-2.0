@@ -242,15 +242,10 @@ export type { TransformGraphValidationOptions } from "./domain/graphValidation.j
 export { validateTransformPipelineManifest } from "./domain/graphValidation.js";
 
 // W9A-2 — bounded execution plans + typed plan refusals.
-export type {
-  TransformExecutionPlanOptions, TransformPlannedStep, TransformExecutionPlan,
-} from "./domain/ports.js";
+export type { TransformExecutionPlanOptions, TransformPlannedStep, TransformExecutionPlan } from "./domain/ports.js";
 export { resolveTransformExecutionPlan } from "./domain/executionPlan.js";
 export type { TransformExecutionRefusalKind } from "./domain/errors.js";
-export {
-  TransformError, TransformGraphValidationError, TransformExecutionPlanError,
-  TransformRunError,
-} from "./domain/errors.js";
+export { TransformError, TransformGraphValidationError, TransformExecutionPlanError, TransformRunError } from "./domain/errors.js";
 
 // Execution ports (declared in domain; adapters implement).
 export type {
@@ -264,25 +259,14 @@ export type {
 export type { EventStreamCarryForward } from "./domain/carryForward.js";
 export { verifyEventStreamCarryForward } from "./domain/carryForward.js";
 export { stableStringify, stableEquals, fnv1aHex } from "./domain/stable.js";
-export type {
-  TransformRunServiceDeps,
-  TransformRunInputArtifact,
-  StartTransformRunInput,
-} from "./app/transformRunService.js";
+export type { TransformRunServiceDeps, TransformRunInputArtifact, StartTransformRunInput } from "./app/transformRunService.js";
 export { TransformRunService } from "./app/transformRunService.js";
 
 // Real adapters (hash/clock/component store/REAL deterministic node).
 export { sha256Text, sha256Bytes, Sha256TransformHash } from "./adapters/hash.js";
 export { systemClockNow, FixedClock } from "./adapters/clock.js";
-export type {
-  DeterministicComponent,
-  PinnedDeterministicComponent,
-} from "./adapters/componentStore.js";
-export {
-  JSON_EVENT_STREAM_TRIM_SOURCE,
-  jsonEventStreamTrimComponent,
-  DeterministicComponentStore,
-} from "./adapters/componentStore.js";
+export type { DeterministicComponent, PinnedDeterministicComponent } from "./adapters/componentStore.js";
+export { JSON_EVENT_STREAM_TRIM_SOURCE, jsonEventStreamTrimComponent, DeterministicComponentStore } from "./adapters/componentStore.js";
 export type { DeterministicFilterNodeDeps } from "./adapters/deterministicFilterNode.js";
 export { DeterministicFilterNodeAdapter } from "./adapters/deterministicFilterNode.js";
 export type { FixtureTransformModelDeps } from "./adapters/fixtureModelAdapter.js";
@@ -295,3 +279,13 @@ export type {
   LiveSessionHandle,
 } from "./domain/liveSource.js";
 export { validateLiveSourceDescriptor } from "./domain/liveSource.js";
+
+// W10-A (worker A) — live-feed ingress implementations BEHIND the frozen
+// surface above (REAL-local HTTP adapter over node built-ins, typed
+// live-ingress error, live-run composition over the EXISTING run service).
+// Additive names; the freeze is intact and the surface check stays green.
+export type { RealLocalHttpLiveSourceDeps } from "./adapters/realLocalHttpLiveSourceAdapter.js";
+export { RealLocalHttpLiveSourceAdapter } from "./adapters/realLocalHttpLiveSourceAdapter.js";
+export { LiveIngressError } from "./domain/errors.js";
+export type { LiveFeedDeclaration, LiveTransformRunDeps, LiveTransformRunManifest, StartLiveTransformRunInput } from "./app/liveIngress.js";
+export { LiveTransformRunService } from "./app/liveIngress.js";
