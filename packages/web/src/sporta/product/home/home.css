@@ -1,0 +1,225 @@
+/*
+ * sporta-product home/home.css (W11A-3, SPEC.md §5) — the Home screen
+ * styles. Consumes ONLY the --sporta-* tokens declared in theme.css
+ * (scoped to .sporta-app). Loaded through HomeScreen.tsx (Vite CSS
+ * import; the shell + control styles live in theme.css/shell.css).
+ */
+
+/* ---- Home ---- */
+
+.sporta-home {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--sporta-space-unit) * 2);
+}
+
+.sporta-home-title {
+  margin: 0;
+  font-family: var(--sporta-font-heading);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.sporta-home-subtitle {
+  margin: calc(var(--sporta-space-unit) * -1) 0 0;
+  color: var(--sporta-color-muted);
+  font-size: 14px;
+}
+
+.sporta-start-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: calc(var(--sporta-space-unit) * 1.5);
+}
+
+.sporta-start-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--sporta-space-unit) * 1);
+  background: var(--sporta-color-surface);
+  border: 1px solid var(--sporta-color-border);
+  border-radius: var(--sporta-radius);
+  padding: calc(var(--sporta-space-unit) * 2);
+}
+
+.sporta-start-card:hover {
+  border-color: var(--sporta-color-accent);
+}
+
+.sporta-start-card-title {
+  margin: 0;
+  font-family: var(--sporta-font-heading);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.sporta-start-card-text {
+  margin: 0;
+  font-size: 13px;
+  color: var(--sporta-color-muted);
+}
+
+.sporta-attention-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--sporta-space-unit) * 1);
+  max-height: 24rem;
+  overflow-y: auto;
+}
+
+.sporta-attention-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: calc(var(--sporta-space-unit) * 1.25) calc(var(--sporta-space-unit) * 1.5);
+  border: 1px solid var(--sporta-color-border);
+  border-left: 3px solid var(--sporta-color-muted);
+  border-radius: var(--sporta-radius-small);
+  background: rgba(20, 28, 23, 0.65);
+}
+
+.sporta-attention-item-severity-blocked {
+  border-left-color: #e05656;
+}
+
+.sporta-attention-item-severity-refused {
+  border-left-color: #c084fc;
+}
+
+.sporta-attention-item-severity-attention {
+  border-left-color: #e6b450;
+}
+
+.sporta-attention-item-severity-info {
+  border-left-color: var(--sporta-color-accent);
+}
+
+.sporta-attention-title {
+  margin: 0;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.sporta-attention-detail {
+  margin: 0;
+  font-size: 12px;
+  color: var(--sporta-color-muted);
+}
+
+.sporta-attention-tech {
+  margin: 0;
+  font-family: ui-monospace, monospace;
+  font-size: 10.5px;
+  color: var(--sporta-color-muted);
+  opacity: 0.8;
+}
+
+.sporta-attention-actions {
+  display: flex;
+  gap: var(--sporta-space-unit);
+  flex-wrap: wrap;
+  margin-top: calc(var(--sporta-space-unit) * 0.5);
+}
+
+.sporta-run-card-lines {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--sporta-space-unit) * 0.5);
+  margin: 0 0 calc(var(--sporta-space-unit) * 1);
+  font-size: 13px;
+}
+
+.sporta-run-card-lines dt {
+  color: var(--sporta-color-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.sporta-run-card-lines dd {
+  margin: 0 0 calc(var(--sporta-space-unit) * 0.75);
+}
+
+.sporta-consent-scopes {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--sporta-space-unit) * 0.75);
+  margin: 0 0 calc(var(--sporta-space-unit) * 1.5);
+  padding: 0;
+  border: 0;
+}
+
+.sporta-consent-scope {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--sporta-space-unit) * 0.75);
+  font-size: 14px;
+}
+
+.sporta-consent-scope input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--sporta-color-accent);
+}
+
+.sporta-consent-outcome {
+  margin: calc(var(--sporta-space-unit) * 1) 0 0;
+  padding: calc(var(--sporta-space-unit) * 1) calc(var(--sporta-space-unit) * 1.25);
+  border-radius: var(--sporta-radius-small);
+  background: rgba(47, 224, 137, 0.08);
+  font-size: 13px;
+}
+
+.sporta-consent-outcome-refused {
+  background: rgba(163, 58, 58, 0.14);
+}
+
+.sporta-trace-details {
+  margin: 0;
+}
+
+.sporta-trace-details summary {
+  cursor: pointer;
+  color: var(--sporta-color-muted);
+  font-size: 12px;
+}
+
+.sporta-trace-list {
+  list-style: none;
+  margin: calc(var(--sporta-space-unit) * 1) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 18rem;
+  overflow-y: auto;
+}
+
+.sporta-trace-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--sporta-space-unit) * 1);
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--sporta-color-muted);
+}
+
+.sporta-trace-stage {
+  min-width: 13rem;
+  color: var(--sporta-color-fg);
+}
+
+.sporta-loading {
+  color: var(--sporta-color-muted);
+  font-size: 14px;
+}
+
+.sporta-error-card {
+  border: 1px solid #a33a3a;
+  background: rgba(70, 18, 18, 0.3);
+}
