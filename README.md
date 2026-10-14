@@ -61,6 +61,8 @@ Do not build a competing runtime or task authority.
 
 ## Product surface
 
+Sporta is a user-facing sports/media transformation product—not a ZCode-branded coding workspace. ZCode supplies the internal AgentRuntime, tool execution and workspace capabilities; the /sporta interface owns its own product navigation, design system and workflows. See docs/architecture/sporta-product-ui.md for the binding UI contract.
+
 Sporta is intentionally not backend-only. Users should be able to express intent, see the selected organization, watch execution, inspect artifacts, take over manually, continue editing in open-source specialist software, return changes as new revisions, and control what the system learns.
 
 Initial open-source editor targets are Kdenlive, Blender, Godot, Krita, Inkscape, Audacity and Penpot. They are adapters/capabilities, not semantic authorities.
