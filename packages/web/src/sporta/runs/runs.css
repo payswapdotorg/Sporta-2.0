@@ -1,0 +1,110 @@
+/*
+ * W11C lane stylesheet — runs screen (the marketplace.css token law:
+ * `--sporta-*` names with standalone fallbacks; no ZCode vocabulary).
+ */
+
+.sporta-run-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--sporta-space-unit, 8px) * 1);
+}
+
+.sporta-run-row {
+  width: 100%;
+  min-height: 44px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border: 1px solid var(--sporta-color-border, #d9d9d4);
+  border-radius: var(--sporta-radius-small, 8px);
+  background: var(--sporta-color-surface, #ffffff);
+  padding: calc(var(--sporta-space-unit, 8px) * 1);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.sporta-run-row:hover,
+.sporta-run-row:focus-visible {
+  border-color: var(--sporta-color-accent, #0f7b6c);
+  outline: 2px solid var(--sporta-color-accent, #0f7b6c);
+  outline-offset: 1px;
+}
+
+.sporta-run-row-selected {
+  border-color: var(--sporta-color-accent, #0f7b6c);
+}
+
+.sporta-state {
+  align-self: flex-start;
+  border-radius: var(--sporta-radius-small, 6px);
+  padding: 1px 8px;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.sporta-state-succeeded {
+  background: #e0efe4;
+  color: #1e5c31;
+}
+
+.sporta-state-typed-failure {
+  background: #f9e9e4;
+  color: #7a2e1a;
+}
+
+.sporta-state-fallback-used {
+  background: #f2e8d5;
+  color: #6b4e16;
+}
+
+.sporta-state-cancelled,
+.sporta-state-in-flight,
+.sporta-state-empty {
+  background: #e8e8ef;
+  color: #44486b;
+}
+
+.sporta-step-list,
+.sporta-note-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--sporta-space-unit, 8px) * 0.75);
+}
+
+.sporta-step {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-left: 3px solid var(--sporta-color-border, #d9d9d4);
+  padding-left: calc(var(--sporta-space-unit, 8px) * 1);
+}
+
+.sporta-step-succeeded {
+  border-left-color: #2f7d4c;
+}
+
+.sporta-step-typed-failure {
+  border-left-color: #b3563e;
+}
+
+.sporta-step-fallback-used {
+  border-left-color: #b98a2f;
+}
+
+.sporta-step-cancelled {
+  border-left-color: #6b7080;
+}
+
+.sporta-note {
+  color: var(--sporta-color-muted, #5b6069);
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}

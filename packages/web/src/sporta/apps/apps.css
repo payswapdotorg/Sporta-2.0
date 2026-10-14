@@ -1,0 +1,56 @@
+/*
+ * W11C lane stylesheet — Connected Apps screen (the marketplace.css
+ * token law: `--sporta-*` names with standalone fallbacks).
+ */
+
+.sporta-app-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--sporta-space-unit, 8px) * 1);
+}
+
+.sporta-app-card {
+  width: 100%;
+  min-height: 44px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border: 1px solid var(--sporta-color-border, #d9d9d4);
+  border-radius: var(--sporta-radius-small, 8px);
+  background: var(--sporta-color-surface, #ffffff);
+  padding: calc(var(--sporta-space-unit, 8px) * 1);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.sporta-app-card:hover,
+.sporta-app-card:focus-visible {
+  border-color: var(--sporta-color-accent, #0f7b6c);
+  outline: 2px solid var(--sporta-color-accent, #0f7b6c);
+  outline-offset: 1px;
+}
+
+.sporta-app-card-selected {
+  border-color: var(--sporta-color-accent, #0f7b6c);
+}
+
+.sporta-app-card-revoked {
+  opacity: 0.85;
+}
+
+.sporta-danger-button:not(:disabled) {
+  border-color: #b3563e;
+  color: #7a2e1a;
+}
+
+.sporta-action-result {
+  border: 1px solid var(--sporta-color-border, #d9d9d4);
+  border-radius: var(--sporta-radius-small, 6px);
+  padding: calc(var(--sporta-space-unit, 8px) * 1);
+  font-size: 0.85rem;
+}
