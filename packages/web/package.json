@@ -25,7 +25,8 @@
     "@sporta/marketplace": "workspace:*",
     "@sporta/transforms": "workspace:*",
     "@sporta/product": "workspace:*",
-    "@sporta/work": "workspace:*"
+    "@sporta/work": "workspace:*",
+    "z-ai-web-dev-sdk": "^0.0.18"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.2",
