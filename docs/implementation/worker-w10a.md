@@ -131,7 +131,7 @@ In `packages/web/package.json` "dependencies", add (TL-only; then `pnpm install`
 
 Optional follow-ups for the TL: a browser test harness for the studio tabs (none exists; none claimed); surfacing the studio's sample-run lineage (WorkGraph refs) in a future UX wave; a durable marketplace/app-env store adapter when the product-side stores land.
 
-DELIVERY: branch wave10/worker-a @ <implementation-commit-sha> (spec commit 2ceac43 precedes it; this report is the branch HEAD rider)
+DELIVERY: branch wave10/worker-a @ a616924 (spec commit 2ceac43 precedes it; implementation commit a616924 carries code + tests + this report; pushed to payswapdotorg/Sporta-2.0)
 
 Gate table (real, measured on this sandbox, final pre-commit run):
 
