@@ -31,7 +31,12 @@ Status: P0–P8 RELEASE BASELINE COMPLETE (TL3 @ 1b0a9f4; 679/679 recorded tests
 
 - Operator PR #2 (TL-reviewed, merged @ec54027): the product-vs-substrate boundary law, UI architecture, work orders, 22 acceptance gates (UI-01..UI-22).
 - TL Wave 0 freeze @c01325f: the product-UI contracts (closed 7-screen vocabulary, shell port, --sporta-* token namespace, evidence-grade reporting), SCREEN-PORTS.md (the state-owner law map), Playwright harness serialized, worker roots created.
-- Implementation status: W11 IN FLIGHT — Workers A (product shell/navigation/Home), B (Studio workbench flow), C (Marketplace/My-Pipelines/Runs/Library/Connected-Apps + browser evidence) dispatched; TL integration (entrypoint isolation, journey verification, visual review) follows the worker lanes.
+- Implementation status: W11 WORKER LANES COMPLETE (all three merged to main, 2026-10-14 evening) —
+  A: product shell/navigation/Home merged @2c5cbeb (station gates green; lane tests 28/28);
+  B: Studio workbench (the panel/workbench re-foundation through the real seams) merged @a550d92 (arch 0/0/0, surface OK, tsc 0, web 47/47, battery 919/919, lint 0/70, lock identical; merge re-verified 945/945);
+  C: destination screens + Playwright journey evidence merged @bbe7a62 (arch 0/0/0, surface OK, tsc 0, web 34/34, battery 906/906, lint 0/70, lock identical, +4692/−0; worker-pod browser journeys 4 passed × 2 viewports with 20 committed screenshot artifacts; merge re-verified 954/954).
+  Dispatch record: the GLM-5.3 agent pool refused turns account-wide through the evening (platform-side; normal chats unaffected); lanes B and C established instantly on the GLM-5.3-Flash pool after a three-zombie workspace-quota purge — model is a station choice, the gate law is the quality bar.
+  Remaining for wave acceptance: the TL integration phase — mount the five C screens into the A shell's registry on /sporta (constructor-injected; registration constants ready), the entrypoint isolation review, journey re-verification on the integrated route, and the visual review at 1440x900 + 390x844; plus the five composition-side read/write seams the C worker serialized (run-history, artifact/lineage/export, app audit+revoke write, marketplace submission states) which are battery-proven REAL at the port level.
 
 ## Repository identity
 
