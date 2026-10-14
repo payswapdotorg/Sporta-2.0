@@ -1,6 +1,6 @@
 # Sporta 2.0 Architecture Lock
 
-Status: LOCKED FOR IMPLEMENTATION — P9 extension accepted 2026-10-13; see docs/architecture/adr-transform-studio-marketplace-and-application-environments.md
+Status: LOCKED FOR IMPLEMENTATION — P9 extension accepted 2026-10-13; Sporta-native UI boundary accepted 2026-10-14; see the relevant ADRs.
 
 ## Product thesis
 
@@ -68,6 +68,8 @@ capability gap -> Arena escalation -> expert intervention -> validated result
 35. Every output run preserves lineage to input and exact release; publishing a new version never mutates existing runs.
 36. Publishing, destructive actions, purchases, public distribution and permission escalation require explicit confirmation and policy checks.
 37. The TL registers new P9 package roots/edges before workers start; no duplicate runtime, scheduler, artifact or permission authority.
+38. The user-facing /sporta application is a Sporta-native product surface. ZCode is an internal execution substrate; its branded Root shell, navigation and global UI theme must not define the Sporta UI.
+39. Product UI completion requires a browser-driven user journey and reviewed desktop/mobile visual evidence; build-only/component-only success is not visual acceptance.
 
 ## Canonical topology
 
@@ -213,6 +215,15 @@ Preview target may use Vercel, Neon, R2, Upstash Redis and optional Apify, but n
 - The marketplace owns listings/review/entitlements; pipeline execution remains a WorkGraph run using existing runtime/compute facilities.
 - Attached applications expose a generic Application Environment contract with independent observe/control/file/semantic/network scopes.
 - See `docs/architecture/adr-transform-studio-marketplace-and-application-environments.md` and P9 contracts.
+
+## Sporta-native product UI
+
+- The /sporta home is task-oriented: feed/source entry, active work, recent runs and outputs. It is not a developer diagnostic trace page.
+- Studio connects source, typed pipeline graph, preview/event context, run and output.
+- Marketplace, My Pipelines, Runs, Library and Connected Apps are coherent product destinations; internal IDs/stages belong in expandable evidence details.
+- Sporta owns visual tokens, navigation, page hierarchy, user-facing copy and responsive states. Neutral primitives can be reused only if they do not import ZCode branding/theme/layout.
+- TL-owned route isolation must ensure @zcode/ui/styles.css and ZCode theme styles do not leak into the Sporta surface. ZCode execution/workspace/tool services remain reusable below the visual boundary.
+- Details and mandatory browser evidence live in docs/architecture/sporta-product-ui.md, docs/architecture/adr-sporta-native-product-ui.md and docs/testing/sporta-native-ui-acceptance.md.
 
 ## Concurrency
 
