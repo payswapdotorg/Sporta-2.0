@@ -118,7 +118,7 @@ Runner: `pnpm exec tsx --test` (node:test + node:assert/strict — the project l
 - Workers B/C: register `studio`/`marketplace`/`my-pipelines`/`runs`/`library`/`connected-apps` screen modules (`SportaScreenModule`) through the TL; the shell renders them in the content region and the placeholders disappear.
 - Optional: adopt `applySportaTheme` if the TL prefers imperative token application over theme.css; screenshot evidence at 1440x900 + 390x844 at the integration SHA (UI-17) with Worker C's harness.
 
-DELIVERY: branch wave11/worker-ui-a @ 15b56c8 (branch HEAD — the report rider; implementation commit 0462dc1 carries code + tests, spec commit 8e7e2e0 precedes both; all pushed to payswapdotorg/Sporta-2.0)
+DELIVERY: branch wave11/worker-ui-a, pushed to payswapdotorg/Sporta-2.0 (spec commit 8e7e2e0 → implementation commit 0462dc1 carries code + tests → this report rides the branch tip; the battery numbers in the gate table were re-measured on the delivered tree)
 
 Gate table (real, measured on this sandbox, final pre-commit run):
 
