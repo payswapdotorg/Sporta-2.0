@@ -243,30 +243,21 @@ export { validateTransformPipelineManifest } from "./domain/graphValidation.js";
 
 // W9A-2 — bounded execution plans + typed plan refusals.
 export type {
-  TransformExecutionPlanOptions,
-  TransformPlannedStep,
-  TransformExecutionPlan,
+  TransformExecutionPlanOptions, TransformPlannedStep, TransformExecutionPlan,
 } from "./domain/ports.js";
 export { resolveTransformExecutionPlan } from "./domain/executionPlan.js";
 export type { TransformExecutionRefusalKind } from "./domain/errors.js";
 export {
-  TransformError,
-  TransformGraphValidationError,
-  TransformExecutionPlanError,
+  TransformError, TransformGraphValidationError, TransformExecutionPlanError,
   TransformRunError,
 } from "./domain/errors.js";
 
 // Execution ports (declared in domain; adapters implement).
 export type {
-  TransformComponentResolverPort,
-  TransformDeterministicNodeInput,
-  TransformDeterministicNodeOutput,
-  TransformDeterministicNodePort,
-  TransformModelInvokeInput,
-  TransformModelInvokeOutput,
-  TransformModelRefusalKind,
-  TransformModelPort,
-  TransformHashPort,
+  TransformComponentResolverPort, TransformDeterministicNodeInput,
+  TransformDeterministicNodeOutput, TransformDeterministicNodePort,
+  TransformModelInvokeInput, TransformModelInvokeOutput,
+  TransformModelRefusalKind, TransformModelPort, TransformHashPort,
 } from "./domain/ports.js";
 
 // W9A-4 — carry-forward verification + run assembly.
@@ -296,3 +287,11 @@ export type { DeterministicFilterNodeDeps } from "./adapters/deterministicFilter
 export { DeterministicFilterNodeAdapter } from "./adapters/deterministicFilterNode.js";
 export type { FixtureTransformModelDeps } from "./adapters/fixtureModelAdapter.js";
 export { FixtureTransformModelAdapter } from "./adapters/fixtureModelAdapter.js";
+
+// W10-A — live-feed ingress, REAL-local grade (TL Wave 0 freeze; worker A's lane).
+export type {
+  LiveSourceGrade, LiveSourceDescriptor, LiveFrame, LiveIngressRefusalKind,
+  LiveIngressRefusal, LiveCloseReason, LiveSessionEvidence, LiveSourcePort,
+  LiveSessionHandle,
+} from "./domain/liveSource.js";
+export { validateLiveSourceDescriptor } from "./domain/liveSource.js";
