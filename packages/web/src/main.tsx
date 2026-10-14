@@ -31,8 +31,12 @@ import {
 import type { IPlatformService, RemoteTarget, ServerRemoteInfo } from "@zcode/shared";
 import { WEB_DEFAULT_THEME, resolveWebInitialTheme } from "./webThemeSeed.js";
 // W4C-3 host conversion (SPEC.md "Wave-4 host conversion"): the /sporta
-// route mounts the Sporta host panel; all host code lives in ./sporta/.
-import { SportaPanel } from "./sporta/SportaPanel.js";
+// route mounts the Sporta host surface; all host code lives in ./sporta/.
+// W11 TL integration: the route now mounts the product shell app with the
+// full screen set (Home + Studio workbench + the four destination screens);
+// the pre-W11 SportaPanel trace projection is superseded by the Home screen
+// (same host port, same write paths, the product-native surface).
+import { SportaProductApp } from "./sporta/product/app.js";
 import { createBrowserFixtureHost } from "./sporta/browserFixtureHost.js";
 import { createStudioBrowserFixtureHost } from "./sporta/studioBrowserFixture.js";
 import { isSportaPath } from "./sporta/sportaRoute.js";
@@ -443,9 +447,9 @@ async function bootstrapWebApp() {
   // law — the REAL studio composition is headless; its evidence badge
   // reads FIXTURE here, labeled in the UI itself).
   if (isSportaPath(window.location.pathname)) {
-    document.title = "Sporta — Product Loop";
+    document.title = "Sporta";
     root.render(
-      <SportaPanel host={createBrowserFixtureHost()} studio={createStudioBrowserFixtureHost()} />,
+      <SportaProductApp host={createBrowserFixtureHost()} studio={createStudioBrowserFixtureHost()} />,
     );
     return;
   }
