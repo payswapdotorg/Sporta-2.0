@@ -23,6 +23,10 @@ export const sportaTransformsModule = {
     "transform-deterministic-execution",
     "transform-model-lane",
     "transform-run-service",
+    // Wave 10 (Worker A) — additive provided capabilities.
+    "live-source-port",
+    "live-source-real-local-http",
+    "live-run-ingress",
   ],
   publicEntrypoints: ["contract.ts"],
 } as const;
