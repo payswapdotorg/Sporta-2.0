@@ -1,0 +1,299 @@
+/*
+ * W11C lane stylesheet — marketplace + my-pipelines screens.
+ *
+ * The token law (UI-02/03/21): every visual value maps to Worker A's
+ * `--sporta-*` namespace (the SPORTA_THEME_TOKENS names) with a
+ * standalone fallback so the screens render at this SHA (no shell yet)
+ * and inherit the product theme at integration. No ZCode classes, no
+ * @zcode/ui, no --zai-* tokens.
+ */
+
+.sporta-screen {
+  color: var(--sporta-color-fg, #16181d);
+  background: var(--sporta-color-bg, #f7f7f5);
+  font-family: var(--sporta-font-body, system-ui, sans-serif);
+  border: 1px solid var(--sporta-color-border, #d9d9d4);
+  border-radius: var(--sporta-radius, 14px);
+  padding: calc(var(--sporta-space-unit, 8px) * 2);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--sporta-space-unit, 8px) * 2);
+  min-width: 0;
+}
+
+.sporta-screen-header {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--sporta-space-unit, 8px) * 0.5);
+}
+
+.sporta-screen-header h1 {
+  font-family: var(--sporta-font-heading, system-ui, sans-serif);
+  font-size: 1.35rem;
+  margin: 0;
+}
+
+.sporta-screen-purpose {
+  margin: 0;
+  color: var(--sporta-color-muted, #5b6069);
+  font-size: 0.9rem;
+}
+
+.sporta-backing {
+  align-self: flex-start;
+  border-radius: var(--sporta-radius-small, 6px);
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.sporta-backing-fixture {
+  background: #f2e8d5;
+  color: #6b4e16;
+}
+
+.sporta-backing-real {
+  background: #e0efe4;
+  color: #1e5c31;
+}
+
+.sporta-badge {
+  align-self: flex-start;
+  border-radius: var(--sporta-radius-small, 6px);
+  padding: 1px 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.sporta-grade-fixture {
+  background: #f2e8d5;
+  color: #6b4e16;
+}
+
+.sporta-grade-measured {
+  background: #e0efe4;
+  color: #1e5c31;
+}
+
+.sporta-grade-declared {
+  background: #e8e8ef;
+  color: #44486b;
+}
+
+.sporta-card-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: calc(var(--sporta-space-unit, 8px) * 1.5);
+}
+
+.sporta-card {
+  width: 100%;
+  min-height: 44px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid var(--sporta-color-border, #d9d9d4);
+  border-radius: var(--sporta-radius, 14px);
+  background: var(--sporta-color-surface, #ffffff);
+  padding: calc(var(--sporta-space-unit, 8px) * 1.5);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.sporta-card:hover,
+.sporta-card:focus-visible {
+  border-color: var(--sporta-color-accent, #0f7b6c);
+  outline: 2px solid var(--sporta-color-accent, #0f7b6c);
+  outline-offset: 1px;
+}
+
+.sporta-card-selected {
+  border-color: var(--sporta-color-accent, #0f7b6c);
+}
+
+.sporta-card-title,
+.sporta-record-title {
+  font-weight: 600;
+}
+
+.sporta-card-meta,
+.sporta-record-meta {
+  color: var(--sporta-color-muted, #5b6069);
+  font-size: 0.8rem;
+}
+
+.sporta-card-outputs {
+  font-size: 0.8rem;
+}
+
+.sporta-detail {
+  border-top: 1px solid var(--sporta-color-border, #d9d9d4);
+  padding-top: calc(var(--sporta-space-unit, 8px) * 1.5);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--sporta-space-unit, 8px) * 1);
+}
+
+.sporta-detail h2 {
+  margin: 0;
+  font-family: var(--sporta-font-heading, system-ui, sans-serif);
+}
+
+.sporta-facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: calc(var(--sporta-space-unit, 8px) * 1);
+}
+
+.sporta-fact {
+  display: flex;
+  flex-direction: column;
+}
+
+.sporta-fact dt {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--sporta-color-muted, #5b6069);
+}
+
+.sporta-fact dd {
+  margin: 0;
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+
+.sporta-legal,
+.sporta-note {
+  color: var(--sporta-color-muted, #5b6069);
+  font-size: 0.78rem;
+}
+
+.sporta-refusal {
+  border: 1px solid #b3563e;
+  border-radius: var(--sporta-radius-small, 6px);
+  background: #f9e9e4;
+  color: #7a2e1a;
+  padding: calc(var(--sporta-space-unit, 8px) * 1);
+  font-size: 0.85rem;
+}
+
+.sporta-empty,
+.sporta-loading {
+  color: var(--sporta-color-muted, #5b6069);
+  font-size: 0.88rem;
+}
+
+.sporta-filter {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--sporta-space-unit, 8px) * 1);
+}
+
+.sporta-filter label {
+  font-size: 0.85rem;
+}
+
+.sporta-filter input {
+  border: 1px solid var(--sporta-color-border, #d9d9d4);
+  border-radius: var(--sporta-radius-small, 6px);
+  padding: 8px 10px;
+  min-height: 44px;
+  font: inherit;
+  color: inherit;
+  background: var(--sporta-color-surface, #ffffff);
+}
+
+.sporta-group h2 {
+  font-size: 1rem;
+  margin: 0 0 4px;
+  font-family: var(--sporta-font-heading, system-ui, sans-serif);
+}
+
+.sporta-record-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--sporta-space-unit, 8px) * 1);
+}
+
+.sporta-record {
+  width: 100%;
+  min-height: 44px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border: 1px solid var(--sporta-color-border, #d9d9d4);
+  border-radius: var(--sporta-radius-small, 8px);
+  background: var(--sporta-color-surface, #ffffff);
+  padding: calc(var(--sporta-space-unit, 8px) * 1);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.sporta-record:hover,
+.sporta-record:focus-visible {
+  border-color: var(--sporta-color-accent, #0f7b6c);
+  outline: 2px solid var(--sporta-color-accent, #0f7b6c);
+  outline-offset: 1px;
+}
+
+.sporta-record-selected {
+  border-color: var(--sporta-color-accent, #0f7b6c);
+}
+
+.sporta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--sporta-space-unit, 8px) * 1);
+}
+
+.sporta-action-button {
+  min-height: 44px;
+  border-radius: var(--sporta-radius-small, 8px);
+  border: 1px solid var(--sporta-color-border, #d9d9d4);
+  background: var(--sporta-color-surface, #ffffff);
+  color: inherit;
+  padding: 8px 14px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.sporta-action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.sporta-action-button:not(:disabled):hover,
+.sporta-action-button:not(:disabled):focus-visible {
+  border-color: var(--sporta-color-accent, #0f7b6c);
+  outline: 2px solid var(--sporta-color-accent, #0f7b6c);
+  outline-offset: 1px;
+}
+
+.sporta-disabled-reason {
+  color: var(--sporta-color-muted, #5b6069);
+  font-size: 0.78rem;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .sporta-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sporta-facts {
+    grid-template-columns: 1fr;
+  }
+}

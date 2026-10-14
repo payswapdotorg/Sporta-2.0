@@ -1,0 +1,57 @@
+/*
+ * W11C lane stylesheet — library screen (the marketplace.css token law:
+ * `--sporta-*` names with standalone fallbacks; no ZCode vocabulary).
+ */
+
+.sporta-lib-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--sporta-space-unit, 8px) * 1);
+}
+
+.sporta-lib-row {
+  width: 100%;
+  min-height: 44px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border: 1px solid var(--sporta-color-border, #d9d9d4);
+  border-radius: var(--sporta-radius-small, 8px);
+  background: var(--sporta-color-surface, #ffffff);
+  padding: calc(var(--sporta-space-unit, 8px) * 1);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.sporta-lib-row:hover,
+.sporta-lib-row:focus-visible {
+  border-color: var(--sporta-color-accent, #0f7b6c);
+  outline: 2px solid var(--sporta-color-accent, #0f7b6c);
+  outline-offset: 1px;
+}
+
+.sporta-lib-row-selected {
+  border-color: var(--sporta-color-accent, #0f7b6c);
+}
+
+.sporta-revision-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--sporta-space-unit, 8px) * 0.75);
+}
+
+.sporta-revision {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-left: 3px solid var(--sporta-color-accent, #0f7b6c);
+  padding-left: calc(var(--sporta-space-unit, 8px) * 1);
+}

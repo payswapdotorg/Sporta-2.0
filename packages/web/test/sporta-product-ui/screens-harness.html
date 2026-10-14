@@ -1,0 +1,66 @@
+<!--
+  W11C TEST HARNESS — Worker C's destination screens mounted for
+  BROWSER-LEVEL RENDERING EVIDENCE ONLY.
+
+  HONESTY LAW: this page is NOT the product route. The /sporta product
+  shell belongs to Worker A (not present at the W11C base SHA) and the
+  route wiring is the TL integration (NEXT DEPENDENCIES in the w11c
+  report). This page exists so the five destination screens render and
+  INTERACT in a real browser (chromium via @playwright/test) over their
+  labeled FIXTURE hosts — the studioBrowserFixture.ts precedent. Every
+  fixture value shown here is labeled FIXTURE at the point of use, and
+  the page title states its harness status.
+-->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sporta destination screens — W11C TEST HARNESS (not the product route)</title>
+    <style>
+      body { margin: 0; padding: 16px; background: #eef0ee; font-family: system-ui, sans-serif; }
+      .w11c-harness-note {
+        border: 2px dashed #b3563e; border-radius: 10px; padding: 10px 14px;
+        color: #7a2e1a; background: #fdf3ef; font-size: 0.85rem; margin-bottom: 16px;
+      }
+      .w11c-harness-slot { margin-bottom: 28px; }
+    </style>
+  </head>
+  <body>
+    <p class="w11c-harness-note" data-testid="harness-note">
+      W11C TEST HARNESS — component-level browser evidence for the five Worker-C
+      destination screens over their labeled FIXTURE hosts. This is NOT the /sporta
+      product route; the route/shell integration is the TL's (see the worker report's
+      NEXT DEPENDENCIES). All data below is FIXTURE demo content.
+    </p>
+    <div class="w11c-harness-slot" id="w11c-marketplace"></div>
+    <div class="w11c-harness-slot" id="w11c-my-pipelines"></div>
+    <div class="w11c-harness-slot" id="w11c-runs"></div>
+    <div class="w11c-harness-slot" id="w11c-library"></div>
+    <div class="w11c-harness-slot" id="w11c-apps"></div>
+    <script type="module">
+      import { createRoot } from "react-dom/client";
+      import { createElement } from "react";
+      import { MarketplaceScreen } from "/src/sporta/marketplace/MarketplaceScreen.tsx";
+      import { MyPipelinesScreen } from "/src/sporta/marketplace/MyPipelinesScreen.tsx";
+      import { createMarketplaceFixtureHost } from "/src/sporta/marketplace/marketplaceFixtureHost.ts";
+      import { RunsScreen } from "/src/sporta/runs/RunsScreen.tsx";
+      import { createRunsFixtureHost } from "/src/sporta/runs/runsFixtureHost.ts";
+      import { LibraryScreen } from "/src/sporta/library/LibraryScreen.tsx";
+      import { createLibraryFixtureHost } from "/src/sporta/library/libraryFixtureHost.ts";
+      import { ConnectedAppsScreen } from "/src/sporta/apps/ConnectedAppsScreen.tsx";
+      import { createAppsFixtureHost } from "/src/sporta/apps/appsFixtureHost.ts";
+
+      const mounts = [
+        ["w11c-marketplace", MarketplaceScreen, createMarketplaceFixtureHost().marketplace],
+        ["w11c-my-pipelines", MyPipelinesScreen, createMarketplaceFixtureHost().myPipelines],
+        ["w11c-runs", RunsScreen, createRunsFixtureHost()],
+        ["w11c-library", LibraryScreen, createLibraryFixtureHost()],
+        ["w11c-apps", ConnectedAppsScreen, createAppsFixtureHost()],
+      ];
+      for (const [slotId, Screen, port] of mounts) {
+        createRoot(document.getElementById(slotId)).render(createElement(Screen, { port }));
+      }
+    </script>
+  </body>
+</html>
