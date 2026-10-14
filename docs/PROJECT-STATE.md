@@ -16,7 +16,7 @@ Status: P0–P8 RELEASE BASELINE COMPLETE (TL3 @ 1b0a9f4; 679/679 recorded tests
 - Trigger: operator directive "continue with the rest of the roadmap"; the formal rest = the P9 audit's deferred-and-typed list.
 - Scope: studio mount (the W9C TL seam) + live-feed ingress at the REAL-local grade + a REAL model provider lane (sandbox model service, honestly labeled). Payment provider / HF hosting / production ingress / hosted deployment remain operator-credential-gated typed-future (documented key requests; a P11 hosted-preview proposal pending operator confirmation — feasibility probed, no deployment performed).
 - Canonical docs: `docs/architecture/adr-p10-integration-reality.md`, `docs/work-orders/p10-integration-reality-work-orders.md`, `docs/testing/p10-acceptance.md`.
-- Implementation status: PENDING WAVE 0 (docs-first per the P9 law; contract freeze + three lanes to follow).
+- Implementation status: WAVE 10 IN FLIGHT — docs @1036457, Wave 0 freeze @89ae90e (live-ingress contract frozen, battery 856/856), STUDIO LANE MERGED @3b736b9 (the W9C TL seam closed: host composition over real seams + product mount + browser fixture host, 8 station-verified tests, honest anomaly record for the delivery's undetermined prompt genealogy; TL-serialized with the P9-trio workspace-dep registration). Live-ingress lane + real-model lane in flight (limit/capacity-blocked chats with armed recovery).
 
 ## Repository identity
 
