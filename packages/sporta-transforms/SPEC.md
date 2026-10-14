@@ -1,4 +1,4 @@
-# sporta-transforms — SPEC (P9 Wave 9, Worker A)
+# sporta-transforms — SPEC (P9 Wave 9, Worker A + P10 Wave 10, Worker A)
 
 Spec-before-code record for **W9A-1..W9A-4**: typed DAG validation,
 graph resolution into a bounded execution plan, the REAL deterministic
@@ -8,6 +8,21 @@ transform-run manifest. Authority order:
 `docs/architecture/adr-transform-studio-marketplace-and-application-environments.md` ->
 `docs/contracts/transform-marketplace.md` ->
 `docs/testing/transform-marketplace-acceptance.md` (P9-01..P9-06).
+
+Spec-before-code record for **W10A-1..W10A-4** (appended before any
+W10-A implementation, per the SPEC-first law): live-feed ingress at
+the REAL-local grade over the TL's Wave 0 frozen live-ingress surface.
+Authority order:
+`docs/work-orders/p10-integration-reality-work-orders.md` (Lane W10-A) ->
+`docs/architecture/adr-p10-integration-reality.md` (rules 13-16) ->
+`docs/contracts/transform-marketplace.md` ->
+`docs/testing/p10-acceptance.md` (P10-01..P10-05).
+The frozen live-ingress names (`LiveSourceGrade`, `LiveSourceDescriptor`,
+`LiveFrame`, `LiveIngressRefusalKind`, `LiveIngressRefusal`,
+`LiveCloseReason`, `LiveSessionEvidence`, `LiveSourcePort`,
+`LiveSessionHandle`, `validateLiveSourceDescriptor` — TL-seeded in
+`src/domain/liveSource.ts` @ Wave 0) are untouched; every W10-A
+addition appends new public names behind them.
 
 The repository is the source of truth; this file states behavior,
 ownership, invariants and failure semantics BEFORE implementation.
@@ -209,3 +224,233 @@ records kept/dropped counts in the output's semantic evidence string.
 - `sporta-capability` / `application-environment-action` lanes are
   deferred (worker C / TL); they plan as `capability-lane-deferred` and
   execute as typed failures.
+
+---
+
+# W10-A — Live-feed ingress at the REAL-local grade (P10, Worker A)
+
+Scope law for this wave: additions live ONLY in
+`packages/sporta-transforms/**`; the TL-frozen live-ingress surface in
+`src/domain/liveSource.ts` (Wave 0) and every frozen contract name in
+`src/contract.ts` stay byte-identical; new public names are APPENDED
+(surface check stays green at 31 frozen names + additive). No external
+dependency ever enters this package — the adapter uses `node:http`
+built-ins only. Layer law unchanged: domain pure, app composes, all IO
+in adapters.
+
+## W10A-1 — Freeze-test extension law (P10-01)
+
+The TL's live-ingress freeze tests are EXTENDED (never rewritten) so
+every frozen name has a named, real conformance test:
+
+- `validateLiveSourceDescriptor`: fail-closed on EVERY malformed lane
+  (missing/non-string/empty `sourceId`; closed-grade violation —
+  `production` and arbitrary strings refused, `real-local-live` and
+  `fixture` accepted; missing/non-string/empty `contentKind`;
+  non-positive/non-finite/non-number `cadenceMs`; non-positive/
+  non-integer/non-number `queueBound`) — each lane returns a typed
+  `LiveIngressRefusal` (`kind: "invalid-descriptor"`,
+  `framesConsumed: 0`), never throws raw.
+- Type-level conformance lives in `src/domain/liveSourceConformance.ts`
+  (compiled by `tsc -b` via `include: ["src"]`, erased at runtime — the
+  `src/contract.example.ts` precedent): well-formed
+  descriptor/frame/refusal/evidence/handle records are assigned to the
+  frozen types; malformed shapes are refused with `@ts-expect-error`
+  (a two-sided assertion — the build fails if a shape widens OR if an
+  expected error disappears).
+- Runtime guards in `test/liveSourceContract.test.ts`: the closed
+  vocabularies (`LiveSourceGrade`, `LiveIngressRefusalKind`,
+  `LiveCloseReason`) and record field kinds are asserted on values.
+
+## W10A-2 — `RealLocalHttpLiveSourceAdapter` (REAL lane, P10-02..04)
+
+`src/adapters/realLocalHttpLiveSourceAdapter.ts` — the REAL local
+streaming adapter implementing the frozen `LiveSourcePort`. EVIDENCE
+CLASS: REAL-LOCAL — a real `node:http` server on a real ephemeral
+localhost port streaming real chunked text frames at the declared
+cadence to a real client socket. Honest grade: `real-local-live` —
+never "production" (the closed vocabulary makes that word unutterable).
+
+**Constructor config (wiring-time, programmer-owned):** the frame
+payload list the server will stream (finite, non-empty payloads
+without `\n` — one frame = one newline-delimited chunk), an injectable
+clock (default `systemClockNow`), bind host (default `127.0.0.1`) and
+port (default 0 = ephemeral). Impossible constructor configs throw at
+wiring time (the component-store precedent); descriptor problems
+refuse typed at the seam.
+
+**Session lifecycle (`open(descriptor)`):**
+
+1. `validateLiveSourceDescriptor` runs fail-closed BEFORE any IO — a
+   malformed descriptor returns `{ refusal }` with
+   `kind: "invalid-descriptor"` and nothing is opened.
+2. Grade law: this adapter serves grade `real-local-live` ONLY — a
+   descriptor declaring `fixture` is refused typed
+   (`invalid-descriptor`) because the bytes here really do flow over
+   real localhost HTTP; labeling them fixture would be a lie in the
+   other direction.
+3. A per-session real `node:http` server listens on the ephemeral
+   port; `open` resolves only after the real client round trip (response
+   headers received). Listen/connect failures return the typed refusal
+   `source-unavailable` — never a raw throw.
+4. The server writes frame `i` at `i * cadenceMs` as one chunk
+   (`payload + "\n"`, `Transfer-Encoding: chunked`, content type from
+   `descriptor.contentKind`), then ends the response after the last
+   frame. The server is 1:1 with the session: close/refusal/dispose
+   stops it (cadence timers cleared, sockets destroyed, `server.close()`
+   awaited) — a stopped session's port refuses new connections.
+
+**Bounded queue + back-pressure (ADR rule 16, P10-03):**
+
+- The client parses newline-delimited frames; each complete line
+  arrives into a FIFO queue bounded by `descriptor.queueBound`.
+- `next()` returns the oldest queued frame (arrival ordinal as
+  `LiveFrame.index`, arrival time as `receivedAt`); consumed frames
+  are exactly the arrival prefix (indices are gapless while healthy).
+- When a frame ARRIVES and the queue is full, the adapter REFUSES
+  immediately: a typed `LiveIngressRefusal`
+  (`kind: "queue-overflow"`, `framesConsumed` = frames actually
+  delivered) whose detail states the honest arithmetic (arrival
+  number, received / consumed / queued counts — no frame is dropped
+  silently and nothing grows unboundedly); the client is destroyed,
+  the server stopped, and the `LiveSessionEvidence` is finalized at
+  that instant as `closeReason: "refused"` with the refusal pinned and
+  `closedAt` set — the partial evidence is retained, never discarded.
+  Subsequent `next()` calls return the latched refusal with
+  `done: true`.
+- `next()` never blocks unboundedly: every pending waiter is woken by
+  a lifecycle event (frame arrival, refusal latch, clean stream end,
+  consumer close, adapter dispose). A waiter can never outlive the
+  session.
+
+**Terminal semantics through the frozen shapes:** the frozen
+`LiveSessionHandle.next()` can only signal "no more frames" through
+`{ refusal, done: true }`. The adapter's honest mapping:
+
+| event                                   | terminal refusal                                  | evidence state at terminal               |
+| --------------------------------------- | ------------------------------------------------- | ---------------------------------------- |
+| clean end-of-stream (finite list done)  | `source-unavailable`, detail says "ended cleanly" | `refusal: null`, `closeReason: "in-flight"` (awaiting the consumer's `close`) |
+| queue overflow                          | `queue-overflow`                                  | finalized `refused`, refusal pinned      |
+| mid-stream connection/socket error      | `source-unavailable` + error detail               | finalized `refused`, refusal pinned      |
+| consumer `close()` before stream end    | `aborted` (detail carries the caller's reason)    | finalized with the caller's reason       |
+
+The composition law for terminal disambiguation (structural, never
+stringly): a terminal `next()` whose `evidence().refusal` is non-null
+or whose `evidence().closeReason` is `"refused"` means the session
+FAILED; a terminal with refusal null and `in-flight` state means the
+stream ended cleanly and the consumer finalizes via
+`close("completed")`.
+
+**Honest cancellation (P10-04):** `close(reason)` stops the server and
+client for real and finalizes the evidence with the caller's reason —
+UNLESS the session already finalized by refusal (a refused session is
+never re-labeled "completed" — a failed source is never successful).
+`close` is idempotent (repeated calls return the same finalized
+evidence). `adapter.dispose()` force-finalizes every still-open
+session as `aborted` and stops every server — clean test teardown.
+Post-finalization socket noise (ECONNRESET on destroyed sockets) is
+expected teardown fallout of the RECORDED cause; errors that occur
+while a session is live are always latched into typed
+refusals/evidence — never swallowed, never thrown raw across the seam.
+
+## W10A-3 — Live run integration (manifest pins live evidence, P10-05)
+
+`src/app/liveIngress.ts` — `LiveTransformRunService` (new public
+name) composes the live leg THROUGH the existing
+`TransformRunService`: NO second execution runtime, no second ledger,
+no second evidence vocabulary. The run service is injected as a
+constructor dep and stays the single owner of run assembly.
+
+`StartLiveTransformRunInput` (new name): the existing
+`StartTransformRunInput` minus `inputs` (the feed is derived from the
+live drain), plus the declared live source
+(`{ port: LiveSourcePort, descriptor: LiveSourceDescriptor }`) and the
+feed identity (`artifactRef`, `rightsSnapshot`, `provenance`) pinned
+onto the run manifest's inputs.
+
+**Flow:** validate the descriptor fail-closed (typed
+`LiveIngressError` before any IO) → `open` (refusal → typed
+`LiveIngressError`, no run) → drain `next()` until terminal, honoring
+an injected `AbortSignal` (abort mid-drain closes the session
+`aborted` and throws the typed error with the partial evidence — no
+run, no fabricated feed) → terminal discrimination per the structural
+law above: a failed source throws `LiveIngressError` carrying the
+refused evidence (a disconnected/failed source is NEVER reported
+successful); a clean end finalizes `close("completed")` → the drained
+frame payloads joined as newline-delimited text become the run's input
+artifact bytes, fed into `runs.runPipeline` EXACTLY like the
+fixture/sample feeds → the returned record is a
+`LiveTransformRunManifest` (new name, EXTENDS the frozen
+`TransformRunManifest` — the frozen interface itself is untouched per
+the additive-only law; the subtype is structurally assignable to it)
+carrying `liveSessions: readonly LiveSessionEvidence[]` (first slice:
+exactly one). The pinned evidence carries the session identity
+(`descriptor.sourceId`), the honest grade verbatim
+(`real-local-live`; "production" is unutterable — closed vocabulary),
+frame statistics (`framesConsumed`), `openedAt`/`closedAt` and the
+close reason. `semanticFidelity` stays owned by the existing run
+service (the live grade never leaks into that vocabulary).
+
+`LiveIngressError` (new name, `src/domain/errors.ts`): typed
+live-ingress failure carrying the refusal and the partial
+`LiveSessionEvidence` (either may be null when nothing opened).
+
+## W10A-4 — Test law (named, REAL)
+
+All live tests run the REAL adapter (real server socket + real client
+in-process, ephemeral/temp ports, `dispose()` teardown in `finally`,
+no test-only behavior switches in src) under
+`pnpm exec tsx --test`:
+
+- real server+client frame flow: declared cadence bounds, ordered
+  gapless frames, honest counters, honest close evidence;
+- bounded-queue overflow refusal: typed refusal + partial evidence
+  retained + arithmetic honesty in the detail + server actually
+  stopped (new connections refused);
+- cancellation mid-stream: session finalized `aborted`, server
+  stopped, terminal `aborted` thereafter;
+- manifest pinning: live evidence + exact grade-label assertions
+  (`real-local-live`, never "production");
+- descriptor validation negative lanes: every malformed case typed
+  through both the pure validator and the REAL adapter's `open`;
+- live-run failure lanes: queue-overflow mid-drain and abort mid-drain
+  both throw `LiveIngressError` with partial evidence and execute NO
+  run.
+
+## Failure semantics (W10-A event order)
+
+| condition                              | outcome                                                       |
+| -------------------------------------- | ------------------------------------------------------------- |
+| malformed descriptor (any lane)        | typed `invalid-descriptor` refusal before any IO; no session  |
+| grade outside the adapter's real lane  | typed `invalid-descriptor` refusal; no session                |
+| listen/connect failure                 | typed `source-unavailable` refusal; no session                |
+| queue full at frame arrival            | typed `queue-overflow` refusal; evidence finalized `refused` with partial counts |
+| socket/stream error mid-stream         | typed `source-unavailable` latched; evidence finalized `refused` |
+| consumer close / abort mid-stream      | server + client stopped; evidence finalized with the reason   |
+| live refusal during a run's drain      | typed `LiveIngressError` with partial evidence; NO run executes |
+| clean end-of-stream                    | evidence finalized `completed` on close; run executes over the drained feed |
+| adapter dispose with open sessions     | sessions finalized `aborted`; all servers stopped             |
+
+## Honest evidence (W10-A)
+
+- REAL: `node:http` server sockets, chunked writes at the declared
+  cadence, real client reads, real queue accounting, real connection
+  refusals observed after server stops, real timestamps from the
+  injected clock.
+- FIXTURE: nothing in this lane — the adapter refuses to serve a
+  `fixture`-grade descriptor. Test CONTENT (frame payloads) is
+  deterministic data; every PROCESS observation is real.
+
+## Limits (W10-A slice, declared)
+
+- One live source per live run (mirrors the one-input chain law of
+  the first slice); multi-source composition is a future additive
+  extension.
+- Frame payloads are newline-delimited text (one frame = one non-empty
+  line); binary framing is future work.
+- The server's frame list is finite and declared at wiring time; a
+  continuous generator source is future work behind the same port.
+- Server-side write buffering is bounded by the finite frame list;
+  the client queue bound is the enforced back-pressure gate.
+- HTTP/1.1 chunked transfer over localhost only — production
+  CDN/ingress protocols are explicitly out of scope (ADR non-goal).
