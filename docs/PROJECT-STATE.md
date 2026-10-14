@@ -27,6 +27,12 @@ Status: P0–P8 RELEASE BASELINE COMPLETE (TL3 @ 1b0a9f4; 679/679 recorded tests
 - Next step: TL-only Wave 0, then three disjoint UI workstreams. The TL owns entrypoint/style isolation and final integration. No W11 code, browser journey or screenshot evidence is claimed by the specifications alone.
 - Release rule: do not mark the Sporta product UI complete until the 22 UI acceptance gates pass, real browser journey evidence is recorded, desktop/mobile screenshots are reviewed, and no ZCode shell/brand/theme leaks into /sporta.
 
+## W11 — Sporta-Native Product UI (2026-10-14)
+
+- Operator PR #2 (TL-reviewed, merged @ec54027): the product-vs-substrate boundary law, UI architecture, work orders, 22 acceptance gates (UI-01..UI-22).
+- TL Wave 0 freeze @c01325f: the product-UI contracts (closed 7-screen vocabulary, shell port, --sporta-* token namespace, evidence-grade reporting), SCREEN-PORTS.md (the state-owner law map), Playwright harness serialized, worker roots created.
+- Implementation status: W11 IN FLIGHT — Workers A (product shell/navigation/Home), B (Studio workbench flow), C (Marketplace/My-Pipelines/Runs/Library/Connected-Apps + browser evidence) dispatched; TL integration (entrypoint isolation, journey verification, visual review) follows the worker lanes.
+
 ## Repository identity
 
 Repository: payswapdotorg/sporta-2.0
