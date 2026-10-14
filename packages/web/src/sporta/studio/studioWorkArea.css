@@ -1,0 +1,248 @@
+/*
+ * Transform Studio work-area styling (W11B) — the pipeline picker, the
+ * graph panel and the validation display. Imported by the studio ROOT
+ * only (TransformStudio.tsx) — the panels stay CSS-free so the Node
+ * render battery can import them.
+ */
+
+/* ---- main work area: pipeline picker + graph ---- */
+
+.studio-picker {
+  list-style: none;
+  margin: 0 0 var(--_sporta-gap);
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: var(--_sporta-space);
+}
+
+.studio-picker-item {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--_sporta-space) / 2);
+}
+
+.studio-pipeline {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  border: 1px solid var(--_sporta-border);
+  background: var(--_sporta-surface);
+  color: var(--_sporta-fg);
+  border-radius: var(--_sporta-radius);
+  padding: var(--_sporta-pad);
+  cursor: pointer;
+  height: 100%;
+}
+
+.studio-pipeline:hover:not(:disabled) {
+  border-color: var(--_sporta-accent);
+}
+
+.studio-pipeline:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.studio-pipeline-selected {
+  border-color: var(--_sporta-accent);
+  box-shadow: inset 0 0 0 1px var(--_sporta-accent);
+}
+
+.studio-pipeline-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.studio-pipeline-meta {
+  color: var(--_sporta-muted);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.studio-pipeline-blocked {
+  color: #fbbf24;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.studio-graph {
+  border: 1px solid var(--_sporta-border);
+  border-radius: var(--_sporta-radius);
+  background: var(--_sporta-surface);
+  padding: var(--_sporta-pad);
+}
+
+.studio-graph-head h3 {
+  margin: 0 0 var(--_sporta-space);
+}
+
+.studio-nodelist {
+  list-style: none;
+  padding: 0;
+  margin: var(--_sporta-space) 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--_sporta-space) / 2);
+}
+
+.studio-node {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--_sporta-space);
+  align-items: baseline;
+  padding: calc(var(--_sporta-space) / 2) var(--_sporta-space);
+  border: 1px solid var(--_sporta-border);
+  border-radius: var(--_sporta-radius-small);
+  background: var(--_sporta-bg);
+}
+
+.studio-edge {
+  color: var(--_sporta-muted);
+  font-size: 12px;
+  padding-left: var(--_sporta-space);
+  overflow-wrap: anywhere;
+}
+
+.studio-node-kind {
+  font-size: 11px;
+  font-weight: 600;
+  color: #fbbf24;
+}
+
+.studio-node-name {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.studio-node-component {
+  color: var(--_sporta-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.studio-graph-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--_sporta-space);
+  align-items: end;
+  margin-top: var(--_sporta-space);
+}
+
+.studio-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--_sporta-muted);
+  flex: 1 1 220px;
+  max-width: 380px;
+}
+
+.studio-field input {
+  border: 1px solid var(--_sporta-border);
+  background: var(--_sporta-bg);
+  color: var(--_sporta-fg);
+  border-radius: var(--_sporta-radius-small);
+  padding: 8px 10px;
+  font-size: 13px;
+  width: 100%;
+}
+
+.studio-field input:focus-visible,
+.studio-button:focus-visible,
+.studio-link:focus-visible,
+.studio-pipeline:focus-visible {
+  outline: 2px solid var(--_sporta-accent);
+  outline-offset: 2px;
+}
+
+/* ---- buttons ---- */
+
+.studio-button {
+  border: 1px solid #2f6f4f;
+  background: #103c2a;
+  color: var(--_sporta-accent);
+  border-radius: var(--_sporta-radius-small);
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.studio-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.studio-button-secondary {
+  border-color: var(--_sporta-border);
+  background: var(--_sporta-surface);
+  color: var(--_sporta-fg);
+}
+
+
+/* ---- validation display (verbatim violations) ---- */
+
+.studio-validation {
+  margin-top: var(--_sporta-space);
+  border-radius: var(--_sporta-radius-small);
+  padding: var(--_sporta-pad);
+}
+
+.studio-validation h4 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--_sporta-fg);
+}
+
+.studio-validation p {
+  margin: 0;
+  font-size: 12px;
+}
+
+.studio-validation-valid {
+  border: 1px solid #2f6f4f;
+  background: #0e241a;
+}
+
+.studio-validation-invalid {
+  border: 1px solid #7f1d1d;
+  background: #1f1212;
+}
+
+.studio-chip-row {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.studio-chip {
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: var(--_sporta-radius-small);
+  padding: 2px 8px;
+  background: #3c2e10;
+  color: #fbbf24;
+}
+
+.studio-violation-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.studio-violation-list li {
+  overflow-wrap: anywhere;
+}
+

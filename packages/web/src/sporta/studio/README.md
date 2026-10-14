@@ -19,6 +19,54 @@ permission disclosure.
   (the SportaPanel honesty law): `pnpm exec tsc -b packages/web` compiles it;
   no browser test harness exists in this repo and none is claimed.
 
+## Wave 11 Worker B — the feed-to-output workbench (SPEC-first)
+
+See SPEC.md ("Wave 11B") for the full presentation law. The W9C narrow/tab
+surface is REPLACED by a purposeful workbench: source rail (feed/source
+selection + stage progress + cross-screen links) | main work area (pipeline
+picker + graph, the widest region) | stage context (preview, launch
+disclosure/confirmation, status/output, concise summaries). Desktop reads
+left-to-right through the flow; mobile stacks with no horizontal overflow.
+Theme tokens are the Sporta-owned `--sporta-*` namespace with self-consistent
+fallbacks.
+
+- `workbench.ts` (NEW, pure) — the flow state machine (source → pipeline →
+  preview → launch → status) with honest locked-stage reasons and
+  downstream-reset laws. Battery-tested.
+- `liveSourceViews.ts` (NEW, pure) — the W10 live evidence display mapping
+  (grade `real-local-live`, session rows, typed refusals — all VERBATIM).
+  Battery-tested with REAL `LiveTransformRunService` evidence.
+- `studioRegistration.ts` (NEW, pure) — the `studio` screen's frozen
+  `SportaScreenRegistration` + the cross-screen `SportaScreenRoute` links
+  (fail-closed validated) + the `SportaScreenEvidenceGrade` projection.
+- `studioPorts.ts` (M, additive) — the optional `readLiveSourceEvidence?()`
+  seam + `StudioLiveSourceView` (hosts without a live composition omit it;
+  the workbench states the absence honestly).
+- `SourceRail/PipelinePicker/GraphPanel/PreviewPanel/LaunchPanel/
+  StatusPanel/StudioSummaries.tsx` (NEW) — the workbench panels; the legacy
+  GraphBuilder/Marketplace/Launch/Apps tabs are DELETED (no out-of-lane
+  importer existed). Marketplace/Apps are now concise summaries + links to
+  Worker C's first-class screens (no second authority). Component-level
+  render tests cover the panels (react-dom/server under node:test).
+- `TransformStudio.tsx` (M) — the workbench root; keeps the `host` prop
+  (the SportaPanel mount) + optional `shell?: SportaProductShellPort`
+  (navigation through Worker A's shell; typed refusals render as refusals;
+  honest disabled links when the shell is not wired).
+- Tests: `packages/web/test/studioWorkbench.test.ts` (pure flow/registration/
+  live-views), `packages/web/test/studioLiveEvidence.test.ts` (REAL
+  localhost HTTP live session → REAL run → verbatim display), and
+  `packages/web/test/studioWorkbenchRender.test.ts` (panel renders).
+
+### Input-shape compatibility (unchanged law)
+
+The studio render modules never import `@sporta/*` at runtime; the W10 live
+types reach the display layer as structural mirrors through
+`liveSourceFromEvidence` (proven by feeding REAL `LiveTransformRunService`
+records through it in the battery).
+
+The W9C layout/input notes below stay for history; the W11B section above
+states the current presentation law.
+
 ## Input-shape compatibility
 
 `StudioValidationResult` is structurally the `@sporta/transforms`
