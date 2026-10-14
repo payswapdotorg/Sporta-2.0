@@ -185,3 +185,23 @@
   border-radius: 6px;
   background: #1a1a20;
 }
+
+/* W10A-2 — the Transform Studio mount (additive tail only). The studio's
+   own component styling lives in studio/studio.css; this tail only
+   adapts the studio panel to living INSIDE the sporta-panel container. */
+
+.sporta-studio-mount {
+  margin-top: 32px;
+  border-top: 1px solid #2a2a32;
+  padding-top: 24px;
+}
+
+/* The studio's own root sets min-height: 100vh + its own page chrome for
+   standalone use; nested under the panel it must size to content. */
+.sporta-studio-mount .studio-panel {
+  min-height: 0;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}

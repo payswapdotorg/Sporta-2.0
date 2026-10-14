@@ -21,6 +21,9 @@
     "@sporta/evaluation": "workspace:*",
     "@sporta/lab": "workspace:*",
     "@sporta/organizations": "workspace:*",
+    "@sporta/app-environments": "workspace:*",
+    "@sporta/marketplace": "workspace:*",
+    "@sporta/transforms": "workspace:*",
     "@sporta/product": "workspace:*",
     "@sporta/work": "workspace:*"
   },

@@ -70,6 +70,8 @@ import {
 } from "@sporta/product/contract";
 import type { SportaHostPort } from "../hostPorts.js";
 import type { SportaLoopDriver } from "../composition.js";
+import type { TransformStudioHostPort } from "../studio/studioPorts.js";
+import { createOperatorStudioHostComposition } from "../studioComposition.js";
 import { SPORTA_HOST_POLICY, SPORTA_HOST_USER } from "../hostSeeds.js";
 import { buildBootSurfaces, type BootCore } from "./bootSurfaces.js";
 import {
@@ -124,6 +126,8 @@ export interface SportaLocalBoot {
   readonly host: SportaHostPort;
   /** Headless loop primitives (mirrors the W4-C composition's driver). */
   readonly loop: SportaLoopDriver;
+  /** The W10A Transform Studio surface (REAL seams; additive). */
+  readonly studioHost: TransformStudioHostPort;
   /** The level-3 live/shared editor session service (the WS sink's writer). */
   readonly sharedSessions: SharedEditorSessionService;
   /** The real WS delta sink (bound; the actual port is in the facts). */
@@ -258,6 +262,13 @@ export async function bootSportaLocal(config: SportaLocalBootConfig): Promise<Sp
   };
   const { host, loop } = buildBootSurfaces(core);
 
+  // W10A: the REAL Transform Studio composition (additive surface over
+  // the real transforms/marketplace/app-env seams — studioComposition.ts).
+  // Shares the REAL durable blob root with the boot's host legs
+  // (content-addressed: no collisions); the operator defaults live in
+  // the convenience wiring.
+  const studio = createOperatorStudioHostComposition(storeRoots.blobs);
+
   const facts: LocalBootWiringFacts = {
     bootedAt: new Date().toISOString(),
     storeRoots,
@@ -276,11 +287,13 @@ export async function bootSportaLocal(config: SportaLocalBootConfig): Promise<Sp
   return {
     host,
     loop,
+    studioHost: studio.host,
     sharedSessions,
     deltaSink,
     sharedSessionProjection,
     facts,
     dispose: async () => {
+      await studio.dispose();
       await deltaSink.close(); // closes every client with 1001, then the listener
       runtime.dispose();
     },

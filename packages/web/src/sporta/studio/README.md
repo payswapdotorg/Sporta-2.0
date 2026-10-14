@@ -50,3 +50,95 @@ This lane owns zero edits outside `packages/sporta-app-environments/**` and
 `packages/web/src/sporta/studio/**`, so mounting the studio into
 `SportaPanel.tsx` / the browser route is left to the TL integration step
 (the same serialization the work orders define for shared seams).
+
+## Wave 10 Worker A — the composition seam CLOSED (SPEC-first)
+
+The designated TL seam above is now implemented (w10a; SPEC appended BEFORE
+implementation per the SPEC-first law). After this wave a user can open the
+product host and SEE the Transform Studio: build a pipeline graph, see typed
+validation, browse marketplace listings + review status, read the launch
+disclosure, see attached apps with their permission/data-scope disclosure,
+and select a pipeline for feed launch through the fail-closed admission.
+
+### What was implemented
+
+- `packages/web/src/sporta/studioComposition.ts` (NEW) + its seed module
+  `packages/web/src/sporta/studioSeeds.ts` (NEW — the hostSeeds.ts
+  precedent, keeping each file under the 400-line law) — the HEADLESS REAL
+  seam implementation of `TransformStudioHostPort` (`evidence: "real"`),
+  constructed additively by the composition roots
+  (`createStudioHostComposition`; wired into `composition.ts` and
+  `boot/boot.ts`). HEADLESS Node only — it NEVER enters the browser bundle
+  (the W4-C composition law; no React file imports it).
+- `packages/web/src/sporta/studioBrowserFixture.ts` (NEW) — the
+  honestly-labeled FIXTURE studio host for the browser route (the
+  browserFixtureHost law: imports ONLY types + pure local fixture data; no
+  Node dependency enters the bundle; the evidence badge reads FIXTURE).
+- `packages/web/src/sporta/SportaPanel.tsx` (M, additive) — mounts the
+  "Transform Studio" section rendering `TransformStudio.tsx` through the
+  INJECTED studio port (the panel's existing render law; the stage trace
+  stays intact — the studio is additive surface, not a replacement).
+- `packages/web/src/sporta/composition.ts` + `boot/boot.ts` (M, additive) —
+  the composition roots construct and expose the REAL studio host
+  (`studioHost`) alongside the existing `SportaHostPort`.
+- `packages/web/src/main.tsx` (M, 2 lines) — the browser route injects the
+  studio fixture host (the actual route wiring point; boot.ts is headless
+  only by its own header — see the w10a report DEVIATIONS).
+- `packages/web/src/sporta/sportaPanel.css` (M, additive tail) — the studio
+  mount styling.
+- `packages/web/test/studioComposition.test.ts` (NEW) — REAL tests (the
+  sportaHost.test.ts law: temp dir, REAL stores/services, clean teardown).
+
+### The real/fixture split (honesty law)
+
+REAL legs (labeled, in `studioComposition.ts`):
+- `validateGraph` — the REAL `@sporta/transforms`
+  `validateTransformPipelineManifest`: the studio draft (nodes/edges) maps
+  1:1 onto `TransformNode`/edge fields; the composition adds ONLY the
+  declared envelopes the manifest requires (draft manifest identity, safe
+  sandbox/resource/error envelopes, the operator policy from hostSeeds);
+  the typed result projects VERBATIM into `StudioValidationResult`
+  (per-violation records, never stringly errors).
+- `listListings` / `readReviewStatus` / `readLaunchDisclosure` — the REAL
+  `@sporta/marketplace` read ports over the real services
+  (ListingService/ReviewService/FeedLaunchAdmissionService), projected
+  through `marketplaceViews.ts` (publisher, approved version, terms/price,
+  rights prerequisites, outputs, limitations, evidence grade).
+- `selectForLaunch` — the REAL `FeedLaunchAdmissionService.selectForLaunch`
+  fail-closed admission; the typed result surfaces VERBATIM (admitted pins
+  the entitlement digest; every refusal carries its frozen reason + detail;
+  the studio never softens a denial). The operator rights snapshot is the
+  host's wiring-time declaration (the UsageDeclaredEditorHistory
+  precedent): absent = admission runs WITHOUT a snapshot and refuses typed
+  (fail-closed, P9-14) — never softened.
+- `listAppAttachments` — REAL `@sporta/app-environments`
+  descriptor/attachment reads through the real
+  `ApplicationEnvironmentService` (real validation, real
+  catalog-stability, real scoped-grant construction), projected through
+  `appAttachmentViews.ts` (granted vs NOT-granted classes side by side,
+  separate learning consent, data scope, network posture, licensing).
+- `readSamplePreview` — the sample-preview seam: a REAL
+  `TransformRunService` run of the seeded pipeline over the declared sample
+  feed (REAL deterministic-filter child process on real pipes, REAL
+  content-addressed FS blob writes, REAL artifact revisions), projected
+  through `samplePreview.ts` (measured carry-forward evidence, honest
+  grade). Unknown pipeline/version → typed null.
+
+FIXTURE (labeled): the in-memory marketplace/app-environment/work stores
+(the packages' own labeled FIXTURE adapters), the seed content (the sample
+pipeline manifest, the review/listing/entitlement records, the app
+descriptors/attachments — the hostSeeds.ts precedent: fixture seeds behind
+REAL ports), the fixture probe adapter used at app-attach seed time (no
+real app process in the studio composition — the REAL app-action lane is
+owned and evidenced by the app-environments battery + the P9-23 vertical
+slice), and the browser fixture host (static snapshot, labeled IN the UI).
+
+### Surface law (unchanged)
+
+The studio port exposes read-only studio state + EXACTLY the
+launch-selection write path (disclosure → confirm → admission). The
+composition adds no other mutation path. `@sporta/*` resolution for the
+three studio packages goes through the transitional gitignored symlinks in
+`packages/web/node_modules/@sporta` (no manifest/lockfile edit; manifest
+registration remains the TL's NEXT-DEPENDENCIES step, same as W4C).
+

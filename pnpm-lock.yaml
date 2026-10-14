@@ -1468,6 +1468,9 @@ importers:
 
   packages/web:
     dependencies:
+      '@sporta/app-environments':
+        specifier: workspace:*
+        version: link:../sporta-app-environments
       '@sporta/arena':
         specifier: workspace:*
         version: link:../sporta-arena
@@ -1486,12 +1489,18 @@ importers:
       '@sporta/lab':
         specifier: workspace:*
         version: link:../sporta-lab
+      '@sporta/marketplace':
+        specifier: workspace:*
+        version: link:../sporta-marketplace
       '@sporta/organizations':
         specifier: workspace:*
         version: link:../sporta-organizations
       '@sporta/product':
         specifier: workspace:*
         version: link:../sporta-product
+      '@sporta/transforms':
+        specifier: workspace:*
+        version: link:../sporta-transforms
       '@sporta/work':
         specifier: workspace:*
         version: link:../sporta-work
