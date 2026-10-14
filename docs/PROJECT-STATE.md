@@ -18,6 +18,15 @@ Status: P0–P8 RELEASE BASELINE COMPLETE (TL3 @ 1b0a9f4; 679/679 recorded tests
 - Canonical docs: `docs/architecture/adr-p10-integration-reality.md`, `docs/work-orders/p10-integration-reality-work-orders.md`, `docs/testing/p10-acceptance.md`.
 - Implementation status: WAVE 10 IN FLIGHT — docs @1036457, Wave 0 freeze @89ae90e (live-ingress contract frozen, battery 856/856), STUDIO LANE MERGED @3b736b9 (the W9C TL seam closed: host composition over real seams + product mount + browser fixture host, 8 station-verified tests, honest anomaly record for the delivery's undetermined prompt genealogy; TL-serialized with the P9-trio workspace-dep registration). Real-model lane MERGED @a861fa7 (SandboxModelAdapter over z-ai-web-dev-sdk — REAL lane, typed outage refusals, honest quota record: the station's live 429 round-trip proves the real lane + outage law; happy-path re-verifies at the audit). Live-ingress lane MERGED @c5bc2f4 (RealLocalHttpLiveSourceAdapter — REAL local HTTP streaming with the self-enforcing honest grade law, bounded back-pressure, manifest-pinned live evidence; battery 873/873). P10 remaining: the P10-16 composed slice + the 18-gate acceptance audit.
 
+
+## W11 — Sporta-Native Product UI (2026-10-14)
+
+- Status: SPECIFIED / NOT IMPLEMENTED. Product owner requires the visible product to be Sporta, not ZCode. Existing W10 Studio mount is a composed surface/integration proof, not proof that the finished product shell is complete.
+- Current gap verified in source: /sporta shows ProductLoopTrace-oriented content, learning-consent/takeover actions and a nested Studio; packages/web/src/main.tsx statically imports the ZCode UI stylesheet/theme. The route skips mounting ZCode Root but is still coupled to its global visual setup.
+- Canonical documents: docs/architecture/adr-sporta-native-product-ui.md; docs/architecture/sporta-product-ui.md; docs/work-orders/sporta-native-ui-work-orders.md; docs/testing/sporta-native-ui-acceptance.md.
+- Next step: TL-only Wave 0, then three disjoint UI workstreams. The TL owns entrypoint/style isolation and final integration. No W11 code, browser journey or screenshot evidence is claimed by the specifications alone.
+- Release rule: do not mark the Sporta product UI complete until the 22 UI acceptance gates pass, real browser journey evidence is recorded, desktop/mobile screenshots are reviewed, and no ZCode shell/brand/theme leaks into /sporta.
+
 ## Repository identity
 
 Repository: payswapdotorg/sporta-2.0
