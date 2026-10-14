@@ -173,6 +173,40 @@ export type StudioLaunchAdmissionResult =
   | { admitted: false; reason: string; detail: string };
 
 /**
+ * W11B — the live-source evidence view (the W10 lanes, VERBATIM).
+ *
+ * Structural mirror of the frozen `LiveSourceDescriptor` +
+ * `LiveSessionEvidence` (@sporta/transforms W10 freeze) — the
+ * studio-lane law: the render modules never import @sporta/* at
+ * runtime; the composition passes their records in. The display layer
+ * (liveSourceViews.ts) carries these values through UNCHANGED: the
+ * exact grade string (`real-local-live` — "production" is unutterable
+ * in the closed vocabulary), frame statistics, close reason, and typed
+ * refusals (kind + detail + frames consumed) are shown as returned.
+ */
+export interface StudioLiveSourceView {
+  readonly descriptor: {
+    readonly sourceId: string;
+    readonly grade: "real-local-live" | "fixture";
+    readonly contentKind: string;
+    readonly cadenceMs: number;
+    readonly queueBound: number;
+  };
+  /** The pinned session evidence; null when the source has no session yet. */
+  readonly session: {
+    readonly framesConsumed: number;
+    readonly openedAt: string;
+    readonly closedAt: string | null;
+    readonly closeReason: "completed" | "aborted" | "refused" | "in-flight";
+    readonly refusal: {
+      readonly kind: string;
+      readonly detail: string;
+      readonly framesConsumed: number;
+    } | null;
+  } | null;
+}
+
+/**
  * The studio host port: reads over the real validation/marketplace/
  * app-environment seams + EXACTLY one write path (launch selection).
  */
@@ -196,6 +230,13 @@ export interface TransformStudioHostPort {
    * the fail-closed marketplace admission and returns its typed result.
    */
   selectForLaunch(listingId: string): Promise<StudioLaunchAdmissionResult>;
+  /**
+   * W11B OPTIONAL seam: the pinned live-source evidence (the W10
+   * lanes). Hosts without a live composition omit the method; the
+   * workbench shows an honest "not composed into this host" empty
+   * state — never fabricated evidence.
+   */
+  readLiveSourceEvidence?(): Promise<readonly StudioLiveSourceView[]>;
   /** Optional dispose for composition-owned resources. */
   dispose?(): Promise<void>;
 }

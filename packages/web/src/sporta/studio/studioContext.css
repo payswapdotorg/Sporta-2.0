@@ -1,0 +1,204 @@
+/*
+ * Transform Studio context-panel styling (W11B) — preview, launch
+ * disclosure/admission, status/output and the concise summaries.
+ * Imported by the studio ROOT only (TransformStudio.tsx).
+ */
+
+/* ---- context panel ---- */
+
+.studio-context {
+  display: flex;
+  flex-direction: column;
+  gap: var(--_sporta-gap);
+}
+
+.studio-context-card {
+  border: 1px solid var(--_sporta-border);
+  border-radius: var(--_sporta-radius);
+  background: var(--_sporta-surface);
+  padding: var(--_sporta-pad);
+}
+
+.studio-context-card h3 {
+  margin: 0 0 var(--_sporta-space);
+  font-size: 15px;
+}
+
+.studio-context-card h4 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--_sporta-muted);
+  margin: var(--_sporta-space) 0 4px;
+}
+
+.studio-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.studio-preview-io {
+  margin: 0;
+  font-size: 13px;
+}
+
+.studio-preview-label {
+  display: inline-block;
+  min-width: 52px;
+  color: var(--_sporta-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.studio-preview-evidence {
+  margin: var(--_sporta-space) 0 0;
+  color: var(--_sporta-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.studio-review {
+  margin: 0;
+  font-size: 12px;
+  color: var(--_sporta-muted);
+  overflow-wrap: anywhere;
+}
+
+.studio-disclosure {
+  border: 1px solid var(--_sporta-border);
+  border-radius: var(--_sporta-radius-small);
+  padding: var(--_sporta-pad);
+  background: var(--_sporta-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.studio-disclosure h4 {
+  margin: 0;
+  color: var(--_sporta-fg);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 14px;
+}
+
+.studio-disclosure-meta {
+  color: var(--_sporta-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.studio-disclosure p {
+  margin: 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.studio-legal {
+  border-left: 3px solid #fbbf24;
+  padding-left: 10px;
+  color: #fbbf24;
+  font-size: 12px;
+}
+
+.studio-confirmation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--_sporta-space);
+  margin-top: var(--_sporta-space);
+}
+
+.studio-admission {
+  border-radius: var(--_sporta-radius-small);
+  padding: var(--_sporta-pad);
+  overflow-wrap: anywhere;
+}
+
+.studio-admission h4 {
+  margin: 0 0 4px;
+  color: var(--_sporta-fg);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 14px;
+}
+
+.studio-admission p {
+  margin: 0;
+  font-size: 12px;
+}
+
+.studio-admission-refused {
+  border: 1px solid #7f1d1d;
+  background: #1f1212;
+}
+
+.studio-status-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--_sporta-space);
+  margin-top: var(--_sporta-space);
+}
+
+.studio-status-links .studio-link {
+  width: auto;
+  flex: 1 1 180px;
+}
+
+.studio-mini-list {
+  list-style: none;
+  margin: 0 0 var(--_sporta-space);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--_sporta-muted);
+  overflow-wrap: anywhere;
+}
+
+/* ---- shared states ---- */
+
+.studio-loading,
+.studio-empty,
+.studio-hint {
+  color: var(--_sporta-muted);
+  font-size: 12px;
+}
+
+.studio-hint {
+  margin: var(--_sporta-space) 0;
+}
+
+/* ---- mobile (390x844 acceptance): stack in flow order ---- */
+
+@media (max-width: 980px) {
+  .studio-workbench {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .studio-panel {
+    padding: var(--_sporta-gap) var(--_sporta-space) calc(var(--_sporta-space) * 6);
+  }
+
+  .studio-picker {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .studio-field {
+    max-width: none;
+  }
+}
+
+/* very narrow phones: keep touch targets and text readable */
+@media (max-width: 420px) {
+  .studio-button,
+  .studio-link {
+    min-height: 36px;
+  }
+
+  .studio-row dt {
+    min-width: 96px;
+  }
+}
