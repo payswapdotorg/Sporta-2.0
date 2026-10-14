@@ -34,3 +34,8 @@ P10 is complete only when every gate below is evidenced by a named passing test 
 
 - **P10-17** Six gates on the integration SHA: architecture 0/0/0; frozen surfaces intact (growth additive-only); scoped `tsc -b` clean; full battery 0-fail (count recorded); lint 0 errors (warnings ≤ baseline); 400-line cap in sporta package sources.
 - **P10-18** No external dependency enters any frozen `sporta-*` package (the SDK lives ONLY in the web host package; named dependency assertion or arch-check evidence).
+
+
+## Follow-up UI completion gate
+
+P10-14 is the Studio-mount/build gate only. It must not be interpreted as evidence of a finished Sporta product shell. The separate W11 product-native UI workstream is defined in docs/work-orders/sporta-native-ui-work-orders.md; its UI-01 through UI-22 browser and visual gates must be satisfied before the visible Sporta experience is declared product-complete.
