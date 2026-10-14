@@ -1,0 +1,258 @@
+/*
+ * sporta-product theme.css (W11A-1, SPEC.md §2) — the 11 frozen
+ * --sporta-* tokens with Sporta-owned values, SCOPED to `.sporta-app`
+ * (the shell root class): never :root, so the tokens can neither leak
+ * into the ZCode surface nor be overridden by it (the boundary law).
+ * The values mirror theme.ts SPORTA_THEME_VALUES exactly.
+ *
+ * This file also carries the unbranded control-primitive styles
+ * (SPEC.md §3). Everything consumes ONLY var(--sporta-*) values.
+ */
+
+.sporta-app {
+  --sporta-color-bg: #0c1210;
+  --sporta-color-fg: #edf3ee;
+  --sporta-color-accent: #2fe089;
+  --sporta-color-muted: #93a89c;
+  --sporta-color-surface: #141c17;
+  --sporta-color-border: #27352c;
+  --sporta-radius: 14px;
+  --sporta-radius-small: 8px;
+  --sporta-font-body: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --sporta-font-heading: "DIN Alternate", "Franklin Gothic Medium", "Avenir Next Condensed",
+    "Segoe UI", system-ui, sans-serif;
+  --sporta-space-unit: 8px;
+
+  min-height: 100vh;
+  background: var(--sporta-color-bg);
+  color: var(--sporta-color-fg);
+  font-family: var(--sporta-font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+.sporta-app *,
+.sporta-app *::before,
+.sporta-app *::after {
+  box-sizing: border-box;
+}
+
+.sporta-app :focus-visible {
+  outline: 2px solid var(--sporta-color-accent);
+  outline-offset: 2px;
+}
+
+/* ---- control primitives (unbranded; tokens only) ---- */
+
+.sporta-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--sporta-space-unit) / 2);
+  min-height: 40px;
+  padding: 0 calc(var(--sporta-space-unit) * 2);
+  border-radius: var(--sporta-radius-small);
+  border: 1px solid var(--sporta-color-border);
+  background: var(--sporta-color-surface);
+  color: var(--sporta-color-fg);
+  font: 600 14px/1 var(--sporta-font-body);
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, transform 60ms ease;
+}
+
+.sporta-button:hover:not(:disabled) {
+  border-color: var(--sporta-color-accent);
+}
+
+.sporta-button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.sporta-button-primary {
+  background: var(--sporta-color-accent);
+  border-color: var(--sporta-color-accent);
+  color: #06130c;
+}
+
+.sporta-button-primary:hover:not(:disabled) {
+  background: #4dea9f;
+  border-color: #4dea9f;
+}
+
+.sporta-button-ghost {
+  background: transparent;
+}
+
+.sporta-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* A control disabled WITH a reason shows the reason visibly (UI-06). */
+.sporta-control {
+  display: inline-flex;
+  flex-direction: column;
+  gap: calc(var(--sporta-space-unit) / 2);
+  max-width: 100%;
+}
+
+.sporta-button-reason {
+  font-size: 12px;
+  color: var(--sporta-color-muted);
+  max-width: 34ch;
+}
+
+.sporta-card {
+  background: var(--sporta-color-surface);
+  border: 1px solid var(--sporta-color-border);
+  border-radius: var(--sporta-radius);
+  padding: calc(var(--sporta-space-unit) * 2);
+}
+
+.sporta-card-heading {
+  margin: 0 0 calc(var(--sporta-space-unit) * 0.5);
+  font-family: var(--sporta-font-heading);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sporta-color-muted);
+}
+
+.sporta-card-subtitle {
+  margin: 0 0 calc(var(--sporta-space-unit) * 1.5);
+  font-size: 13px;
+  color: var(--sporta-color-muted);
+}
+
+.sporta-card-actions-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sporta-space-unit);
+  flex-wrap: wrap;
+  margin-bottom: calc(var(--sporta-space-unit) * 0.5);
+}
+
+.sporta-card-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sporta-space-unit);
+  flex-wrap: wrap;
+}
+
+/* Honest status chip: text VERBATIM, never color-alone (fixture = dashed). */
+.sporta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--sporta-color-border);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sporta-color-muted);
+  white-space: nowrap;
+}
+
+.sporta-chip::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--sporta-color-muted);
+}
+
+.sporta-chip-real,
+.sporta-chip-real-local,
+.sporta-chip-measured {
+  color: var(--sporta-color-accent);
+  border-color: var(--sporta-color-accent);
+}
+
+.sporta-chip-real::before,
+.sporta-chip-real-local::before,
+.sporta-chip-measured::before {
+  background: var(--sporta-color-accent);
+}
+
+.sporta-chip-fixture {
+  color: #e6b450;
+  border-color: #e6b450;
+  border-style: dashed;
+}
+
+.sporta-chip-fixture::before {
+  background: #e6b450;
+}
+
+.sporta-chip-declared {
+  color: var(--sporta-color-fg);
+  border-style: dotted;
+}
+
+.sporta-chip-declared::before {
+  background: var(--sporta-color-fg);
+}
+
+.sporta-empty {
+  border: 1px dashed var(--sporta-color-border);
+  border-radius: var(--sporta-radius);
+  padding: calc(var(--sporta-space-unit) * 3) calc(var(--sporta-space-unit) * 2);
+  text-align: center;
+  color: var(--sporta-color-muted);
+}
+
+.sporta-empty-title {
+  margin: 0 0 calc(var(--sporta-space-unit) * 0.5);
+  font-family: var(--sporta-font-heading);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--sporta-color-fg);
+}
+
+.sporta-empty-hint {
+  margin: 0 0 calc(var(--sporta-space-unit) * 1.5);
+  font-size: 13px;
+}
+
+/* Nav items (rail on desktop, list on mobile) — buttons, visible focus. */
+.sporta-nav-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: calc(var(--sporta-space-unit) * 1.25) calc(var(--sporta-space-unit) * 1.5);
+  border: 0;
+  border-left: 3px solid transparent;
+  border-radius: 0 var(--sporta-radius-small) var(--sporta-radius-small) 0;
+  background: transparent;
+  color: var(--sporta-color-muted);
+  font: 600 14px/1.2 var(--sporta-font-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.sporta-nav-item:hover:not(:disabled) {
+  color: var(--sporta-color-fg);
+  background: rgba(47, 224, 137, 0.06);
+}
+
+.sporta-nav-item-purpose {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--sporta-color-muted);
+}
+
+.sporta-nav-item-active {
+  color: var(--sporta-color-fg);
+  border-left-color: var(--sporta-color-accent);
+  background: rgba(47, 224, 137, 0.1);
+}
+
+.sporta-nav-item-active .sporta-nav-item-purpose {
+  color: var(--sporta-color-accent);
+}

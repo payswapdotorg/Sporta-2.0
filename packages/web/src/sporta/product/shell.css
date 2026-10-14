@@ -1,0 +1,234 @@
+/*
+ * sporta-product shell.css (W11A-2, SPEC.md §4.4) — the product-shell
+ * layout (desktop rail / mobile collapsing nav), the refusal banner and
+ * the placeholder screen. Consumes ONLY the --sporta-* tokens declared
+ * in theme.css (scoped to .sporta-app). Responsive law: desktop
+ * 1440x900 rail; mobile 390x844 collapsing nav, no page-level
+ * horizontal overflow (UI-19). The Home screen styles live in
+ * home/home.css.
+ */
+
+.sporta-skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 10;
+  padding: calc(var(--sporta-space-unit) * 1) calc(var(--sporta-space-unit) * 1.5);
+  background: var(--sporta-color-accent);
+  color: #06130c;
+  font-weight: 700;
+  border-radius: 0 0 var(--sporta-radius-small) 0;
+  text-decoration: none;
+}
+
+.sporta-skip-link:focus {
+  left: 0;
+}
+
+.sporta-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.sporta-shell {
+  display: grid;
+  min-height: 100vh;
+}
+
+.sporta-shell-desktop {
+  grid-template-columns: 248px minmax(0, 1fr);
+}
+
+.sporta-shell-mobile {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto 1fr;
+}
+
+/* ---- wordmark (Sporta's own mark — never ZCode branding) ---- */
+
+.sporta-wordmark {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--sporta-space-unit) * 0.75);
+  margin: calc(var(--sporta-space-unit) * 2) calc(var(--sporta-space-unit) * 1.5)
+    calc(var(--sporta-space-unit) * 2);
+}
+
+.sporta-wordmark-mark {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  background: var(--sporta-color-accent);
+  box-shadow: inset 0 0 0 2.5px var(--sporta-color-bg), inset 0 0 0 4px var(--sporta-color-accent);
+}
+
+.sporta-wordmark-text {
+  font-family: var(--sporta-font-heading);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+}
+
+/* ---- desktop nav rail ---- */
+
+.sporta-nav-rail {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--sporta-space-unit) * 0.25);
+  padding-bottom: calc(var(--sporta-space-unit) * 2);
+  border-right: 1px solid var(--sporta-color-border);
+  background: rgba(12, 18, 16, 0.6);
+}
+
+/* ---- mobile top bar + collapsing nav ---- */
+
+.sporta-mobile-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(var(--sporta-space-unit) * 0.5) calc(var(--sporta-space-unit) * 1.5);
+  border-bottom: 1px solid var(--sporta-color-border);
+  background: rgba(12, 18, 16, 0.85);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.sporta-mobile-topbar .sporta-wordmark {
+  margin: calc(var(--sporta-space-unit) * 0.75) 0;
+}
+
+.sporta-menu-toggle {
+  min-height: 40px;
+  padding: 0 calc(var(--sporta-space-unit) * 1.5);
+  border: 1px solid var(--sporta-color-border);
+  border-radius: var(--sporta-radius-small);
+  background: var(--sporta-color-surface);
+  color: var(--sporta-color-fg);
+  font: 600 14px/1 var(--sporta-font-body);
+  cursor: pointer;
+}
+
+.sporta-menu-toggle:hover {
+  border-color: var(--sporta-color-accent);
+}
+
+.sporta-mobile-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: calc(var(--sporta-space-unit) * 0.5) calc(var(--sporta-space-unit) * 0.75);
+  border-bottom: 1px solid var(--sporta-color-border);
+  background: var(--sporta-color-surface);
+}
+
+.sporta-mobile-nav .sporta-nav-item {
+  border-left-width: 3px;
+}
+
+/* ---- body / content / footer ---- */
+
+.sporta-shell-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sporta-content {
+  flex: 1;
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: calc(var(--sporta-space-unit) * 3) calc(var(--sporta-space-unit) * 2)
+    calc(var(--sporta-space-unit) * 4);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--sporta-space-unit) * 2);
+}
+
+.sporta-shell-mobile .sporta-content {
+  padding: calc(var(--sporta-space-unit) * 2) calc(var(--sporta-space-unit) * 1.25)
+    calc(var(--sporta-space-unit) * 3);
+}
+
+.sporta-footer {
+  display: flex;
+  justify-content: center;
+  padding: calc(var(--sporta-space-unit) * 2);
+  border-top: 1px solid var(--sporta-color-border);
+  color: var(--sporta-color-muted);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+/* ---- refusal banner ---- */
+
+.sporta-refusal {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sporta-space-unit);
+  flex-wrap: wrap;
+  padding: calc(var(--sporta-space-unit) * 1.25) calc(var(--sporta-space-unit) * 1.5);
+  border: 1px solid #a33a3a;
+  border-radius: var(--sporta-radius-small);
+  background: rgba(70, 18, 18, 0.35);
+}
+
+.sporta-refusal-text {
+  margin: 0;
+  font-size: 13px;
+}
+
+.sporta-refusal-dismiss {
+  min-height: 32px;
+  padding: 0 calc(var(--sporta-space-unit) * 1.25);
+  border: 1px solid var(--sporta-color-border);
+  border-radius: var(--sporta-radius-small);
+  background: transparent;
+  color: var(--sporta-color-muted);
+  font: 600 12px/1 var(--sporta-font-body);
+  cursor: pointer;
+}
+
+.sporta-refusal-dismiss:hover {
+  color: var(--sporta-color-fg);
+  border-color: var(--sporta-color-accent);
+}
+
+/* ---- placeholder screen ---- */
+
+.sporta-screen-unavailable {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--sporta-space-unit) * 1.5);
+}
+
+.sporta-screen-title {
+  margin: 0;
+  font-family: var(--sporta-font-heading);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.sporta-screen-purpose {
+  margin: 0;
+  color: var(--sporta-color-muted);
+  font-size: 14px;
+}
+
+.sporta-screen-tech {
+  margin: 0;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--sporta-color-muted);
+}
+
