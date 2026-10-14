@@ -62,7 +62,9 @@ and select a pipeline for feed launch through the fail-closed admission.
 
 ### What was implemented
 
-- `packages/web/src/sporta/studioComposition.ts` (NEW) — the HEADLESS REAL
+- `packages/web/src/sporta/studioComposition.ts` (NEW) + its seed module
+  `packages/web/src/sporta/studioSeeds.ts` (NEW — the hostSeeds.ts
+  precedent, keeping each file under the 400-line law) — the HEADLESS REAL
   seam implementation of `TransformStudioHostPort` (`evidence: "real"`),
   constructed additively by the composition roots
   (`createStudioHostComposition`; wired into `composition.ts` and

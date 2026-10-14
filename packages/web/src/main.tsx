@@ -34,6 +34,7 @@ import { WEB_DEFAULT_THEME, resolveWebInitialTheme } from "./webThemeSeed.js";
 // route mounts the Sporta host panel; all host code lives in ./sporta/.
 import { SportaPanel } from "./sporta/SportaPanel.js";
 import { createBrowserFixtureHost } from "./sporta/browserFixtureHost.js";
+import { createStudioBrowserFixtureHost } from "./sporta/studioBrowserFixture.js";
 import { isSportaPath } from "./sporta/sportaRoute.js";
 
 function resolveWebThemePreference(defaultTheme: Theme = WEB_DEFAULT_THEME): Theme {
@@ -438,9 +439,14 @@ async function bootstrapWebApp() {
   // two write paths, over the labeled browser fixture host (the Node-only
   // composition legs cannot execute in a browser bundle; the real host is
   // the headless composition, tested under node:test + tsx).
+  // W10A-2: the route also injects the studio FIXTURE host (same honesty
+  // law — the REAL studio composition is headless; its evidence badge
+  // reads FIXTURE here, labeled in the UI itself).
   if (isSportaPath(window.location.pathname)) {
     document.title = "Sporta — Product Loop";
-    root.render(<SportaPanel host={createBrowserFixtureHost()} />);
+    root.render(
+      <SportaPanel host={createBrowserFixtureHost()} studio={createStudioBrowserFixtureHost()} />,
+    );
     return;
   }
 

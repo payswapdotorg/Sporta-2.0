@@ -31,17 +31,11 @@
  */
 import type { EditorSessionHistoryReadPort } from "@sporta/contracts/contract";
 import {
-  WorkGraphService,
-  InMemoryWorkGraphStore,
-  ZCodeAgentRuntimeAdapter,
-  systemClockNow,
+  WorkGraphService, InMemoryWorkGraphStore, ZCodeAgentRuntimeAdapter, systemClockNow,
 } from "@sporta/work/contract";
 import {
-  InMemoryOrganizationStore,
-  InMemoryUserPreferenceStore,
-  OrganizationRegistryService,
-  OrganizationResolverService,
-  UserPreferenceService,
+  InMemoryOrganizationStore, InMemoryUserPreferenceStore, OrganizationRegistryService,
+  OrganizationResolverService, UserPreferenceService,
 } from "@sporta/organizations/contract";
 import { OrganizationCandidateReadService } from "@sporta/lab/contract";
 import {
@@ -65,18 +59,12 @@ import {
   ProductLoopProjection,
 } from "@sporta/product/contract";
 import type { SportaConsentInput, SportaConsentOutcome, SportaHostPort, SportaHostState, SportaTakeoverInput, SportaTakeoverOutcome } from "./hostPorts.js";
+import type { TransformStudioHostPort } from "./studio/studioPorts.js";
+import { createOperatorStudioHostComposition } from "./studioComposition.js";
 import {
-  SPORTA_HOST_ARTIFACT_ID,
-  SPORTA_HOST_INITIAL_MLT_XML,
-  SPORTA_HOST_INTENT,
-  SPORTA_HOST_ORG_ID,
-  SPORTA_HOST_POLICY,
-  SPORTA_HOST_REVISION_1,
-  SPORTA_HOST_TENANT,
-  SPORTA_HOST_USER,
-  SPORTA_HOST_WORK_GRAPH_ID,
-  sportaHostOrgDraft,
-  sportaHostUserEdit,
+  SPORTA_HOST_ARTIFACT_ID, SPORTA_HOST_INITIAL_MLT_XML, SPORTA_HOST_INTENT, SPORTA_HOST_ORG_ID,
+  SPORTA_HOST_POLICY, SPORTA_HOST_REVISION_1, SPORTA_HOST_TENANT, SPORTA_HOST_USER,
+  SPORTA_HOST_WORK_GRAPH_ID, sportaHostOrgDraft, sportaHostUserEdit,
 } from "./hostSeeds.js";
 
 /** Constructor config — every REAL leg's location is caller-supplied. */
@@ -113,6 +101,8 @@ export interface SportaLoopDriver {
 export interface SportaHostComposition {
   host: SportaHostPort;
   loop: SportaLoopDriver;
+  /** The W10A studio surface (REAL seams; additive to the composition). */
+  studioHost: TransformStudioHostPort;
   dispose(): Promise<void>;
 }
 
@@ -387,10 +377,18 @@ export function createSportaHost(
     },
   };
 
+  // W10A: the REAL Transform Studio composition (additive surface over the
+  // real transforms/marketplace/app-env seams — studioComposition.ts).
+  // Shares the REAL blob root with the host legs (content-addressed: no
+  // collisions); the operator defaults live in the convenience wiring.
+  const studio = createOperatorStudioHostComposition(config.blobRoot);
+
   return {
     host,
     loop,
+    studioHost: studio.host,
     dispose: async () => {
+      await studio.dispose();
       runtime.dispose();
     },
   };

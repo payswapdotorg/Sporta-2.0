@@ -1,6 +1,6 @@
 /**
  * SportaPanel — the React render surface of the Sporta host conversion
- * (W4C-3; SPEC.md "Wave-4 host conversion").
+ * (W4C-3; SPEC.md "Wave-4 host conversion"; W10A-2 studio mount).
  *
  * EVIDENCE CLASS (the UI honesty law, ADR wave-4): this component is
  * BUILD-VERIFIED/UNTESTED — `pnpm --filter @zcode/web build` compiles
@@ -14,6 +14,12 @@
  *
  * Surface law: read-only trace rendering + the two write paths
  * (consent intake, takeover entry). Nothing else mutates.
+ *
+ * W10A-2: the panel ADDITIVELY mounts the Transform Studio through
+ * the injected `TransformStudioHostPort` (the same render law — the
+ * studio renders whatever its host reports, evidence badge included).
+ * The stage trace above stays intact; the studio is additive surface,
+ * not a replacement.
  */
 import { useCallback, useEffect, useState } from "react";
 import type {
@@ -23,6 +29,8 @@ import type {
   SportaHostState,
   SportaTakeoverOutcome,
 } from "./hostPorts.js";
+import type { TransformStudioHostPort } from "./studio/studioPorts.js";
+import { TransformStudio } from "./studio/TransformStudio.js";
 import "./sportaPanel.css";
 
 const STAGE_ORDER: readonly string[] = [
@@ -77,7 +85,7 @@ function StageRow({
   );
 }
 
-export function SportaPanel({ host }: { host: SportaHostPort }) {
+export function SportaPanel({ host, studio }: { host: SportaHostPort; studio: TransformStudioHostPort }) {
   const [state, setState] = useState<SportaHostState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [consentMessage, setConsentMessage] = useState<string | null>(null);
@@ -215,6 +223,10 @@ export function SportaPanel({ host }: { host: SportaHostPort }) {
         {takeoverMessage !== null ? (
           <p className="sporta-action-result">{takeoverMessage}</p>
         ) : null}
+      </section>
+
+      <section aria-label="Transform Studio" className="sporta-studio-mount">
+        <TransformStudio host={studio} />
       </section>
     </main>
   );
