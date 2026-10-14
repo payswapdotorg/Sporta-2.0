@@ -50,3 +50,9 @@ See `docs/architecture/adr-transform-studio-marketplace-and-application-environm
 ## Completion
 
 A fresh user can express intent, get an explainable organization, watch execution, edit manually in Sporta or an integrated editor, return to the same WorkGraph/artifact, authorize learning, trigger Arena on a capability gap, receive a validated result, and demonstrate reduced manual intervention on a future run. For P9, a creator can publish an approved pipeline, a user can select it for a feed, and an agent can safely use a connected application under explicit, revocable permissions.
+
+## P10 — Integration Reality Wave (post-P9 deferred-scope realization)
+
+- Realize the P9 audit's deferred-and-typed scopes that the environment can exercise honestly: the studio mount (the W9C TL seam), live-feed ingress at the REAL-local grade, and a REAL model provider lane through the sandbox model service.
+- Payment provider, Hugging Face hosting, production CDN ingress and hosted deployment stay typed-future behind operator-credential gates — documented, requested, never faked.
+- P10 is complete when `docs/testing/p10-acceptance.md` passes on a TL-verified integration SHA.

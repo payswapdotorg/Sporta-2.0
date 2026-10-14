@@ -11,6 +11,13 @@ Status: P0–P8 RELEASE BASELINE COMPLETE (TL3 @ 1b0a9f4; 679/679 recorded tests
 - P9 acceptance audit: COMPLETE (2026-10-13, integration-log entry 'P9 — acceptance-gate audit'): all 26 gates mapped to named passing tests on 81ae034. Deferred-and-typed: live-feed ingress (fixture-labeled, no production-live claim), real payment provider, real model provider, HF weight hosting, studio mount into the product host (README seam), hosted deployment.
 - Rights boundary: transforming appearance does not automatically clear copyright. Source rights, component licenses and intended output use are independently checked.
 
+## P10 — Integration Reality Wave (2026-10-14)
+
+- Trigger: operator directive "continue with the rest of the roadmap"; the formal rest = the P9 audit's deferred-and-typed list.
+- Scope: studio mount (the W9C TL seam) + live-feed ingress at the REAL-local grade + a REAL model provider lane (sandbox model service, honestly labeled). Payment provider / HF hosting / production ingress / hosted deployment remain operator-credential-gated typed-future (documented key requests; a P11 hosted-preview proposal pending operator confirmation — feasibility probed, no deployment performed).
+- Canonical docs: `docs/architecture/adr-p10-integration-reality.md`, `docs/work-orders/p10-integration-reality-work-orders.md`, `docs/testing/p10-acceptance.md`.
+- Implementation status: PENDING WAVE 0 (docs-first per the P9 law; contract freeze + three lanes to follow).
+
 ## Repository identity
 
 Repository: payswapdotorg/sporta-2.0
