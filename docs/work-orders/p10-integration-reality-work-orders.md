@@ -68,3 +68,10 @@ The standing laws apply verbatim: SPEC-first (the SPEC section of each packet is
 - Real payment provider: operator provisions provider credentials → a future lane implements `SettlementPort` for real settlement.
 - Hugging Face: operator provisions an HF token → a future lane hosts pinned weights on HF per the storage doctrine.
 - Hosted preview (P11 proposal): operator confirms deploying to their Vercel account (feasibility probed and recorded by lane B).
+
+
+---
+
+## W11 follow-up — Sporta-native product UI (separate workstream)
+
+P10-C proves the Studio host composition and mount seam. It does **not** prove that the full user-facing application is product-native or visually complete. The user-facing product UI work is assigned by docs/work-orders/sporta-native-ui-work-orders.md and is gated by docs/testing/sporta-native-ui-acceptance.md. It must use the current main/W10 integration base, not the older pre-W10 P9 branch.
