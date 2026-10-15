@@ -39,6 +39,13 @@ Status: P0–P8 RELEASE BASELINE COMPLETE (TL3 @ 1b0a9f4; 679/679 recorded tests
   TL integration phase COMPLETE (2026-10-15, d68d8f8 + 0fd6328): the /sporta entry mounts SportaProductApp — the shell with ALL SEVEN screens wired (Home + the studio workbench through the shell port + the four destination screens through their hosts); the wiring law tested; the browser journeys re-run at the station on the integrated app: 4 passed (both specs x 1440x900 + 390x844); gates at the integration: tsc 0, battery 957/957, lint 0/70, arch 0/0/0, surface OK.
   Remaining (typed, never silent): the five composition-side read/write seams the C worker serialized (run-history, artifact/lineage/export, app audit+revoke write, marketplace submission states) — battery-proven REAL at the port level, surfaced honestly as missing-seam notes in the browser until they land.
 
+## W12 — the composition-side seams (2026-10-15)
+
+- Trigger: the W11C serialized NEXT DEPENDENCIES (the typed next arc per `8668962`); operator directive "continue with the rest of the roadmap".
+- Scope: REAL adapter hosts for the five seams (run-history; artifact/lineage; artifact-content/export through the gated read; app audit+revoke write; marketplace submission states) + the TL product composition root + app wiring. Browser-real data path stays typed-future with the P11 hosted-preview arc.
+- Canonical docs: `docs/architecture/adr-w12-composition-seams.md`, `docs/work-orders/w12-composition-seams-work-orders.md`, `docs/testing/w12-acceptance.md`.
+- Implementation status: WAVE 12 IN FLIGHT — Wave 0 freeze pushed @86ca421 (docs + the additive enumeration reads: `TransformRunService.listRuns()`, `ArtifactGraphService.listArtifacts()`, the NEW `CreatorCandidateQueryService` with the in-memory store's `listAll()`; module provides registered: transform-run-ledger-reads, artifact-registry-reads, marketplace-creator-reads). Station gates at the freeze: arch 0/0/0 · surface OK additive-only · scoped tsc exit 0 · battery 882/882 · lint 0/70 exact. Worker lanes w12a (runs+library REAL hosts), w12b (marketplace submission-states REAL host), w12c (connected-apps REAL host with the revoke write) — dispatching; TL integration (productComposition + app wiring + journeys) after the lanes land.
+
 ## Repository identity
 
 Repository: payswapdotorg/sporta-2.0
