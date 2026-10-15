@@ -110,6 +110,15 @@ export class ArtifactGraphService implements ArtifactGraphPort {
     return this.artifacts.get(artifactId) ?? null;
   }
 
+  /**
+   * W12-02 (additive enumeration read): the artifact registry in
+   * record (insertion) order. A projection over the same private Map —
+   * never a second registry; records returned verbatim.
+   */
+  listArtifacts(): readonly ArtifactRecord[] {
+    return [...this.artifacts.values()];
+  }
+
   private listAllRevisions(): ArtifactRevisionRecord[] {
     return [...this.revisions.values()];
   }

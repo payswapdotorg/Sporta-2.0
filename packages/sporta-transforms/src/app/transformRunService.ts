@@ -107,6 +107,10 @@ export class TransformRunService {
   readRun(runManifestId: SportaId): TransformRunManifest | null {
     return this.runs.get(runManifestId) ?? null;
   }
+  /** W12-01 additive enumeration read: ledger insertion order, verbatim (projection, not a second authority). */
+  listRuns(): readonly TransformRunManifest[] {
+    return [...this.runs.values()];
+  }
 
   async runPipeline(input: StartTransformRunInput): Promise<TransformRunManifest> {
     if (input.inputs.length !== 1) {

@@ -23,6 +23,8 @@ export const sportaTransformsModule = {
     "transform-deterministic-execution",
     "transform-model-lane",
     "transform-run-service",
+    // W12 (TL freeze) additive capability — the run-ledger enumeration read.
+    "transform-run-ledger-reads",
     // Wave 10 (Worker A) — additive provided capabilities.
     "live-source-port",
     "live-source-real-local-http",

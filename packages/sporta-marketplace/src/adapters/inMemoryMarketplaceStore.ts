@@ -33,10 +33,21 @@ function clone<T>(value: T): T {
 export class InMemoryCandidateStore implements CandidateStorePort {
   private readonly byIdIndex = new Map<SportaId, TransformCandidateRecord>();
   private readonly byVersionIndex = new Map<string, TransformCandidateRecord>();
+  /** Insertion ledger for the W12 additive enumeration read (listAll). */
+  private readonly insertionOrder: TransformCandidateRecord[] = [];
 
   save(record: TransformCandidateRecord): void {
     this.byIdIndex.set(record.candidateId, clone(record));
     this.byVersionIndex.set(`${record.pipelineId}@${record.version}`, clone(record));
+    const existingSlot = this.insertionOrder.findIndex(
+      (candidate) => candidate.candidateId === record.candidateId,
+    );
+    if (existingSlot >= 0) {
+      // Same slot re-saved (draft replacement): the record updates IN PLACE.
+      this.insertionOrder[existingSlot] = clone(record);
+    } else {
+      this.insertionOrder.push(clone(record));
+    }
   }
 
   byId(candidateId: SportaId): TransformCandidateRecord | null {
@@ -52,6 +63,11 @@ export class InMemoryCandidateStore implements CandidateStorePort {
       .filter((record) => record.pipelineId === pipelineId)
       .map((record) => clone(record))
       .sort((a, b) => a.version.localeCompare(b.version));
+  }
+
+  /** W12 additive enumeration (CandidateEnumerationPort): stable insertion order. */
+  listAll(): readonly TransformCandidateRecord[] {
+    return this.insertionOrder.map((record) => clone(record));
   }
 }
 

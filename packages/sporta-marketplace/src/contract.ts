@@ -259,6 +259,12 @@ export type {
   SubmissionServiceDeps,
 } from "./app/submissionService.js";
 export { SubmissionService } from "./app/submissionService.js";
+// W12 — the creator-side enumeration read (composition seam; frozen port untouched).
+export type {
+  CandidateEnumerationPort,
+  CreatorCandidateQueryServiceDeps,
+} from "./app/creatorQueryService.js";
+export { CreatorCandidateQueryService } from "./app/creatorQueryService.js";
 export type {
   HumanReviewEntryInput,
   RecordReviewDecisionInput,

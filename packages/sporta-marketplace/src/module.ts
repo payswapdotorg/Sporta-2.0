@@ -17,6 +17,8 @@ export const sportaMarketplaceModule = {
     "marketplace-settlement-port",
     "marketplace-launch-disclosure",
     "marketplace-fail-closed-admission",
+    // W12 (TL freeze) additive capability — the creator-side enumeration read.
+    "marketplace-creator-reads",
   ],
   publicEntrypoints: ["contract.ts"],
 } as const;
