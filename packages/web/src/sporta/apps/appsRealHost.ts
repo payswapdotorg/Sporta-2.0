@@ -42,7 +42,6 @@ import type {
 import type {
   ApplicationEnvironmentService,
   ApplicationActionService,
-  ApplicationSessionService,
 } from "@sporta/app-environments/contract";
 import type {
   ConnectedAppsScreenPort,
