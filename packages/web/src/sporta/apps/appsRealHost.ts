@@ -50,14 +50,16 @@ import type {
   ConnectedAppAttachmentShape,
   ConnectedAppView,
   ConnectedAppAuditShape,
-  ScreenRefusal,
 } from "./appsScreenPorts.js";
+import { STUDIO_WORKSPACE } from "../studioSeeds.js";
 
 /**
- * The READ-ONLY structural slice of the REAL session service this host
+ * The READ-ONLY structural slice of the REAL session store this host
  * rides to map an attachment to its sessions. The REAL
- * `ApplicationSessionService` satisfies this structurally — the host
- * only needs the enumeration read (listByAttachment).
+ * `ApplicationSessionStorePort` (the in-memory store the services share)
+ * satisfies this structurally — the same enumeration read
+ * `ApplicationSessionService.safeStopAttachment` uses internally (the
+ * store IS the single session state owner; no second authority here).
  */
 export interface AttachmentSessionRead {
   /** All sessions for one attachment (open + closed, insertion order). */
@@ -90,7 +92,7 @@ export interface CreateAppsRealHostDeps {
   readonly environment: ApplicationEnvironmentService;
   /** The action service — audit reads. */
   readonly actionAudit: ApplicationActionService;
-  /** The session service — attachment→sessions mapping (read-only slice). */
+  /** The session store's enumeration read — attachment→sessions mapping. */
   readonly sessions: AttachmentSessionRead;
 }
 
@@ -124,24 +126,24 @@ export function createAppsRealHost(
     gradeNote: APPS_STORE_GRADE_NOTE,
 
     async listAttachments(): Promise<readonly ConnectedAppView[]> {
-      // The REAL enumeration read: all attachments in scope (the
-      // workspace is implicitly the composition's scope; the service's
-      // listByScope is the authority).
-      const attachments = environment.listAttachmentsByScope("default");
+      // The REAL enumeration read: all attachments in the composition's
+      // workspace scope (the studio composition's STUDIO_WORKSPACE — the
+      // W11C law; the service's listByScope is the authority).
+      const attachments = environment.listAttachmentsByScope(STUDIO_WORKSPACE);
       return attachments.map((attachment) => projectAttachmentView(attachment, environment));
     },
 
     async readAuditTrail(
       attachmentId: string,
     ): Promise<readonly ConnectedAppAuditShape[]> {
-      // 1. The attachment must exist — unknown attachment = typed refusal.
+      // 1. The attachment must exist — unknown attachment = honest empty
+      //    audit (the fixture-host precedent + the work-order law "absent
+      //    = empty, not an error"; the frozen port's array return cannot
+      //    express a refusal union — a richer read would need a port
+      //    change, frozen by law).
       const attachment = environment.readAttachment(attachmentId);
       if (attachment === null) {
-        return [
-          {
-            reason: `unknown attachment ${attachmentId} — no audit trail available (typed refusal)`,
-          } as ScreenRefusal,
-        ] as unknown as readonly ConnectedAppAuditShape[];
+        return [];
       }
 
       // 2. Map attachment → its REAL session(s) (the session service's
@@ -170,7 +172,17 @@ export function createAppsRealHost(
         // sessions via ApplicationSessionService.safeStopAttachment
         // (P9-20 verbatim — the environment service does this internally).
         const revokedAttachment = environment.revokeAttachment(attachmentId);
-        return { ok: true, revokedAt: revokedAttachment.revokedAt ?? "" };
+        const revokedAt = revokedAttachment.revokedAt;
+        if (revokedAt === null) {
+          // Never fabricate a timestamp — the service law stamps every
+          // revocation; a null stamp here is a law violation, surfaced.
+          return {
+            ok: false,
+            reason:
+              "revocation completed but no revokedAt stamp (service law violation)",
+          };
+        }
+        return { ok: true, revokedAt };
       } catch (error) {
         // Typed failures carry the verbatim reason — never softened.
         if (error instanceof Error) {
@@ -184,9 +196,11 @@ export function createAppsRealHost(
 
 /**
  * Project one REAL `ApplicationAttachment` + its descriptor into the
- * frozen `ConnectedAppView` mirror. Every field projects verbatim;
- * granted AND not-granted visible (the grantedCapabilityClasses array
- * being empty IS the not-granted signal); honest `revokedAt` null-vs-timestamp.
+ * frozen `ConnectedAppView` mirror. Every field projects verbatim; the
+ * granted vs not-granted visibility is CAPABILITY-CLASS level (the W11C
+ * law: the granted subset vs the descriptor's declared classes — the
+ * service refuses empty grants, so the gap is always visible in the
+ * grantedCapabilityClasses subset); honest `revokedAt` null-vs-timestamp.
  */
 function projectAttachmentView(
   attachment: ApplicationAttachment,
