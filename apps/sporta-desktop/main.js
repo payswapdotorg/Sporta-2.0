@@ -1,0 +1,200 @@
+/**
+ * Sporta Desktop — the Sporta product as a native Ubuntu desktop app.
+ *
+ * LAWS (the operator directive this app exists to satisfy):
+ *   1. The app IS the product: it mounts the Sporta product UI (the
+ *      packages/web `/sporta` route — Home, Studio workbench, Marketplace,
+ *      Runs, Library, Connected Apps) exactly as the web product ships it.
+ *   2. The app is NEVER ZCode: the ZCode substrate surface (workspace IDE,
+ *      auth, share pages) lives at other routes of the same SPA and is
+ *      hard-blocked here — the window can only ever render `/sporta`.
+ *   3. The product UI is a client-side bundle: REAL domain code runs in the
+ *      renderer with the honestly-labeled browser demo hosts (fixture-labeled
+ *      data — the same honesty law as the web product; nothing is faked as
+ *      production-live).
+ *
+ * MECHANICS: Electron main starts a loopback-only static file server over the
+ * staged `renderer/` bundle (packaged under resources/), then opens one
+ * window at `http://127.0.0.1:<port>/sporta`. No remote origins are loaded,
+ * ever; external links open in the system browser.
+ */
+"use strict";
+
+const { app, BrowserWindow, Menu, shell } = require("electron");
+const http = require("node:http");
+const fs = require("node:fs");
+const path = require("node:path");
+const { URL } = require("node:url");
+
+// Robustness: chromium shared-memory fallback (also correct on real desktops —
+// a no-op there; prevents the GPU-process death loop in low-/dev/shm
+// environments such as containers and CI runners).
+app.commandLine.appendSwitch("disable-dev-shm-usage");
+
+/** The only route this app may render (the product route from sportaRoute.ts). */
+const PRODUCT_ROUTE = "/sporta";
+const PRODUCT_ROUTE_CN = "/cn/sporta";
+/** Sporta brand constants (product theme tokens — theme.css). */
+const SPORTA_BG = "#0c1210";
+
+const MIME_TYPES = {
+  ".html": "text/html; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".mjs": "text/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".webp": "image/webp",
+  ".ico": "image/x-icon",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+  ".ttf": "font/ttf",
+  ".otf": "font/otf",
+  ".map": "application/json; charset=utf-8",
+  ".txt": "text/plain; charset=utf-8",
+  ".wasm": "application/wasm",
+};
+
+/** Renderer bundle root: `renderer/` next to this file in dev, under resources/ when packaged. */
+function resolveRendererRoot() {
+  const candidates = [
+    path.join(__dirname, "renderer"),
+    path.join(process.resourcesPath, "renderer"),
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(path.join(candidate, "index.html"))) return candidate;
+  }
+  throw new Error(
+    "Sporta Desktop: staged product bundle not found (run scripts/build-desktop.sh to stage packages/web dist into renderer/).",
+  );
+}
+
+/**
+ * Loopback static server. PRODUCT-ONLY:
+ *   - `/` redirects to the product route;
+ *   - the product route serves the SPA shell (index.html);
+ *   - static assets resolve under the bundle root;
+ *   - anything else is a 404 — NEVER a SPA fallback, so no other route of
+ *     the bundle (the ZCode surface) can be entered accidentally.
+ */
+function createProductServer(root) {
+  const server = http.createServer((req, res) => {
+    try {
+      const requestUrl = new URL(req.url, "http://127.0.0.1");
+      let pathname = decodeURIComponent(requestUrl.pathname);
+      if (pathname === "/") {
+        res.writeHead(302, { Location: PRODUCT_ROUTE });
+        res.end();
+        return;
+      }
+      if (pathname === PRODUCT_ROUTE || pathname === PRODUCT_ROUTE_CN) {
+        pathname = "/index.html";
+      }
+      const relative = path.posix.normalize(pathname).replace(/^(\.\.[/\\])+/, "");
+      const file = path.join(root, relative);
+      if (!file.startsWith(root) || !fs.existsSync(file) || !fs.statSync(file).isFile()) {
+        res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+        res.end("Not found (Sporta Desktop serves the product route only).");
+        return;
+      }
+      const contentType = MIME_TYPES[path.extname(file).toLowerCase()];
+      res.writeHead(200, {
+        "Content-Type": contentType || "application/octet-stream",
+        "Cache-Control": "no-store",
+      });
+      fs.createReadStream(file).pipe(res);
+    } catch (error) {
+      res.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end(`Sporta Desktop server error: ${error && error.message}`);
+    }
+  });
+  return new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => resolve(server));
+  });
+}
+
+/** The product-only navigation guard (LAW 2). Nothing but the product route may render. */
+function isProductPath(pathname) {
+  return pathname === PRODUCT_ROUTE || pathname === PRODUCT_ROUTE_CN;
+}
+
+function installProductOnlyGuard(win, origin) {
+  win.webContents.on("will-navigate", (event, target) => {
+    const targetUrl = new URL(target);
+    if (targetUrl.origin !== origin) {
+      event.preventDefault();
+      void shell.openExternal(target);
+      return;
+    }
+    if (!isProductPath(targetUrl.pathname)) {
+      // Internal, non-product: block and keep the window on the product route.
+      event.preventDefault();
+      win.webContents.loadURL(`${origin}${PRODUCT_ROUTE}`);
+    }
+  });
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    void shell.openExternal(url);
+    return { action: "deny" };
+  });
+}
+
+function createProductWindow(origin) {
+  const win = new BrowserWindow({
+    width: 1440,
+    height: 900,
+    minWidth: 480,
+    minHeight: 640,
+    backgroundColor: SPORTA_BG,
+    title: "Sporta",
+    show: false,
+    autoHideMenuBar: true,
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      webSecurity: true,
+    },
+  });
+  win.removeMenu();
+  win.once("ready-to-show", () => win.show());
+  installProductOnlyGuard(win, origin);
+  void win.loadURL(`${origin}${PRODUCT_ROUTE}`);
+  return win;
+}
+
+async function main() {
+  const gotLock = app.requestSingleInstanceLock();
+  if (!gotLock) {
+    app.quit();
+    return;
+  }
+  app.on("second-instance", () => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (win.isMinimized()) win.restore();
+      win.focus();
+    }
+  });
+  Menu.setApplicationMenu(null);
+  await app.whenReady();
+
+  const rendererRoot = resolveRendererRoot();
+  const server = await createProductServer(rendererRoot);
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  createProductWindow(origin);
+
+  app.on("window-all-closed", () => {
+    server.close();
+    app.quit();
+  });
+  app.on("activate", () => {
+    if (BrowserWindow.getAllWindows().length === 0) createProductWindow(origin);
+  });
+}
+
+void main();
