@@ -1,0 +1,22 @@
+{
+  "name": "sporta-desktop",
+  "productName": "Sporta",
+  "version": "1.0.0",
+  "description": "Sporta — sports media production: transform studio, marketplace, runs, library and connected apps. The Sporta product as a native Ubuntu desktop app (never the ZCode substrate).",
+  "author": "Sporta (payswapdotorg)",
+  "homepage": "https://github.com/payswapdotorg/Sporta-2.0",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "main.js",
+  "desktopName": "Sporta.desktop",
+  "scripts": {
+    "start": "electron .",
+    "stage": "bash scripts/build-desktop.sh --stage-only",
+    "dist": "bash scripts/build-desktop.sh",
+    "dist:deb": "bash scripts/build-desktop.sh --deb-only"
+  },
+  "devDependencies": {
+    "electron": "41.0.3",
+    "electron-builder": "^26.8.1"
+  }
+}

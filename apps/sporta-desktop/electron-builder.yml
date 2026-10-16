@@ -1,0 +1,45 @@
+# Sporta Desktop — electron-builder configuration (Ubuntu/Linux distribution).
+# PRODUCT LAW: this packages the Sporta product ONLY (the packages/web
+# `/sporta` route bundle). It must never package or launch the ZCode desktop
+# app (packages/desktop) or inherit its branding.
+
+appId: org.sporta.desktop
+productName: Sporta
+copyright: Copyright (c) Sporta (payswapdotorg)
+
+directories:
+  output: release
+  buildResources: icons
+
+# The Electron app itself is tiny: main + preload + manifest.
+# The product UI bundle rides along as an extra resource.
+files:
+  - main.js
+  - preload.js
+  - package.json
+extraResources:
+  - from: renderer
+    to: renderer
+
+linux:
+  icon: icons/icon.png
+  category: Utility;Sports;AudioVideo
+  syncDesktopName: true
+  synopsis: Sporta — sports media production
+  description: >-
+    Sporta — the sports media production product as a native desktop app:
+    transform studio, marketplace, runs, library and connected apps.
+  artifactName: sporta-desktop-${version}-${arch}.${ext}
+  maintainer: Sporta (payswapdotorg)
+  target:
+    - target: deb
+      arch: [x64]
+    - target: AppImage
+      arch: [x64]
+
+deb:
+  artifactName: sporta-desktop_${version}_${arch}.${ext}
+  priority: optional
+
+appImage:
+  artifactName: sporta-desktop-${version}-${arch}.AppImage
