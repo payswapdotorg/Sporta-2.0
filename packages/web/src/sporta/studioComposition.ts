@@ -87,6 +87,14 @@ export interface StudioHostCompositionConfig {
   readonly operatorRights?: TransformRightsSnapshot | null;
   /** Injectable clock (default: the real system clock). */
   readonly now?: () => string;
+  /**
+   * W14 (additive, default unchanged): the executable the sample-preview
+   * child leg spawns. Default `process.execPath` (a plain `node` on dev
+   * stations). The packaged Sporta desktop passes its node wrapper
+   * (`ELECTRON_RUN_AS_NODE=1 exec <electron binary>`) — the REAL child
+   * process law is unchanged: real pipes, real exit codes, empty env.
+   */
+  readonly nodeExecutable?: string;
 }
 
 /** What the studio composition exposes: the port + dispose. */
@@ -178,7 +186,10 @@ export function createStudioHostComposition(config: StudioHostCompositionConfig)
   const runService = new TransformRunService({
     clock: { now }, hash: transformHash, artifacts, blobs: blobStore,
     models: new FixtureTransformModelAdapter(), // FIXTURE-labeled; never invoked (no model node)
-    deterministic: new DeterministicFilterNodeAdapter({ store: componentStore }),
+    deterministic: new DeterministicFilterNodeAdapter({
+      store: componentStore,
+      ...(config.nodeExecutable !== undefined ? { nodeExecutable: config.nodeExecutable } : {}),
+    }),
     components: componentStore, workGraphRefs: workGraphs,
   });
 
@@ -353,7 +364,10 @@ export function createStudioHostComposition(config: StudioHostCompositionConfig)
  * precedent: the HOST declares the operator's context; the admission
  * GATE stays real and fail-closed; this declares, it never bypasses).
  */
-export function createOperatorStudioHostComposition(blobRoot: string): StudioHostComposition {
+export function createOperatorStudioHostComposition(
+  blobRoot: string,
+  options?: { nodeExecutable?: string },
+): StudioHostComposition {
   return createStudioHostComposition({
     blobRoot,
     principal: SPORTA_HOST_USER,
@@ -361,5 +375,6 @@ export function createOperatorStudioHostComposition(blobRoot: string): StudioHos
       satisfied: ["authorized source footage"],
       evidenceRefs: ["rights:sporta-host-operator-declaration"],
     },
+    ...(options?.nodeExecutable !== undefined ? { nodeExecutable: options.nodeExecutable } : {}),
   });
 }

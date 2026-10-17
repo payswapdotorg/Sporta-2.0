@@ -29,13 +29,28 @@ done
 log() { printf '[sporta-desktop] %s\n' "$*"; }
 
 if [ "$SKIP_WEB" -ne 1 ]; then
-  log "1/4 building the product web bundle (packages/web — the /sporta product surface)"
-  (cd "$ROOT/packages/web" && "$ROOT/node_modules/.bin/vite" build)
+  log "1/5 bundling the REAL desktop composition (esbuild: desktopComposition.ts → composition/composition.cjs)"
+  mkdir -p "$HERE/composition"
+  "$ROOT/node_modules/.bin/esbuild" \
+    "$ROOT/packages/web/src/sporta/product/desktopComposition.ts" \
+    --bundle --platform=node --format=cjs \
+    --banner:js="const __import_meta_url = (typeof __filename === \"string\" ? require(\"node:url\").pathToFileURL(__filename).href : \"\");" \
+    --define:import.meta.url=__import_meta_url \
+    --outfile="$HERE/composition/composition.cjs" \
+    --log-level=warning
+  log "composition bundle: $(du -sh "$HERE/composition/composition.cjs" | cut -f1)"
 else
-  log "1/4 skipping web build (--skip-web; using staged renderer/)"
+  log "1/5 skipping composition bundle (--skip-web; using staged composition/)"
 fi
 
-log "2/4 staging renderer bundle"
+if [ "$SKIP_WEB" -ne 1 ]; then
+  log "2/5 building the product web bundle (packages/web — the /sporta product surface)"
+  (cd "$ROOT/packages/web" && "$ROOT/node_modules/.bin/vite" build)
+else
+  log "2/5 skipping web build (--skip-web; using staged renderer/)"
+fi
+
+log "3/5 staging renderer bundle"
 rm -rf "$HERE/renderer"
 if [ ! -d "$ROOT/packages/web/dist" ]; then
   echo "packages/web/dist missing — run without --skip-web first." >&2
@@ -49,10 +64,10 @@ if [ "$STAGE_ONLY" -eq 1 ]; then
   exit 0
 fi
 
-log "3/4 installing the packaging toolchain (electron + electron-builder; cached)"
+log "4/5 installing the packaging toolchain (electron + electron-builder; cached)"
 (cd "$HERE" && npm install --no-fund --no-audit)
 
-log "4/4 packaging (electron-builder: deb + AppImage for linux x64)"
+log "5/5 packaging (electron-builder: deb + AppImage for linux x64)"
 if [ "$DEB_ONLY" -eq 1 ]; then
   (cd "$HERE" && npx electron-builder --linux deb --x64)
 else

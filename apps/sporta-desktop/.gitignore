@@ -1,4 +1,5 @@
 node_modules/
 renderer/
 release/
+composition/
 *.log

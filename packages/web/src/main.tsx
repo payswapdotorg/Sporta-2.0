@@ -37,6 +37,13 @@ import { WEB_DEFAULT_THEME, resolveWebInitialTheme } from "./webThemeSeed.js";
 // the pre-W11 SportaPanel trace projection is superseded by the Home screen
 // (same host port, same write paths, the product-native surface).
 import { SportaProductApp } from "./sporta/product/app.js";
+import type { SportaRealScreenPorts } from "./sporta/product/app.js";
+import {
+  createDesktopRealScreenPorts,
+  createDesktopStudioHost,
+  getSportaDesktopBridge,
+} from "./sporta/product/desktopScreenBridge.js";
+import type { TransformStudioHostPort } from "./sporta/studio/studioPorts.js";
 import { createBrowserFixtureHost } from "./sporta/browserFixtureHost.js";
 import { createStudioBrowserFixtureHost } from "./sporta/studioBrowserFixture.js";
 import { isSportaPath } from "./sporta/sportaRoute.js";
@@ -448,8 +455,29 @@ async function bootstrapWebApp() {
   // reads FIXTURE here, labeled in the UI itself).
   if (isSportaPath(window.location.pathname)) {
     document.title = "Sporta";
+    // W14: inside the Sporta desktop app the REAL composition runs in
+    // the Electron main process; the preload bridge carries its hosts
+    // (REAL backing badges from the measured facts). An absent or
+    // failing bridge keeps the honest browser fixture mount (the
+    // fixture labels carry — never a silent half-real state).
+    const desktopBridge = getSportaDesktopBridge();
+    let realScreenPorts: SportaRealScreenPorts | undefined;
+    let studioHost: TransformStudioHostPort = createStudioBrowserFixtureHost();
+    if (desktopBridge) {
+      try {
+        const facts = await desktopBridge.facts();
+        realScreenPorts = createDesktopRealScreenPorts(desktopBridge, facts);
+        studioHost = createDesktopStudioHost(desktopBridge, facts);
+      } catch (cause) {
+        console.error("Sporta desktop composition unavailable — fixture mount", cause);
+      }
+    }
     root.render(
-      <SportaProductApp host={createBrowserFixtureHost()} studio={createStudioBrowserFixtureHost()} />,
+      <SportaProductApp
+        host={createBrowserFixtureHost()}
+        studio={studioHost}
+        realScreenPorts={realScreenPorts}
+      />,
     );
     return;
   }
