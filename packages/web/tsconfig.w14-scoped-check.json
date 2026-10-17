@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "rootDir": "..",
+    "types": [
+      "node",
+      "vite/client"
+    ]
+  },
+  "include": [],
+  "references": [],
+  "files": [
+    "src/sporta/product/desktopComposition.ts",
+    "src/sporta/product/desktopScreenBridge.ts",
+    "src/sporta/product/productComposition.ts",
+    "src/sporta/product/app.tsx",
+    "src/sporta/studioComposition.ts",
+    "test/sportaDesktopComposition.test.ts"
+  ]
+}

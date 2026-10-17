@@ -1,8 +1,8 @@
 {
   "name": "sporta-desktop",
   "productName": "Sporta",
-  "version": "1.0.0",
-  "description": "Sporta — sports media production: transform studio, marketplace, runs, library and connected apps. The Sporta product as a native Ubuntu desktop app (never the ZCode substrate).",
+  "version": "1.1.0",
+  "description": "Sporta \u2014 sports media production: transform studio, marketplace, runs, library and connected apps. The Sporta product as a native Ubuntu desktop app (never the ZCode substrate) \u2014 the REAL composition behind the window (W14).",
   "author": "Sporta (payswapdotorg)",
   "homepage": "https://github.com/payswapdotorg/Sporta-2.0",
   "license": "UNLICENSED",

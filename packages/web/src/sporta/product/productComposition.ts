@@ -74,6 +74,14 @@ export interface SportaProductCompositionConfig {
   readonly blobRoot: string;
   /** Injectable clock (default: the real system clock). */
   readonly now?: () => string;
+  /**
+   * W14 (additive, default unchanged): the executable the deterministic-
+   * filter child legs spawn. Default `process.execPath` (a plain `node` on
+   * dev stations). The packaged Sporta desktop passes its node wrapper
+   * (`ELECTRON_RUN_AS_NODE=1 exec <electron binary>`) — the REAL child
+   * process law is unchanged: real pipes, real exit codes, empty env.
+   */
+  readonly nodeExecutable?: string;
 }
 
 /**
@@ -175,7 +183,10 @@ export function createSportaProductComposition(
     artifacts,
     blobs,
     models: new FixtureTransformModelAdapter(), // FIXTURE-labeled; never invoked (no model node)
-    deterministic: new DeterministicFilterNodeAdapter({ store: componentStore }),
+    deterministic: new DeterministicFilterNodeAdapter({
+      store: componentStore,
+      ...(config.nodeExecutable !== undefined ? { nodeExecutable: config.nodeExecutable } : {}),
+    }),
     components: componentStore,
     workGraphRefs: workGraphs,
   });

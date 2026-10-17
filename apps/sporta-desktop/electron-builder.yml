@@ -17,6 +17,7 @@ files:
   - main.js
   - preload.js
   - package.json
+  - composition
 extraResources:
   - from: renderer
     to: renderer
